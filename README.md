@@ -40,7 +40,7 @@ Probe cost bound: models probed x (about 8 input tokens + 1 output token) once p
 
 ```bash
 cd tools/deploy-kit && NODE_AUTH_TOKEN="$(gh auth token)" npm ci --ignore-scripts
-npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env
+npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env ../../deploy/dashboards
 ```
 
 `salt_key` encrypts the upstream keys stored in the database. Never change it once virtual keys exist.

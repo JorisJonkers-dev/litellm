@@ -55,7 +55,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
           npm ci --ignore-scripts
-          npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env
+          npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env ../../deploy/dashboards
 
       - name: The image builds, routes wildcards, serves metrics and logs no message text
         if: ${{ !cancelled() }}
