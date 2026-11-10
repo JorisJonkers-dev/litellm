@@ -4,5 +4,5 @@ FROM ghcr.io/berriai/litellm:main-stable@sha256:c560d317136880ea92d62334d4367ab1
 
 COPY config/config.yaml /app/config.yaml
 CMD ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
-# The base image's user, by number, so the images lock records its uid and gid
-# (to confirm: the base runs as root today, so a USER line is part of the first build).
+# The base image runs as root today; a USER line, by number, is a follow-up once the image is
+# confirmed to run unprivileged read-only (the images lock then records its uid and gid).
