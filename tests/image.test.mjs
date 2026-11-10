@@ -4,7 +4,7 @@
 // HTTP. IMAGE skips the build and tests an image that already exists.
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -191,6 +191,8 @@ test('no prompt or response text reaches the logs, the traces or the metrics', a
   assert.ok(spans.some((body) => body.includes('chat_completion')), 'no span was exported')
   assert.ok(spans.some((body) => body.includes('gen_ai.usage.total_tokens')), 'spans carry token counts')
   for (const body of spans) assert.doesNotMatch(body, new RegExp(`${PROMPT}|${ANSWER}`))
-  assert.doesNotMatch(docker('logs', NAME), new RegExp(`${PROMPT}|${ANSWER}`))
+  // Python logging writes to stderr, so read both streams.
+  const logs = spawnSync('docker', ['logs', NAME], { encoding: 'utf8' })
+  assert.doesNotMatch(logs.stdout + logs.stderr, new RegExp(`${PROMPT}|${ANSWER}`))
   assert.doesNotMatch(await (await fetch(`${metrics}/metrics/`)).text(), new RegExp(`${PROMPT}|${ANSWER}`))
 })

@@ -81,7 +81,10 @@ class Classify(unittest.TestCase):
         self.assertEqual(sync.error_message(None), "")
         self.assertEqual(sync.error_message("plain"), "plain")
         self.assertEqual(sync.error_message('{"error":"s"}'), "s")
-        self.assertEqual(sync.error_message("[1]"), "[1]")
+        self.assertEqual(sync.error_message("[1]"), "")
+        self.assertEqual(sync.error_message("<html>secret</html>"), "<html>secret</html>")
+        self.assertEqual(sync.error_message('{"message":"not allowed here"}'), "not allowed here")
+        self.assertEqual(sync.error_message('{"other":1}'), "")
         self.assertEqual(sync.error_message('{"error":{"type":"t","message":"m"}}'), "t m")
 
 
@@ -174,6 +177,7 @@ class Build(unittest.TestCase):
         http = Http()
         cat, stats = self.run_build(http, max_probes=3)
         self.assertEqual(stats["probed"], 3)
+        self.assertIn("pending", {m["metadata"]["status"] for p in cat["providers"].values() for m in p["models"]})
         http = Http()
         sync.build(ENV, http, {}, NOW, route_limits={"opencode-go": 1}, max_probes=50)
         self.assertEqual(len([m for m in http.probed() if m.startswith("opencode-go/")]), 1)
@@ -209,7 +213,29 @@ class Build(unittest.TestCase):
         cat, stats = sync.build({k: v for k, v in ENV.items() if k != "LITELLM_URL"}, http, {}, NOW)
         self.assertEqual(stats["probed"], 0)
         self.assertEqual(http.probed(), [])
-        self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "unprobed")
+        self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "pending")
+
+    def test_opencode_probe_carries_a_session_header_and_hints_are_flagged(self):
+        http = Http()
+        cat, _ = self.run_build(http, route_limits={})
+        call = next(c for c in http.calls if c[0] == "POST" and c[3]["model"].startswith("opencode-go/"))
+        self.assertIn("x-opencode-session", call[3]["extra_headers"])
+        hinted = {m["id"]: m["metadata"].get("needs_org_setting_hint") for m in cat["providers"]["opencode-go"]["models"]}
+        self.assertEqual(hinted, {"opencode-go/deepseek-v4-pro": True, "opencode-go/glm-5.3-flash": None})
+
+    def test_archived_models_are_dropped_and_openrouter_prefers_the_account_list(self):
+        lists = dict(LISTS, **{"https://m/v1/models": {"data": [{"id": "old", "archived": True}, {"id": "new"}]},
+                               "https://or/v1/models/user": {"data": [{"id": "only/mine:free"}]}})
+        ids = [m["id"] for m in sync.list_models(next(e for e in sync.ROUTES if e["route"] == "vibe"), ENV, Http(lists=lists))]
+        self.assertEqual(ids, ["new"])
+        mine = sync.list_models(next(e for e in sync.ROUTES if e["route"] == "openrouter"), ENV, Http(lists=lists))
+        self.assertEqual([m["id"] for m in mine], ["only/mine:free"])
+
+    def test_host_and_port_compose_the_proxy_url(self):
+        http = Http()
+        env = {k: v for k, v in ENV.items() if k != "LITELLM_URL"}
+        sync.build(dict(env, LITELLM_HOST="litellm.ns", LITELLM_PORT="4000"), http, {}, NOW)
+        self.assertTrue(any(c[1] == "http://litellm.ns:4000/v1/chat/completions" for c in http.calls))
 
     def test_age(self):
         self.assertEqual(sync.parse_age("2d"), datetime.timedelta(days=2))

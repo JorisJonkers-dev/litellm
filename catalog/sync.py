@@ -13,6 +13,7 @@ its provider, then PROBES each one through the LiteLLM proxy with one minimal re
   error             anything else (rate limit, 5xx, timeout); tried again next run
   not-chat          the provider lists it as no chat model (embeddings, OCR, transcription)
   unprobed          not probed on purpose (a paid OpenRouter model: the route is used for `:free` ids)
+  pending           due for a probe but over this run's cap; probed in a later run
 
 The result is cached in the catalogue itself (probed_at per model), so a run probes only models
 that are new, errored or older than --max-age, and a model that disappears from its provider's
@@ -44,9 +45,12 @@ ROUTES = [
     {"route": "openrouter", "base_env": "OPENROUTER_API_BASE", "key_env": "OPENROUTER_API_KEY", "kind": "openrouter"},
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
 ]
+# OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
+# flagged in the catalogue as a hint; the probe still decides what the account can use.
+OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
 DEFAULT_ROUTE_LIMITS = {"openrouter": 30}
-STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed")
+STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 
 BUDGET = re.compile(
     r"budget_exceeded|budget has been exceeded|insufficient[_ ](credit|quota|funds)|exceeded your current quota|"
@@ -92,7 +96,9 @@ def error_message(text):
         return " ".join(str(error.get(k) or "") for k in ("type", "message")).strip()
     if isinstance(error, str):
         return error
-    return str(text)
+    # Any other body is not published: only a `message` field is the provider's own reason.
+    message = body.get("message") if isinstance(body, dict) else None
+    return message if isinstance(message, str) else ""
 
 
 def is_free_price(pricing):
@@ -108,12 +114,18 @@ def list_models(entry, env, http):
     if not base:
         raise RuntimeError(f"{entry['base_env']} is not set")
     key = env.get(entry["key_env"]) or ""
-    status, body = http("GET", f"{base}/models", {"Authorization": f"Bearer {key}"} if key else {}, None)
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    status, body = http("GET", f"{base}/models", headers, None)
+    if entry["kind"] == "openrouter" and key:
+        # The account-aware list (models this key may use), when OpenRouter serves it.
+        user_status, user_body = http("GET", f"{base}/models/user", headers, None)
+        if user_status == 200 and isinstance(user_body, dict) and isinstance(user_body.get("data"), list):
+            status, body = user_status, user_body
     if status != 200 or not isinstance(body, dict) or not isinstance(body.get("data"), list):
         raise RuntimeError(f"{entry['route']}: the model list answered {status}")
     found = {}
     for item in body["data"]:
-        if not isinstance(item, dict) or not item.get("id"):
+        if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
             continue
         out = {"id": item["id"], "name": item.get("name") or item["id"], "context_length": None, "free": False, "chat": None}
         if entry["kind"] == "mistral":
@@ -132,6 +144,9 @@ def list_models(entry, env, http):
 def probe(model, litellm_url, master_key, http):
     """One minimal request through the proxy; the route's wildcard picks the upstream key."""
     body = {"model": model, "messages": [{"role": "user", "content": "ping"}], "max_tokens": 1}
+    if model.startswith("opencode-go/"):
+        # OpenCode answers 400 MissingSessionID without a session header.
+        body["extra_headers"] = {"x-opencode-session": "litellm-catalog-probe"}
     headers = {"x-litellm-api-key": f"Bearer {master_key}", "Content-Type": "application/json"}
     status, answer = http("POST", f"{litellm_url.rstrip('/')}/v1/chat/completions", headers, body)
     return classify(status, answer if isinstance(answer, str) else json.dumps(answer))
@@ -169,7 +184,9 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     limits = dict(DEFAULT_ROUTE_LIMITS if route_limits is None else route_limits)
     cache = previous_by_id(previous)
     master = env.get("LITELLM_MASTER_KEY") or ""
-    url = env.get("LITELLM_URL") or ""
+    url = env.get("LITELLM_URL") or (
+        f"http://{env['LITELLM_HOST']}:{env.get('LITELLM_PORT', '4000')}" if env.get("LITELLM_HOST") else ""
+    )
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     providers, stats = {}, {"listed": 0, "probed": 0, "route_errors": []}
     queue = []
@@ -196,6 +213,8 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 for k in ("status", "reason", "probed_at"):
                     if k in (old.get("metadata") or {}):
                         meta[k] = old["metadata"][k]
+            if route == "opencode-go" and any(h in item["id"] for h in OPT_IN_HINTS):
+                meta["needs_org_setting_hint"] = True
             model = {"id": full, "description": "free" if item["free"] else "", "metadata": meta}
             models.append(model)
             stats["listed"] += 1
@@ -223,7 +242,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     for provider in providers.values():
         counts = {}
         for model in provider["models"]:
-            status = model["metadata"].get("status", "unprobed")
+            status = model["metadata"].get("status", "pending")
             model["metadata"].setdefault("status", status)
             counts[status] = counts.get(status, 0) + 1
         provider["metadata"].update(count=len(provider["models"]), by_status=counts)

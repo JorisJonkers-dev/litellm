@@ -10,6 +10,8 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8').replace(/^\s*#.*$/gm, '')
 const ROUTES = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)$/gm)].map((match) => match[1])
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
+// The proxy Process's own grant, not the catalogue Process's.
+const PROXY_SECRETS = PROJECT.slice(PROJECT.indexOf('secrets:'), PROJECT.indexOf('placement:'))
 
 test('every route is a provider wildcard the estate names', () => {
   assert.deepEqual(ROUTES, ['vibe/*', 'vibe-study/*', 'opencode-go/*', 'openrouter/*', 'local/*'])
@@ -60,7 +62,7 @@ test('every env name the config reads is set by the Process env file', () => {
 
 test('the provider keys the config names are Vault keys the Project grants', () => {
   for (const key of ['vibe_api_key', 'vibe_study_api_key', 'opencode_go_api_key', 'openrouter_api_key']) {
-    assert.match(PROJECT, new RegExp(`\\b${key}\\b`))
+    assert.match(PROXY_SECRETS, new RegExp(`\\b${key}\\b`))
   }
 })
 
