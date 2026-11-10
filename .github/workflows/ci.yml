@@ -1,0 +1,58 @@
+# One pipeline ending in "Pipeline Complete", the only required check (estate convention).
+# ONE job: GitHub bills each job rounded up to a full minute, so checks are steps, not jobs.
+# Each step carries `if: ${{ !cancelled() }}` so one failure still surfaces the rest.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  packages: read # the pinned deploy-kit installs from npm.pkg.github.com
+
+jobs:
+  pipeline-complete:
+    name: Pipeline Complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@jorisjonkers-dev'
+
+      - name: Lint workflows
+        if: ${{ !cancelled() }}
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+      - name: Lint Dockerfile
+        if: ${{ !cancelled() }}
+        run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+
+      - name: Model list names no wildcard and no forbidden route
+        if: ${{ !cancelled() }}
+        run: node --test tests/config.test.mjs
+
+      - name: Project file validates with the pinned deploy-kit
+        if: ${{ !cancelled() }}
+        working-directory: tools/deploy-kit
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          npm ci --ignore-scripts
+          npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env
+
+      - name: The image builds, starts and serves the configured models
+        if: ${{ !cancelled() }}
+        run: npm run test:image

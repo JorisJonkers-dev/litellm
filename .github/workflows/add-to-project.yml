@@ -1,0 +1,41 @@
+# Event-driven project boarding.
+#
+# DELETE THIS FILE IN A PRIVATE REPO. Boarding costs a full billable minute per
+# issue and pull request opened, for a job that runs in about seven seconds and
+# reads no repository content at all -- and the org-wide sweep in the public
+# .github repo already boards every open item across the organization for free.
+#
+# Keep it in a PUBLIC repo: standard runners are free there, and event-driven
+# boarding is instant instead of waiting for the next sweep.
+#
+# The one private exception in the estate is fleet-infra, which carries enough
+# issue and pull request volume that instant boarding is worth paying for.
+# GitHub throttles scheduled runs hard in this org -- a '*/30' cron delivers
+# only a handful of runs a day -- so the sweep's real latency is hours, not its
+# nominal interval. Weigh that against roughly a minute per event before
+# keeping this in a private repo.
+'name': 'Add to Project'
+
+'on':
+  'issues':
+    'types':
+      - 'opened'
+      - 'reopened'
+      - 'transferred'
+  'pull_request_target':
+    'types':
+      - 'opened'
+      - 'reopened'
+      - 'ready_for_review'
+
+'permissions':
+  'contents': 'read'
+
+'jobs':
+  'add-to-project':
+    'uses': 'JorisJonkers-dev/github-workflows/.github/workflows/add-to-project.yml@1efce81af819868fb2f5fd99ee7b04a1275845d8' # v0.18.0
+    'with':
+      'project-url': 'https://github.com/orgs/JorisJonkers-dev/projects/2'
+    'secrets':
+      'PROJECT_AUTOMATION_APP_ID': '${{ secrets.RELEASE_APP_ID }}'
+      'PROJECT_AUTOMATION_APP_PRIVATE_KEY': '${{ secrets.RELEASE_APP_PRIVATE_KEY }}'

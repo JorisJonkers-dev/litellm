@@ -1,0 +1,12 @@
+{
+  "name": "litellm-image",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:image": "node --test --test-concurrency=1 tests/image.test.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,67 @@
+# deploy-kit Project Intent for litellm, the one LiteLLM proxy the estate's cheap agents reach
+# their models through, from both workstations (agent-kit#454). It holds each agent id's
+# virtual key and its hard budget, in litellm_db on the platform's Postgres.
+#
+# Internal only: the edge signs a caller in before LiteLLM sees the request, so a caller sends
+# an auth-api service token as the bearer and its LiteLLM virtual key in x-litellm-api-key.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: litellm # the namespace derives: litellm-system; the database: litellm_db
+owner: joris
+
+applications:
+  - id: litellm
+    migration: self # the proxy applies its pending Prisma migrations on start
+
+    exposure:
+      - name: api
+        host: litellm.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: litellm, surface: http }
+
+    processes:
+      - name: litellm
+        lifecycle: application
+        image: litellm # ghcr.io/jorisjonkers-dev/litellm; the lock resolves digest, uid and gid
+        runtime: none
+
+        provides:
+          http: 4000
+
+        dependsOn:
+          - application: platform-postgres
+            surface: postgres
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+
+        egress:
+          to: internet
+          reason: >-
+            The proxy calls the Mistral API (Vibe and Vibe-study keys) and the OpenCode Go API.
+
+        secrets:
+          # Placeholder names: the owner writes the values with estate bootstrap/secrets.sh.
+          # master_key and salt_key are generated there; salt_key must never change once
+          # virtual keys exist, because it encrypts the upstream keys stored in the database.
+          - path: secret/data/platform/litellm
+            keys: [master_key, salt_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+
+        placement:
+          memory: 1Gi # LiteLLM with Prisma idles near 600Mi; confirm against the first week
+          cpu: 250m
+
+        # The image's user keeps Prisma's engine cache and a scratch directory under these.
+        writablePaths: [/tmp, /app/.cache]
+
+        probes:
+          readiness: { path: /health/readiness, port: 4000 }
+          liveness: { path: /health/liveliness, port: 4000 } # LiteLLM's spelling
+
+        startupBudget: 300s # Prisma migrates the schema before the proxy serves
+        cutover: continuous

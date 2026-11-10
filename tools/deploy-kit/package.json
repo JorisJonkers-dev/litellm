@@ -1,0 +1,8 @@
+{
+  "name": "litellm-deploy-kit",
+  "private": true,
+  "description": "Pins the deploy-kit release CI validates deploy/litellm.project.yml with.",
+  "devDependencies": {
+    "@jorisjonkers-dev/deploy-kit": "1.10.0"
+  }
+}

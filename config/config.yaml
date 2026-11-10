@@ -1,0 +1,29 @@
+# Model routes. Names are what a caller sends; api_key values are environment names only.
+# Each cheap agent id gets its own virtual key (docs/LITELLM.md in agent-kit) restricted to
+# its models and capped with max_budget. There is no wildcard, no OpenRouter and no Zen model.
+# Upstream bases and model ids are to confirm against each provider when the owner supplies keys.
+model_list:
+  - model_name: vibe/zai-glm-5-3-flash
+    litellm_params: { model: mistral/zai-glm-5-3-flash, api_key: os.environ/VIBE_API_KEY }
+  - model_name: vibe/deepseek-v4-1-flash-1017
+    litellm_params: { model: mistral/deepseek-v4-1-flash-1017, api_key: os.environ/VIBE_API_KEY }
+  - model_name: vibe-study/zai-glm-5-3-flash
+    litellm_params: { model: mistral/zai-glm-5-3-flash, api_key: os.environ/VIBE_STUDY_API_KEY }
+  - model_name: vibe-study/deepseek-v4-1-flash-1017
+    litellm_params: { model: mistral/deepseek-v4-1-flash-1017, api_key: os.environ/VIBE_STUDY_API_KEY }
+  - model_name: opencode-go/glm-5.3-flash
+    litellm_params: { model: openai/glm-5.3-flash, api_base: "https://opencode.ai/zen/go/v1", api_key: os.environ/OPENCODE_GO_API_KEY }
+  - model_name: opencode-go/qwen3.8-flash
+    litellm_params: { model: openai/qwen3.8-flash, api_base: "https://opencode.ai/zen/go/v1", api_key: os.environ/OPENCODE_GO_API_KEY }
+  - model_name: opencode-go/mimo-v2.6-flash
+    litellm_params: { model: openai/mimo-v2.6-flash, api_base: "https://opencode.ai/zen/go/v1", api_key: os.environ/OPENCODE_GO_API_KEY }
+
+litellm_settings:
+  telemetry: false
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # The virtual key travels in this header; Authorization carries the edge's service token.
+  litellm_key_header_name: x-litellm-api-key
+  allow_requests_on_db_unavailable: false
