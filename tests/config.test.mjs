@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8')
+// Comments are prose; only the configuration itself is checked.
+const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8').replace(/^\s*#.*$/gm, '')
 const ROUTES = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)$/gm)].map((match) => match[1])
 
 test('every route is a named cheap-agent model', () => {
