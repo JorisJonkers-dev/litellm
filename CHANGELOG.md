@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.0...v1.0.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **image:** run as a numeric non-root user ([#4](https://github.com/JorisJonkers-dev/litellm/issues/4)) ([61999af](https://github.com/JorisJonkers-dev/litellm/commit/61999af5c044c8f57bf5d621cb2e26c60a0ac420))
+
 ## 1.0.0 (2026-11-10)
 
 
