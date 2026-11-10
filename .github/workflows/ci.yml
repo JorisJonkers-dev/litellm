@@ -40,9 +40,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
 
-      - name: Model list names no wildcard and no forbidden route
+      - name: Routes, secrets, telemetry settings and dashboard are as declared
         if: ${{ !cancelled() }}
         run: node --test tests/config.test.mjs
+
+      - name: Catalogue sync lists, probes and classifies
+        if: ${{ !cancelled() }}
+        run: python3 -I -m unittest discover -s tests -p 'test_catalog.py'
 
       - name: Project file validates with the pinned deploy-kit
         if: ${{ !cancelled() }}
@@ -53,6 +57,6 @@ jobs:
           npm ci --ignore-scripts
           npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env
 
-      - name: The image builds, starts and serves the configured models
+      - name: The image builds, routes wildcards, serves metrics and logs no message text
         if: ${{ !cancelled() }}
         run: npm run test:image

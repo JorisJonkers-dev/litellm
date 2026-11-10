@@ -1,4 +1,5 @@
-// The model list is the budget boundary: every route a virtual key can reach is named here.
+// The route list is the access boundary: virtual keys are restricted to a route, and each route
+// names exactly one provider and one upstream key. Wildcards are deliberate and enumerated here.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -8,28 +9,77 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 // Comments are prose; only the configuration itself is checked.
 const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8').replace(/^\s*#.*$/gm, '')
 const ROUTES = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)$/gm)].map((match) => match[1])
+const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 
-test('every route is a named cheap-agent model', () => {
-  assert.deepEqual(ROUTES, [
-    'vibe/zai-glm-5-3-flash',
-    'vibe/deepseek-v4-1-flash-1017',
-    'vibe-study/zai-glm-5-3-flash',
-    'vibe-study/deepseek-v4-1-flash-1017',
-    'opencode-go/glm-5.3-flash',
-    'opencode-go/qwen3.8-flash',
-    'opencode-go/mimo-v2.6-flash',
-  ])
+test('every route is a provider wildcard the estate names', () => {
+  assert.deepEqual(ROUTES, ['vibe/*', 'vibe-study/*', 'opencode-go/*', 'openrouter/*', 'local/*'])
 })
 
-test('no wildcard, OpenRouter or Zen route', () => {
-  assert.doesNotMatch(CONFIG, /model_name: \S*\*/)
-  assert.doesNotMatch(CONFIG, /openrouter/i)
+test('each wildcard hands the id to one provider with its own upstream key', () => {
+  const lines = CONFIG.split('\n').filter((line) => line.includes('litellm_params'))
+  assert.equal(lines.length, ROUTES.length)
+  const expected = [
+    ['mistral/*', 'VIBE_API_KEY', 'MISTRAL_API_BASE'],
+    ['mistral/*', 'VIBE_STUDY_API_KEY', 'MISTRAL_API_BASE'],
+    ['openai/*', 'OPENCODE_GO_API_KEY', 'OPENCODE_GO_API_BASE'],
+    ['openrouter/*', 'OPENROUTER_API_KEY', 'OPENROUTER_API_BASE'],
+    ['openai/*', 'LOCAL_LLM_API_KEY', 'LOCAL_LLM_API_BASE'],
+  ]
+  lines.forEach((line, i) => {
+    assert.match(line, new RegExp(`model: ${expected[i][0].replace('*', '\\*')},`))
+    assert.match(line, new RegExp(`api_key: os\\.environ/${expected[i][1]} `))
+    assert.match(line, new RegExp(`api_base: os\\.environ/${expected[i][2]},`))
+  })
+})
+
+test('no Zen route and no catch-all wildcard', () => {
+  assert.doesNotMatch(CONFIG, /model_name: "?\*/)
   assert.doesNotMatch(CONFIG, /opencode\.ai\/zen\/v1/)
 })
 
-test('upstream keys are environment names, never values', () => {
-  const keys = [...CONFIG.matchAll(/api_key: (\S+?)\s*[},]/g)].map((match) => match[1])
-  assert.equal(keys.length, ROUTES.length)
-  for (const key of keys) assert.match(key, /^os\.environ\/[A-Z_]+$/)
+test('upstream keys and bases are environment names, never values', () => {
+  for (const [, key] of CONFIG.matchAll(/api_(?:key|base): (\S+?)\s*[},]/g)) assert.match(key, /^os\.environ\/[A-Z_]+$/)
   assert.match(CONFIG, /master_key: os\.environ\/LITELLM_MASTER_KEY/)
+})
+
+test('telemetry is metadata only', () => {
+  assert.match(CONFIG, /turn_off_message_logging: true/)
+  assert.match(CONFIG, /store_prompts_in_spend_logs: false/)
+  assert.match(CONFIG, /callbacks: \["prometheus", "otel"\]/)
+  // No metric label can carry a person or an address.
+  const labels = [...CONFIG.matchAll(/include_labels: \[([^\]]*)\]/g)].flatMap((m) => m[1].split(',').map((l) => l.trim()))
+  for (const forbidden of ['user', 'user_email', 'end_user', 'client_ip', 'user_agent', 'team', 'hashed_api_key']) {
+    assert.ok(!labels.includes(forbidden), forbidden)
+  }
+})
+
+test('every env name the config reads is set by the Process env file', () => {
+  const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8')
+  for (const [, name] of CONFIG.matchAll(/os\.environ\/([A-Z_]+)/g)) assert.match(env, new RegExp(`^${name}=`, 'm'), name)
+})
+
+test('the provider keys the config names are Vault keys the Project grants', () => {
+  for (const key of ['vibe_api_key', 'vibe_study_api_key', 'opencode_go_api_key', 'openrouter_api_key']) {
+    assert.match(PROJECT, new RegExp(`\\b${key}\\b`))
+  }
+})
+
+test('the Project declares the scrape, the dashboard and the catalogue sync', () => {
+  assert.match(PROJECT, /scrape: \{ process: litellm, surface: metrics, path: \/metrics\/ \}/)
+  assert.match(PROJECT, /from: dashboards\/litellm\.json/)
+  assert.match(PROJECT, /lifecycle: scheduled/)
+  assert.match(PROJECT, /runtime: python/)
+  // The metrics surface is never routed: only the api exposure exists.
+  assert.doesNotMatch(PROJECT, /process: litellm, surface: metrics }/)
+})
+
+test('the dashboard has a uid and queries only metrics the config enables', () => {
+  const dash = JSON.parse(readFileSync(`${ROOT}/deploy/dashboards/litellm.json`, 'utf8'))
+  assert.equal(dash.uid, 'litellm')
+  const enabled = new Set(CONFIG.match(/litellm_\w+/g))
+  const used = new Set(JSON.stringify(dash).match(/litellm_\w+/g))
+  for (const metric of used) {
+    const base = metric.replace(/_total$|_bucket$/, '')
+    assert.ok(enabled.has(base), metric)
+  }
 })
