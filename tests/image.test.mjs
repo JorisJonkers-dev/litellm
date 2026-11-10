@@ -166,7 +166,12 @@ test('a model outside every route is refused', async () => {
 
 test('metrics are served on their own port per key alias and model, with no message text', async () => {
   await chat('vibe/metrics-model')
-  const text = await (await fetch(`${metrics}/metrics/`)).text()
+  // The callbacks run after the response, so wait for the last series to appear.
+  let text = ''
+  for (const deadline = Date.now() + 30_000; Date.now() < deadline; await new Promise((resolve) => setTimeout(resolve, 1000))) {
+    text = await (await fetch(`${metrics}/metrics/`)).text()
+    if (/litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/.test(text) && /litellm_spend_metric_total/.test(text)) break
+  }
   assert.match(text, /litellm_proxy_total_requests_metric_total\{[^}]*requested_model="vibe\/metrics-model"[^}]*status_code="200"/)
   assert.match(text, /litellm_total_tokens_metric_total\{[^}]*requested_model="vibe\/metrics-model"[^}]*\} 10\.0/)
   assert.match(text, /litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/)
