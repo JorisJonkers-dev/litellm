@@ -1,0 +1,17 @@
+name: 'Repository Hygiene'
+
+'on':
+  pull_request:
+
+'concurrency':
+  'group': '${{ github.workflow }}-${{ github.ref }}'
+  'cancel-in-progress': '${{ github.ref != ''refs/heads/main'' }}'
+
+permissions:
+  contents: 'read'
+  pull-requests: 'read'
+
+jobs:
+  repository-hygiene:
+    uses: 'JorisJonkers-dev/github-workflows/.github/workflows/repository-hygiene-guard.yml@ab93bf1c435304c5933ab33f9febe087ff8be214' # v0.43.0
+    secrets: 'inherit'

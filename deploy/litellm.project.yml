@@ -1,0 +1,118 @@
+# deploy-kit Project Intent for litellm, the one LiteLLM proxy the estate's cheap agents reach
+# their models through, from both workstations (agent-kit#454). It holds each agent id's
+# virtual key and its hard budget, in litellm_db on the platform's Postgres.
+#
+# Internal only: the edge signs a caller in before LiteLLM sees the request, so a caller sends
+# an auth-api service token as the bearer and its LiteLLM virtual key in x-litellm-api-key.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: litellm # the namespace derives: litellm-system; the database: litellm_db
+owner: joris
+
+applications:
+  - id: litellm
+    migration: self # the proxy applies its pending Prisma migrations on start
+
+    exposure:
+      - name: api
+        host: litellm.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: litellm, surface: http }
+
+    # Prometheus metrics (LiteLLM's open-source prometheus callback), per key alias and model.
+    # The path has the trailing slash because the metrics app redirects /metrics to it.
+    observability:
+      scrape: { process: litellm, surface: metrics, path: /metrics/ }
+
+    # Grafana dashboard: spend, tokens, latency and errors per key and model.
+    # The alert rules belong to the monitoring stack (estate platform/observability/rules).
+    dashboards:
+      - { from: dashboards/litellm.json }
+
+    processes:
+      - name: litellm
+        lifecycle: application
+        image: litellm # ghcr.io/jorisjonkers-dev/litellm; the lock resolves digest, uid and gid
+        # python: the profile hands the process the telemetry collector's OTLP address
+        # (OTEL_EXPORTER_OTLP_ENDPOINT) and its service name; LiteLLM's otel callback reads both.
+        runtime: python
+
+        provides:
+          http: 4000
+          metrics: 4001 # Prometheus, from its own process: no virtual-key auth, never routed
+
+        dependsOn:
+          - application: platform-postgres
+            surface: postgres
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+
+        egress:
+          to: internet
+          reason: >-
+            The proxy calls the Mistral API (Vibe and Vibe-study keys), the OpenCode Go API and
+            OpenRouter. The local/* route (the GPU workstation's model server) is not reachable
+            by this declaration: the model has no edge to a host outside the cluster, and
+            internet egress excludes every private and tailnet range (agent-kit follow-up).
+
+        secrets:
+          # Placeholder names: the owner writes the values with estate bootstrap/secrets.sh.
+          # openrouter_api_key is the OpenRouter key made with a 5 EUR credit limit.
+          # master_key and salt_key are generated there; salt_key must never change once
+          # virtual keys exist, because it encrypts the upstream keys stored in the database.
+          - path: secret/data/platform/litellm
+            keys: [master_key, salt_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+
+        placement:
+          memory: 1Gi # LiteLLM with Prisma idles near 600Mi; confirm against the first week
+          cpu: 250m
+
+        # The image's user keeps Prisma's engine cache and a scratch directory under these.
+        writablePaths: [/tmp, /app/.cache]
+
+        probes:
+          readiness: { path: /health/readiness, port: 4000 }
+          liveness: { path: /health/liveliness, port: 4000 } # LiteLLM's spelling
+
+        startupBudget: 300s # Prisma migrates the schema before the proxy serves
+        cutover: continuous
+
+  # The catalogue sync. Daily-fresh and cheap: it lists each route's models from its provider,
+  # probes only the models that are new, errored or older than a day with one 1-token request
+  # through the proxy, and publishes the classification (usable, blocked by the account,
+  # unknown, budget-exhausted) to the catalogue repository. catalog/sync.py documents the cost
+  # bound. It runs the LiteLLM image's own Python; it serves nothing.
+  - id: litellm-catalog
+    processes:
+      - name: litellm-catalog
+        lifecycle: scheduled
+        schedule: "17 * * * *" # hourly: lists every hour, probes what is new or a day old
+        image: litellm
+        runtime: none
+        command: [/app/.venv/bin/python, /app/catalog/sync.py]
+        dependsOn:
+          - application: litellm
+            surface: http
+        egress:
+          to: internet
+          reason: >-
+            Lists models at the Mistral, OpenCode Go and OpenRouter APIs and publishes the
+            catalogue to GitHub.
+        secrets:
+          # The same Vault path as the proxy: the master key authorises the probes, the three
+          # provider keys list each provider's models, and catalog_publish_token is a
+          # fine-grained token with contents:write on the catalogue repository only.
+          - path: secret/data/platform/litellm
+            keys: [master_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key, catalog_publish_token]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        placement:
+          memory: 128Mi
+          cpu: 50m

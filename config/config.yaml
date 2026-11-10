@@ -1,0 +1,62 @@
+# Model routes. A caller sends <route>/<upstream model id>; the route's wildcard hands the
+# id to its provider unchanged, so any model a provider offers works the day it appears
+# (the catalogue in catalog/ lists what each provider offers now). api_key and api_base
+# values are environment names only. Each cheap agent id gets its own virtual key
+# (docs/LITELLM.md in agent-kit) restricted to its route and capped with max_budget.
+#
+#   vibe/*, vibe-study/*  Mistral, one route and one upstream key each (the two Vibe accounts)
+#   opencode-go/*         the OpenCode Go provider (OpenAI-compatible, https://opencode.ai/zen/go/v1)
+#   openrouter/*          OpenRouter; capped at 5 EUR, used for the `:free` ids in the main
+#   local/*               the OpenAI-compatible model server on the GPU workstation, free
+#
+# No Zen (opencode.ai/zen/v1) route: only the Go base is configured.
+model_list:
+  - model_name: vibe/*
+    litellm_params: { model: mistral/*, api_base: os.environ/MISTRAL_API_BASE, api_key: os.environ/VIBE_API_KEY }
+  - model_name: vibe-study/*
+    litellm_params: { model: mistral/*, api_base: os.environ/MISTRAL_API_BASE, api_key: os.environ/VIBE_STUDY_API_KEY }
+  - model_name: opencode-go/*
+    litellm_params: { model: openai/*, api_base: os.environ/OPENCODE_GO_API_BASE, api_key: os.environ/OPENCODE_GO_API_KEY }
+  - model_name: openrouter/*
+    litellm_params: { model: openrouter/*, api_base: os.environ/OPENROUTER_API_BASE, api_key: os.environ/OPENROUTER_API_KEY }
+  - model_name: local/*
+    litellm_params: { model: openai/*, api_base: os.environ/LOCAL_LLM_API_BASE, api_key: os.environ/LOCAL_LLM_API_KEY }
+
+litellm_settings:
+  telemetry: false
+  drop_params: true
+  # /v1/models asks each provider for its model list (with the route's own key) instead of
+  # listing only the models LiteLLM has a price for.
+  check_provider_endpoint: true
+  # Telemetry is metadata only: model, key alias, tokens, cost, latency, status. This switch
+  # blanks prompts and responses in every logging callback, the OTel spans included.
+  turn_off_message_logging: true
+  # Prometheus (open source in this release) and OpenTelemetry traces.
+  callbacks: ["prometheus", "otel"]
+  # Only these series are emitted, with these labels: no user, e-mail, client address or agent.
+  prometheus_metrics_config:
+    - group: spend-and-tokens
+      metrics:
+        - litellm_spend_metric
+        - litellm_total_tokens_metric
+        - litellm_input_tokens_metric
+        - litellm_output_tokens_metric
+        - litellm_request_total_latency_metric
+      include_labels: [api_key_alias, requested_model]
+    - group: requests
+      metrics: [litellm_proxy_total_requests_metric]
+      include_labels: [api_key_alias, requested_model, status_code]
+    - group: errors
+      metrics: [litellm_proxy_failed_requests_metric]
+      include_labels: [api_key_alias, requested_model, exception_status]
+    - group: budgets
+      metrics: [litellm_remaining_api_key_budget_metric, litellm_api_key_max_budget_metric]
+      include_labels: [api_key_alias]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # The virtual key travels in this header; Authorization carries the edge's service token.
+  litellm_key_header_name: x-litellm-api-key
+  allow_requests_on_db_unavailable: false
+  # The spend log keeps cost and token counts, never the request or response body.
+  store_prompts_in_spend_logs: false
