@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>JorisJonkers-dev/renovate-config"],
+  "packageRules": [
+    {
+      "description": "An upstream image bump is a fix, so release-please releases it, and the images lock records the new upstream version (JorisJonkers-dev/workspace#140).",
+      "matchManagers": ["dockerfile"],
+      "semanticCommitType": "fix"
+    }
+  ]
+}

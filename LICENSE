@@ -1,0 +1,49 @@
+Joris Jonkers Proprietary Source-Available License 1.0
+
+Copyright (c) 2026 Joris Jonkers. All rights reserved.
+
+This repository and its contents, including source code, documentation,
+configuration, build scripts, workflows, assets, tests, and generated files, are
+the intellectual property of Joris Jonkers unless a file explicitly states
+otherwise.
+
+The source code is made available for viewing only. Publication of this
+repository, including publication in a public source-control hosting service,
+does not grant any license, permission, or other right to use the repository or
+any part of it.
+
+Except to the extent required by the terms of the source-control hosting service
+used to view or fork this repository, or as otherwise required by applicable law,
+you may not, without prior written permission from Joris Jonkers:
+
+1. copy, download, clone, mirror, or archive the repository or any part of it;
+2. build, run, execute, deploy, host, or operate the software;
+3. modify, adapt, translate, or create derivative works;
+4. redistribute, publish, sublicense, sell, rent, lease, or otherwise make the
+   repository or any part of it available to another person or entity;
+5. use the repository or any part of it for commercial, internal business,
+   production, research, educational, training, benchmarking, or personal
+   projects;
+6. use the repository or any part of it to develop, train, evaluate, or improve
+   software, models, services, or datasets.
+
+No patent license, trademark license, database right, trade secret license, or
+other intellectual-property right is granted.
+
+If you have received express written permission from Joris Jonkers, your use is
+limited to the scope, duration, and purpose stated in that written permission.
+All rights not expressly granted in writing are reserved.
+
+Third-party dependencies, vendored code, generated artifacts, and external
+assets may be subject to their own license terms. Those third-party terms apply
+only to the third-party material and do not grant any rights to this repository
+or to original work by Joris Jonkers.
+
+THE REPOSITORY AND ITS CONTENTS ARE PROVIDED FOR VIEWING "AS IS", WITHOUT
+WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE,
+NON-INFRINGEMENT, SECURITY, ACCURACY, OR AVAILABILITY.
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, JORIS JONKERS WILL NOT BE LIABLE FOR
+ANY CLAIM, DAMAGE, LOSS, COST, OR EXPENSE ARISING FROM OR RELATED TO THIS
+REPOSITORY, ITS CONTENTS, OR ANY UNAUTHORIZED USE OF IT.
