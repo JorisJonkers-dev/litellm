@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.2...v1.0.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* **publish:** read the dashboards directory when validating the fragment ([#8](https://github.com/JorisJonkers-dev/litellm/issues/8)) ([f9a8a7b](https://github.com/JorisJonkers-dev/litellm/commit/f9a8a7b744a0433e9b05fef87aca30a3a5f6dc2b))
+
 ## [1.0.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.1...v1.0.2) (2026-11-11)
 
 
