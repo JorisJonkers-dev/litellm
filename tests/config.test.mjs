@@ -85,3 +85,11 @@ test('the dashboard has a uid and queries only metrics the config enables', () =
     assert.ok(enabled.has(base), metric)
   }
 })
+
+test('the base image tag names the LiteLLM version the images lock records', () => {
+  const dockerfile = readFileSync(`${ROOT}/Dockerfile`, 'utf8')
+  // The shared build reads the last stage's base, so the test does too.
+  const from = [...dockerfile.matchAll(/^FROM (\S+)/gm)].at(-1)?.[1] ?? ''
+  assert.match(from, /@sha256:[0-9a-f]{64}$/)
+  assert.match(from.split('@')[0].split('/').pop(), /:v?\d+(\.\d+)+([._+-][0-9A-Za-z._+-]+)?$/)
+})
