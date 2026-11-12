@@ -14,5 +14,5 @@ permissions:
 
 jobs:
   repository-hygiene:
-    uses: 'JorisJonkers-dev/github-workflows/.github/workflows/repository-hygiene-guard.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1' # v0.49.1
+    uses: 'JorisJonkers-dev/github-workflows/.github/workflows/repository-hygiene-guard.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd' # v0.50.1
     secrets: 'inherit'
