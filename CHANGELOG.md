@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.3...v1.1.0) (2026-11-12)
+
+
+### Features
+
+* **deploy:** sign in to the admin UI through auth-api OIDC ([#14](https://github.com/JorisJonkers-dev/litellm/issues/14)) ([1bc7811](https://github.com/JorisJonkers-dev/litellm/commit/1bc781130ddfd7e6d5a5319632a9a573395de5f0))
+
+
+### Bug Fixes
+
+* **hygiene:** never cancel a run of the required hygiene checks ([#15](https://github.com/JorisJonkers-dev/litellm/issues/15)) ([2807355](https://github.com/JorisJonkers-dev/litellm/commit/2807355f962f5480e11637048fe084580b591ac7))
+
 ## [1.0.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.2...v1.0.3) (2026-11-11)
 
 
