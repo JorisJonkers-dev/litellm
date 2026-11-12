@@ -245,6 +245,8 @@ test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state
         // not listening yet
       }
     }
+    const live = await fetch(`${sso}/health/liveliness`).then((r) => r.status === 200, () => false)
+    assert.ok(live, `the proxy with a database was not live:\n${spawnSync('docker', ['logs', proxy], { encoding: 'utf8' }).stderr.slice(-6000)}`)
     const start = () => fetch(`${sso}/sso/key/generate`, { redirect: 'manual' })
     const first = await start()
     assert.ok([302, 303, 307].includes(first.status), `GET /sso/key/generate answered ${first.status}: ${await first.clone().text()}`)
