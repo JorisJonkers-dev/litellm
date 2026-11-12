@@ -72,7 +72,7 @@ test('the serving deployment is visible per request, and no label names a person
 
 test('the router falls through a cooled-down or spent deployment', () => {
   assert.match(CONFIG, /^router_settings:$/m)
-  assert.match(CONFIG, /optional_pre_call_checks: \[enforce_model_rate_limits, router_budget_limiting\]/)
+  assert.match(CONFIG, /optional_pre_call_checks: \[router_budget_limiting\]/)
   assert.match(CONFIG, /^ {2}num_retries: 2$/m)
   assert.match(CONFIG, /^ {2}allowed_fails: 1$/m)
   assert.match(CONFIG, /^ {2}cooldown_time: 300$/m)
@@ -115,8 +115,7 @@ test('the routing rules are the decided policy', () => {
   assert.deepEqual(rules.api_only_routes, ['vibe-api', 'vibe-study-api'])
   assert.deepEqual(rules.budgets.vibe, { max_budget: 255, budget_duration: '30d' })
   assert.deepEqual(rules.budgets['vibe-study'], { max_budget: 128, budget_duration: '30d' })
-  assert.deepEqual(rules.limits.vibe, { rpm: 60, tpm: 1000000 })
-  assert.deepEqual(rules.limits['vibe-study'], { rpm: 30, tpm: 500000 })
+  assert.equal(rules.limits, undefined)
   // An alias points at a canonical name, never at a vendor path or a dotted id: only certain ids
   // are aliased, because a fuzzy merge would put one model's traffic on another.
   for (const [from, to] of Object.entries(rules.aliases)) {

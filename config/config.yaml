@@ -65,9 +65,8 @@ router_settings:
   # A canonical model's deployments are tried by their `order`, lowest first. A 402 or 429 quota
   # answer cools a deployment down for cooldown_time and the next order level serves, so a spent
   # plan falls through instead of failing the request; plan credit is also capped per deployment by
-  # max_budget, which router_budget_limiting enforces before the call. rpm and tpm are enforced the
-  # same way, so a route's own limit is never exceeded by the fallback.
-  optional_pre_call_checks: [enforce_model_rate_limits, router_budget_limiting]
+  # max_budget, which router_budget_limiting enforces before the call. No rate limits are set.
+  optional_pre_call_checks: [router_budget_limiting]
   num_retries: 2
   allowed_fails: 1
   cooldown_time: 300

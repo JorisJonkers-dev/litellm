@@ -28,9 +28,5 @@
     "vibe-study-api": {"max_budget": 25, "budget_duration": "30d"},
     "google": {"max_budget": 50, "budget_duration": "30d"},
     "anthropic": {"max_budget": 50, "budget_duration": "30d"}
-  },
-  "limits": {
-    "vibe": {"rpm": 60, "tpm": 1000000},
-    "vibe-study": {"rpm": 30, "tpm": 500000}
   }
 }
