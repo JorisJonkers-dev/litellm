@@ -94,19 +94,36 @@ test('the base image tag names the LiteLLM version the images lock records', () 
   assert.match(from.split('@')[0].split('/').pop(), /:v?\d+(\.\d+)+([._+-][0-9A-Za-z._+-]+)?$/)
 })
 
-test('the admin UI is on, signs in by password only, and its password is a Vault key', () => {
+test('the admin UI is on and signs in through auth-api OIDC only', () => {
   const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8').replace(/^\s*#.*$/gm, '')
-  assert.doesNotMatch(env, /DISABLE_ADMIN_UI/)
-  assert.match(env, /^UI_USERNAME=admin$/m)
-  assert.match(env, /^UI_PASSWORD=\$\{secret:secret\/data\/platform\/litellm#ui_password\}$/m)
-  assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /keys: \[[^\]]*\bui_password\b/)
-  // No SSO: the only UI login is the owner's username and password.
-  assert.doesNotMatch(env, /GOOGLE_CLIENT|MICROSOFT_CLIENT|GENERIC_CLIENT/)
+  assert.doesNotMatch(env, /DISABLE_ADMIN_UI|UI_USERNAME|UI_PASSWORD/)
+  assert.match(env, /^GENERIC_CLIENT_ID=litellm$/m)
+  assert.match(env, /^GENERIC_CLIENT_SECRET=\$\{secret:secret\/data\/platform\/litellm#oidc_client_secret\}$/m)
+  for (const name of ['AUTHORIZATION', 'TOKEN', 'USERINFO']) {
+    assert.match(env, new RegExp(`^GENERIC_${name}_ENDPOINT=https://auth\\.jorisjonkers\\.dev/api/`, 'm'))
+  }
+  assert.match(env, /^PROXY_BASE_URL=https:\/\/litellm\.jorisjonkers\.dev$/m)
+  assert.match(env, /^GENERIC_CLIENT_USE_PKCE=true$/m)
+  assert.doesNotMatch(env, /^GENERIC_CLIENT_STATE=/m)
+  assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /keys: \[[^\]]*\boidc_client_secret\b/)
+})
+
+test('only ROLE_ADMIN is a proxy admin, everyone else is a viewer the UI refuses', () => {
+  const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8').replace(/^\s*#.*$/gm, '')
+  assert.match(env, /^GENERIC_INCLUDE_TOKEN_CLAIMS=true$/m)
+  assert.match(env, /^GENERIC_ROLE_MAPPINGS_GROUP_CLAIM=roles$/m)
+  assert.match(env, /^GENERIC_ROLE_MAPPINGS_ROLES=\{'proxy_admin':\['ROLE_ADMIN'\]\}$/m)
+  assert.match(env, /^GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer$/m)
+  assert.match(CONFIG, /ui_access_mode: admin_only/)
+})
+
+test('password login, and the master key as its fallback password, are off', () => {
+  assert.match(CONFIG, /disable_env_credential_login: true/)
 })
 
 test('the UI password is the proxy Process\'s alone, never the catalogue sync\'s', () => {
   const catalog = PROJECT.slice(PROJECT.indexOf('id: litellm-catalog'))
-  assert.doesNotMatch(catalog, /ui_password/)
+  assert.doesNotMatch(catalog, /oidc_client_secret/)
 })
 
 test('the UI is reached through the one edge-signed-in exposure and metrics stay unrouted', () => {

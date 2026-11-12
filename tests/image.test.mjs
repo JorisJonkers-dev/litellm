@@ -15,6 +15,7 @@ const NAME = `litellm-image-test-${process.pid}`
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 const WRITABLE = PROJECT.match(/writablePaths: \[([^\]]*)\]/)[1].split(',').map((path) => path.trim())
 const MASTER = 'sk-image-test-master'
+const SSO_AUTHORIZE = 'https://auth.example.test/api/oauth2/authorize'
 const PROMPT = 'PROMPT-TEXT-MUST-NOT-BE-LOGGED'
 const ANSWER = 'ANSWER-TEXT-MUST-NOT-BE-LOGGED'
 // route -> the upstream key it must be called with, and the stub standing in for its provider.
@@ -117,7 +118,12 @@ before(async () => {
     // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.
     '-e', `OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:${otlpPort}`,
     '-e', 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf', '-e', 'OTEL_SERVICE_NAME=litellm',
-    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'UI_USERNAME=admin', '-e', 'UI_PASSWORD=sk-image-test-ui',
+    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'PROXY_BASE_URL=https://litellm.example.test', '-e', 'GENERIC_CLIENT_ID=litellm', '-e', 'GENERIC_CLIENT_SECRET=image-test-oidc',
+    '-e', `GENERIC_AUTHORIZATION_ENDPOINT=${SSO_AUTHORIZE}`, '-e', 'GENERIC_TOKEN_ENDPOINT=https://auth.example.test/api/oauth2/token',
+    '-e', 'GENERIC_USERINFO_ENDPOINT=https://auth.example.test/api/userinfo', '-e', 'GENERIC_SCOPE=openid email profile',
+    '-e', 'GENERIC_CLIENT_USE_PKCE=true', '-e', 'GENERIC_INCLUDE_TOKEN_CLAIMS=true',
+    '-e', 'GENERIC_ROLE_MAPPINGS_GROUP_CLAIM=roles', '-e', "GENERIC_ROLE_MAPPINGS_ROLES={'proxy_admin':['ROLE_ADMIN']}",
+    '-e', 'GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer',
     IMAGE,
   )
   base = hostPort(4000)
@@ -210,4 +216,33 @@ test('the main port does not serve the metrics', async () => {
   const res = await fetch(`${base}/metrics/`, { redirect: 'manual' })
   assert.ok([401, 404, 307, 308].includes(res.status), `GET /metrics/ answered ${res.status}`)
   assert.doesNotMatch(await res.text(), /litellm_spend_metric|# HELP/)
+})
+
+test('the admin UI sign-in goes to auth-api with the pinned callback, PKCE and a fresh state', async () => {
+  const start = async () => fetch(`${base}/sso/key/generate`, { redirect: 'manual' })
+  const first = await start()
+  assert.ok([302, 303, 307].includes(first.status), `GET /sso/key/generate answered ${first.status}`)
+  const url = new URL(first.headers.get('location'))
+  assert.equal(`${url.origin}${url.pathname}`, SSO_AUTHORIZE)
+  assert.equal(url.searchParams.get('client_id'), 'litellm')
+  assert.equal(url.searchParams.get('redirect_uri'), 'https://litellm.example.test/sso/callback')
+  assert.equal(url.searchParams.get('response_type'), 'code')
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256')
+  assert.ok(url.searchParams.get('code_challenge'))
+  assert.ok(url.searchParams.get('state'))
+  const second = new URL((await start()).headers.get('location'))
+  assert.notEqual(second.searchParams.get('state'), url.searchParams.get('state'))
+})
+
+test('no password login: neither the master key nor a guessed password signs in to the UI', async () => {
+  for (const password of [MASTER, 'admin', 'password']) {
+    const res = await fetch(`${base}/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username: 'admin', password }),
+      redirect: 'manual',
+    })
+    assert.ok(res.status >= 400, `password login answered ${res.status}`)
+    assert.equal(res.headers.get('set-cookie'), null)
+  }
 })
