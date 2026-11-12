@@ -30,6 +30,16 @@ failed twice, and touches only the models it created itself (model_info.managed_
 ids, classification, reason text, free flag, context length and whether the proxy has the model
 registered. Never a key, a prompt or a response body.
 
+Canonical groups: on top of those per-route explicit models, the sync registers one LiteLLM
+model_name per canonical model (mistral-large, devstral, gemini-2.5-pro, claude-sonnet, glm-5.3)
+whose deployments are the routes that serve it, ordered by catalog/routing.json. Deployments that
+share a model_name form a group in LiteLLM: `order` is tried lowest first and the router falls back
+to the next level when a level fails or is cooled down, `weight` splits traffic inside a level, and
+rpm/tpm and max_budget/budget_duration cap one deployment. Routing is by which provider serves the
+canonical model, not by model family: the Vibe plan serves non-Mistral models too, and where it
+serves one it wins. Only exact canonical-name equality merges two upstream models; a near duplicate
+is reported in catalogue.possible_duplicates and never merged.
+
 Probe cost bound: each probe is one minimal request (about 8 input tokens + 16 output tokens), and
 a provider that refuses a small max_tokens is retried once with its own minimum, so a run costs at
 most (models probed) x (about 8 input + 16 output tokens), doubled in the worst case. The models
@@ -50,12 +60,18 @@ import urllib.error
 import urllib.request
 
 # route, the env names its provider base and key come from (config/config.yaml names the same),
-# and how its list is read.
+# and how its list is read. The paid Vibe routes and the Google and Anthropic routes have no
+# wildcard in the config: the catalogue registers their models, and a route whose key is not
+# written yet is skipped until it is.
 ROUTES = [
     {"route": "vibe", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_API_KEY", "kind": "mistral"},
     {"route": "vibe-study", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_STUDY_API_KEY", "kind": "mistral"},
+    {"route": "vibe-api", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_API_KEY_PAID", "kind": "mistral"},
+    {"route": "vibe-study-api", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_STUDY_API_KEY_PAID", "kind": "mistral"},
     {"route": "opencode-go", "base_env": "OPENCODE_GO_API_BASE", "key_env": "OPENCODE_GO_API_KEY", "kind": "openai"},
     {"route": "openrouter", "base_env": "OPENROUTER_API_BASE", "key_env": "OPENROUTER_API_KEY", "kind": "openrouter"},
+    {"route": "google", "base_env": "GOOGLE_API_BASE", "key_env": "GOOGLE_API_KEY", "kind": "google"},
+    {"route": "anthropic", "base_env": "ANTHROPIC_API_BASE", "key_env": "ANTHROPIC_API_KEY", "kind": "anthropic"},
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
 ]
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
@@ -73,7 +89,15 @@ PROBE_RETRY_CEILING = 256
 # The models the proxy stores for this catalogue carry this marker; nothing else is ever touched.
 MANAGED_BY = "litellm-catalog"
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
-PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter"}
+PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter", "google": "gemini", "anthropic": "anthropic"}
+# Kinds whose provider LiteLLM addresses itself: their deployments carry no api_base.
+NO_API_BASE = ("google", "anthropic")
+# Anthropic's list and messages endpoints take a version header; the value is the API's, not a secret.
+ANTHROPIC_VERSION = "2023-06-01"
+# A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never registered.
+MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
+# The routing rules: catalog/routing.json beside this script, or the file CATALOG_RULES names.
+RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "routing.json")
 
 BUDGET = re.compile(
     r"budget_exceeded|budget has been exceeded|insufficient[_ ](credit|quota|funds)|exceeded your current quota|"
@@ -91,6 +115,21 @@ UNKNOWN = re.compile(
     re.I,
 )
 SECRETISH = re.compile(r"(sk-|key-|Bearer\s+)[A-Za-z0-9_\-.]{6,}|[A-Za-z0-9]{32,}")
+
+
+def load_rules(path=None):
+    """The routing rules: catalog/routing.json beside this script, or CATALOG_RULES, or `path`.
+
+    A missing file is no rules, so the sync runs before the rules are written; a malformed one
+    raises, because a rule that cannot be read must not silently route traffic.
+    """
+    path = path or os.environ.get("CATALOG_RULES") or RULES_PATH
+    try:
+        with open(path) as handle:
+            rules = json.load(handle)
+    except FileNotFoundError:
+        return {}
+    return rules if isinstance(rules, dict) else {}
 
 
 def classify(status, text):
@@ -131,15 +170,37 @@ def is_free_price(pricing):
         return False
 
 
+def modality(kind, item):
+    """What a listed model is for. A chat model is probed; the rest is registered only where the
+    rules say the paid key serves it, because a list alone does not prove a chat model."""
+    model_id = str(item.get("id") or "").lower()
+    caps = item.get("capabilities") or {}
+    if kind == "mistral":
+        if caps.get("ocr"):
+            return "ocr"
+        if caps.get("audio_transcription") or "transcribe" in model_id:
+            return "transcription"
+        if "embed" in model_id or caps.get("classification"):
+            return "embedding"
+        if caps.get("moderation"):
+            return "moderation"
+        return "chat"
+    return "embedding" if "embed" in model_id else "chat"
+
+
 def list_models(entry, env, http):
-    """The models the provider lists for this route: id, name, context length, free, chat."""
+    """The models the provider lists for this route: id, name, context length, free, chat, modality."""
     base = (env.get(entry["base_env"]) or "").rstrip("/")
     if not base:
         raise RuntimeError(f"{entry['base_env']} is not set")
     key = env.get(entry["key_env"]) or ""
-    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    kind = entry["kind"]
+    if kind == "anthropic":
+        headers = {"anthropic-version": ANTHROPIC_VERSION, **({"x-api-key": key} if key else {})}
+    else:
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
     status, body = http("GET", f"{base}/models", headers, None)
-    if entry["kind"] == "openrouter" and key:
+    if kind == "openrouter" and key:
         # The account-aware list (models this key may use), when OpenRouter serves it.
         user_status, user_body = http("GET", f"{base}/models/user", headers, None)
         if user_status == 200 and isinstance(user_body, dict) and isinstance(user_body.get("data"), list):
@@ -150,17 +211,25 @@ def list_models(entry, env, http):
     for item in body["data"]:
         if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
             continue
-        out = {"id": item["id"], "name": item.get("name") or item["id"], "context_length": None, "free": False, "chat": None}
-        if entry["kind"] == "mistral":
+        # Google's OpenAI-compatible list names ids "models/<id>"; the id is what a caller sends.
+        model_id = str(item["id"]).removeprefix("models/") if kind == "google" else item["id"]
+        name = item.get("name") or item.get("display_name") or item.get("displayName") or model_id
+        out = {"id": model_id, "name": name, "context_length": None, "free": False, "chat": None}
+        out["modality"] = modality(kind, dict(item, id=model_id))
+        if kind == "mistral":
             caps = item.get("capabilities") or {}
             out["chat"] = bool(caps.get("completion_chat")) if "completion_chat" in caps else None
             out["context_length"] = item.get("max_context_length")
-        elif entry["kind"] == "openrouter":
+        elif kind == "openrouter":
             out["context_length"] = item.get("context_length")
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
+        elif kind == "google":
+            out["context_length"] = item.get("inputTokenLimit")
         elif entry["route"] == "local":
             out["free"] = True
-        found[item["id"]] = out
+        if out["modality"] != "chat":
+            out["chat"] = False
+        found[model_id] = out
     return list(found.values())
 
 
@@ -174,19 +243,28 @@ def probe(entry, upstream_id, env, http):
         return "error", f"{entry['base_env']} is not set"
     key = env.get(entry["key_env"]) or ""
     headers = {"Content-Type": "application/json"}
-    if key:
-        headers["Authorization"] = f"Bearer {key}"
-    if entry["route"] == "opencode-go":
-        # OpenCode answers 400 MissingSessionID without a session header.
-        headers["x-opencode-session"] = "litellm-catalog-probe"
-    body = {"model": upstream_id, "messages": [{"role": "user", "content": "ping"}], "max_tokens": PROBE_MAX_TOKENS}
-    status, answer = http("POST", f"{base}/chat/completions", headers, body)
+    if entry["kind"] == "anthropic":
+        # Anthropic's messages endpoint takes the key in its own header, and a version header.
+        headers["anthropic-version"] = ANTHROPIC_VERSION
+        if key:
+            headers["x-api-key"] = key
+        url = f"{base}/messages"
+        body = {"model": upstream_id, "max_tokens": PROBE_MAX_TOKENS, "messages": [{"role": "user", "content": "ping"}]}
+    else:
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        if entry["route"] == "opencode-go":
+            # OpenCode answers 400 MissingSessionID without a session header.
+            headers["x-opencode-session"] = "litellm-catalog-probe"
+        url = f"{base}/chat/completions"
+        body = {"model": upstream_id, "messages": [{"role": "user", "content": "ping"}], "max_tokens": PROBE_MAX_TOKENS}
+    status, answer = http("POST", url, headers, body)
     text = answer if isinstance(answer, str) else json.dumps(answer)
     if status == 400:
         # A provider that refuses the small max_tokens names its floor: retry once at that floor.
         match = PROBE_MINIMUM.search(error_message(text))
         if match and PROBE_MAX_TOKENS < int(match[1]) <= PROBE_RETRY_CEILING:
-            status, answer = http("POST", f"{base}/chat/completions", headers, dict(body, max_tokens=int(match[1])))
+            status, answer = http("POST", url, headers, dict(body, max_tokens=int(match[1])))
             text = answer if isinstance(answer, str) else json.dumps(answer)
     return classify(status, text)
 
@@ -196,6 +274,179 @@ def parse_age(text):
     if not match:
         raise ValueError("--max-age is a number of hours or days, like 24h or 2d")
     return datetime.timedelta(**{"hours" if match[2] == "h" else "days": int(match[1])})
+
+
+# A leading vendor segment (OpenRouter's "mistralai/mistral-large") and a trailing version stamp
+# ("mistral-large-2411", "claude-sonnet-4-5-20250929"): the two spellings that are not the model.
+VENDOR = re.compile(r"^[a-z0-9][a-z0-9._-]*/")
+VERSION = re.compile(r"-\d{4,8}$")
+
+
+def canonical_name(route, upstream_id, rules):
+    """The canonical model an upstream id serves: one name per model, whichever route serves it.
+
+    Deterministic and conservative: only a vendor prefix, a `:free` suffix, `-latest` and a version
+    stamp are stripped, and an alias wins over both the raw and the normalised id. Two ids that
+    still differ are two models; nothing here guesses that they are one.
+    """
+    aliases = (rules or {}).get("aliases") or {}
+    if upstream_id in aliases:
+        return aliases[upstream_id]
+    name = upstream_id.lower().removeprefix("models/")
+    name = VERSION.sub("", VENDOR.sub("", name, count=1).removesuffix(":free").removesuffix("-latest"))
+    return aliases.get(name, name)
+
+
+def loose_key(name):
+    """A canonical name with everything that usually differs between two spellings removed."""
+    key = re.sub(r"[^a-z0-9]", "", name.lower())
+    key = re.sub(r"^(zai|zhipu)", "", key)
+    return re.sub(r"latest$", "", re.sub(r"\d{4,8}$", "", key))
+
+
+def near_duplicates(catalogue, rules):
+    """Canonical names that differ but look like one model on different routes: reported, never merged."""
+    groups = {}
+    for route, provider in (catalogue.get("providers") or {}).items():
+        for model in provider.get("models") or []:
+            name = canonical_name(route, str(model["id"]).split("/", 1)[1], rules)
+            groups.setdefault(loose_key(name), []).append((model["id"], name, route))
+    out = []
+    for found in groups.values():
+        if len({name for _, name, _ in found}) > 1 and len({route for _, _, route in found}) > 1:
+            out.append(sorted(model_id for model_id, _, _ in found))
+    return sorted(out)
+
+
+def registerable(meta, modality, route, api_only):
+    """Whether a listed model becomes a deployment: usable, or a non-chat model on an api-only route.
+
+    A non-chat model is never probed, so its list entry is the only evidence there is; the rules
+    name the routes whose paid key serves those modalities, and moderation is never registered.
+    """
+    if meta.get("absent_runs"):
+        return False
+    if meta.get("status") == "usable":
+        return True
+    return meta.get("status") == "not-chat" and route in api_only and modality in MODES
+
+
+def litellm_params(entry, upstream_id):
+    """The provider params for one upstream model: env names, never the secret values."""
+    params = {"model": f"{PREFIXES[entry['kind']]}/{upstream_id}"}
+    if entry["kind"] not in NO_API_BASE:
+        params["api_base"] = f"os.environ/{entry['base_env']}"
+    params["api_key"] = f"os.environ/{entry['key_env']}"
+    return params
+
+
+def spec_hash(params, order, weight, limits, budgets):
+    """A hash of everything a rule can change, so a changed rule replaces the deployment."""
+    source = {"litellm_params": params, "order": order, "weight": weight, "limits": limits or {}, "budgets": budgets or {}}
+    return hashlib.sha1(json.dumps(source, sort_keys=True).encode()).hexdigest()
+
+
+def deployment(name, route, chosen, order, weight, entry, budgets, limits):
+    """One deployment of a canonical model: the add body, its order and weight, and its spec hash."""
+    upstream_id = chosen["upstream_id"]
+    params = litellm_params(entry, upstream_id)
+    params.update({"order": order, "weight": weight})
+    params.update(limits.get(route) or {})
+    params.update(budgets.get(route) or {})
+    info = {
+        "id": "catalog-c-" + hashlib.sha1(f"{name}|{route}|{upstream_id}".encode()).hexdigest()[:12],
+        "managed_by": MANAGED_BY,
+        "route": route,
+        "canonical": name,
+        "modality": chosen["modality"],
+        "access_groups": ["canonical"],
+        "free": chosen["free"],
+        "spec": spec_hash(params, order, weight, limits.get(route), budgets.get(route)),
+    }
+    if chosen["modality"] in MODES:
+        info["mode"] = MODES[chosen["modality"]]
+    return {
+        "name": name,
+        "route": route,
+        "upstream_id": upstream_id,
+        "order": order,
+        "weight": weight,
+        "litellm_params": params,
+        "model_info": info,
+    }
+
+
+def family(name):
+    """The model family a canonical name belongs to: its first token, a grouping hint only."""
+    return name.split("-")[0]
+
+
+def plan_groups(catalogue, rules):
+    """The canonical model groups: one model_name per canonical model, its deployments ordered.
+
+    Routing is by which provider serves the canonical model, not by model family: the Vibe plan
+    serves non-Mistral models too, and where it serves one it wins. Only exact canonical-name
+    equality merges two upstream models; a near duplicate is reported, never merged.
+    """
+    rules = rules or {}
+    tiers = rules.get("tiers") or []
+    rank = {}
+    for index, tier in enumerate(tiers):
+        for route, weight in tier:
+            rank.setdefault(route, (index + 1, weight))
+    # A route no tier names comes after every tier, at weight 1: no rule, no preference.
+    unranked = (len(tiers) + 1, 1)
+    backup_only = rules.get("backup_only") or {}
+    exclusive = rules.get("exclusive") or []
+    free_first = set(rules.get("free_first_unless_served_by") or [])
+    api_only = set(rules.get("api_only_routes") or [])
+    budgets = rules.get("budgets") or {}
+    limits = rules.get("limits") or {}
+    by_route = {entry["route"]: entry for entry in ROUTES}
+    # canonical name -> route -> the model that serves it (the shortest upstream id wins)
+    groups = {}
+    for route, provider in sorted((catalogue.get("providers") or {}).items()):
+        entry = by_route.get(route)
+        if not entry:
+            continue
+        for model in provider.get("models") or []:
+            meta = model.get("metadata") or {}
+            kind = meta.get("modality") or "chat"
+            if not registerable(meta, kind, route, api_only):
+                continue
+            upstream_id = str(model["id"]).split("/", 1)[1]
+            name = canonical_name(route, upstream_id, rules)
+            chosen = groups.setdefault(name, {}).get(route)
+            if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
+                groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free"))}
+    specs = []
+    for name, routes in sorted(groups.items()):
+        serving = set(routes)
+        # A backup route is in the group only when nothing better serves the model.
+        for route in sorted(serving):
+            if route in backup_only and serving & set(backup_only[route]):
+                serving.discard(route)
+        # An exclusive model is only on its own routes, and never free.
+        only = set()
+        for rule in exclusive:
+            if re.search(rule.get("match") or "", name):
+                only |= set(rule.get("routes") or [])
+        if only:
+            serving &= only
+        free = {route for route in serving if routes[route]["free"]} if not only else set()
+        # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
+        levels = sorted({rank.get(route, unranked)[0] for route in serving - free})
+        # Free deployments come first unless a plan route serves the model, then after the last tier.
+        free_before = bool(free) and not (serving & free_first)
+        order_of = {level: index + 1 + (1 if free_before else 0) for index, level in enumerate(levels)}
+        free_order = 1 if free_before else len(levels) + 1
+        for route in sorted(serving):
+            if route in free:
+                order, weight = free_order, 1
+            else:
+                order, weight = order_of[rank.get(route, unranked)[0]], rank.get(route, unranked)[1]
+            specs.append(deployment(name, route, routes[route], order, weight, by_route[route], budgets, limits))
+    return specs
 
 
 def previous_by_id(catalogue):
@@ -218,7 +469,7 @@ def due(previous, now, max_age):
     return 2 if now - probed >= max_age else None
 
 
-def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_limits=None, max_probes=250):
+def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_limits=None, max_probes=250, rules=None):
     """The catalogue, and counts. `previous` is the last published catalogue (the cache)."""
     limits = dict(DEFAULT_ROUTE_LIMITS if route_limits is None else route_limits)
     cache = previous_by_id(previous)
@@ -228,6 +479,15 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     queue = []
     for entry in ROUTES:
         route = entry["route"]
+        if not (env.get(entry["key_env"]) or ""):
+            # A route whose key is not written yet is skipped silently: the sync must run before the
+            # owner adds it. Its last entries stay, stale, until a run can list it again.
+            old = (previous.get("providers") or {}).get(route)
+            if old and old.get("models"):
+                providers[route] = dict(old, metadata=dict(old.get("metadata", {}), stale=True))
+            else:
+                providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
+            continue
         try:
             listed = list_models(entry, env, http)
         except Exception as error:  # a route that cannot be listed keeps its last entries
@@ -244,7 +504,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
         for item in sorted(listed, key=lambda m: m["id"]):
             full = f"{route}/{item['id']}"
             old = cache.get(full)
-            meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"]}
+            meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
             if old:
                 for k in ("status", "reason", "probed_at", "failing_probes"):
                     if k in (old.get("metadata") or {}):
@@ -295,7 +555,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             model["metadata"].setdefault("status", status)
             counts[status] = counts.get(status, 0) + 1
         provider["metadata"].update(count=len(provider["models"]), by_status=counts)
-    return {
+    catalogue = {
         "version": 1,
         "updated_at": stamp,
         "metadata": {
@@ -305,7 +565,10 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             "status is what a probe at the provider with that route's key answered; reason is the provider's own text.",
         },
         "providers": providers,
-    }, stats
+    }
+    # Reported, never merged: two spellings of one model on different routes are a person's call.
+    catalogue["possible_duplicates"] = near_duplicates(catalogue, rules)
+    return catalogue, stats
 
 
 def comparable(catalogue):
@@ -334,11 +597,7 @@ def add_body(entry, upstream_id, free):
     full = f"{entry['route']}/{upstream_id}"
     return {
         "model_name": full,
-        "litellm_params": {
-            "model": f"{PREFIXES[entry['kind']]}/{upstream_id}",
-            "api_base": f"os.environ/{entry['base_env']}",
-            "api_key": f"os.environ/{entry['key_env']}",
-        },
+        "litellm_params": litellm_params(entry, upstream_id),
         "model_info": {
             "id": f"catalog-{entry['route']}-{hashlib.sha1(full.encode()).hexdigest()[:12]}",
             "managed_by": MANAGED_BY,
@@ -349,15 +608,24 @@ def add_body(entry, upstream_id, free):
     }
 
 
-def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
+def canonical_body(spec):
+    """The /model/new body for one canonical deployment: the group name, its params and its info."""
+    return {"model_name": spec["name"], "litellm_params": spec["litellm_params"], "model_info": spec["model_info"]}
+
+
+def reconcile(catalogue, env, http, max_adds=100, max_removals=25, rules=None):
     """Make the proxy's database models match the catalogue, through the admin API.
 
     Only the models this catalogue created (model_info.managed_by) are ever touched: the
     config-defined routes and hand-made models are not ours to change. A run that cannot read
     the current set changes nothing, because an add could duplicate and a removal could hit a
     model that is not ours.
+
+    The per-route explicit models come first, then the canonical groups. A deployment whose
+    model_info.spec no longer matches the rules is replaced (delete, then add), because order,
+    weight, limits and budgets belong to the deployment, not to the group.
     """
-    result = {"added": 0, "removed": 0, "deferred": 0, "errors": [], "skipped_reason": ""}
+    result = {"added": 0, "removed": 0, "replaced": 0, "deferred": 0, "errors": [], "skipped_reason": ""}
     url, master = admin_url(env), env.get("LITELLM_MASTER_KEY") or ""
     if not (url and master):
         result["skipped_reason"] = "no admin URL or master key"
@@ -368,10 +636,15 @@ def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
     if status != 200 or not isinstance(entries, list):
         result["skipped_reason"] = f"model/info answered {status}"
         return result
-    managed = {}
+    managed, grouped = {}, {}
     for item in entries:
         info = (item.get("model_info") or {}) if isinstance(item, dict) else {}
-        if info.get("managed_by") == MANAGED_BY and info.get("db_model"):
+        if info.get("managed_by") != MANAGED_BY or not info.get("db_model"):
+            continue
+        if info.get("canonical"):
+            # A canonical deployment shares its model_name with its siblings: key it by its own id.
+            grouped[info.get("id") or item.get("model_name")] = dict(info, model_name=item.get("model_name"))
+        else:
             managed[item.get("model_name")] = info
     providers = catalogue.get("providers") or {}
     stale = {route for route, provider in providers.items() if (provider.get("metadata") or {}).get("stale")}
@@ -448,6 +721,85 @@ def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
             model["metadata"]["registered"] = model["id"] in final
             count += 1 if model["metadata"]["registered"] else 0
         provider["metadata"]["registered_count"] = count
+    # Canonical groups: one model_name per canonical model, its deployments ordered by the rules.
+    planned = plan_groups(catalogue, rules)
+    alive = {route: any((m.get("metadata") or {}).get("status") == "usable" for m in provider.get("models", []))
+             for route, provider in providers.items()}
+    wanted_canonical = {}
+    for spec in planned:
+        route = spec["route"]
+        if route in stale or route not in providers:
+            continue  # a route whose list failed is not evidence for or against its deployments
+        meta = (wanted.get(f"{route}/{spec['upstream_id']}") or {}).get("metadata") or {}
+        # The deployment goes when its underlying explicit model failed twice, exactly as that model does.
+        if meta.get("failing_probes", 0) >= 2 and meta.get("status") not in keep and alive.get(route):
+            continue
+        wanted_canonical[spec["model_info"]["id"]] = spec
+    present = set(grouped)
+    adds_left = max(0, max_adds - result["added"])
+    for model_id, spec in sorted(wanted_canonical.items(), key=lambda item: (item[1]["name"], item[1]["order"], item[1]["route"])):
+        current = grouped.get(model_id)
+        if current is not None and current.get("spec") == spec["model_info"]["spec"]:
+            continue
+        if current is not None:
+            if not current.get("id"):
+                result["errors"].append(f"replace {spec['name']}: the proxy reported no model id")
+                continue
+            status, answer = http("POST", f"{url}/model/delete", headers, {"id": current["id"]})
+            if not 200 <= status < 300:
+                text = answer if isinstance(answer, str) else json.dumps(answer)
+                result["errors"].append(f"replace {spec['name']}: {SECRETISH.sub('[redacted]', text)[:200]}")
+                continue
+            present.discard(model_id)
+        elif adds_left <= 0:
+            result["deferred"] += 1
+            continue
+        status, answer = http("POST", f"{url}/model/new", headers, canonical_body(spec))
+        text = answer if isinstance(answer, str) else json.dumps(answer)
+        if 200 <= status < 300:
+            present.add(model_id)
+            if current is not None:
+                result["replaced"] += 1
+            else:
+                result["added"] += 1
+                adds_left -= 1
+        elif re.search(r"already|duplicate|unique", text, re.I):
+            present.add(model_id)  # registered by an earlier run: ours, and current
+        else:
+            result["errors"].append(f"add {spec['name']}: {SECRETISH.sub('[redacted]', text)[:200]}")
+    # A deployment is removed when the plan no longer has it, under the same route and guard rules.
+    removals = []
+    for model_id, info in sorted(grouped.items()):
+        route = info.get("route") or ""
+        if model_id in wanted_canonical or route in stale or route not in providers:
+            continue
+        removals.append((model_id, info))
+    if len(removals) > max_removals:
+        result["errors"].append(f"removal guard: {len(removals)} removals exceed {max_removals}; run once with --max-removals {len(removals)} to confirm")
+        removals = []
+    for model_id, info in removals:
+        if not info.get("id"):
+            result["errors"].append(f"remove {info.get('model_name')}: the proxy reported no model id")
+            continue
+        status, answer = http("POST", f"{url}/model/delete", headers, {"id": info["id"]})
+        if 200 <= status < 300:
+            present.discard(model_id)
+            result["removed"] += 1
+        else:
+            text = answer if isinstance(answer, str) else json.dumps(answer)
+            result["errors"].append(f"remove {info.get('model_name')}: {SECRETISH.sub('[redacted]', text)[:200]}")
+    record = {}
+    for spec in planned:
+        entry = record.setdefault(spec["name"], {"family": family(spec["name"]), "modality": spec["model_info"]["modality"], "deployments": []})
+        entry["deployments"].append({
+            "route": spec["route"],
+            "order": spec["order"],
+            "weight": spec["weight"],
+            "registered": spec["model_info"]["id"] in present,
+        })
+    for entry in record.values():
+        entry["deployments"].sort(key=lambda item: (item["order"], item["route"]))
+    catalogue["canonical"] = {name: record[name] for name in sorted(record)}
     return result
 
 
@@ -524,15 +876,16 @@ def main(argv=None, env=None, http=None, now=None):
     else:
         previous = None
     previous = previous or {}
-    catalogue, stats = build(env, http, previous, now, parse_age(args.max_age), None, args.max_probes)
+    rules = load_rules()
+    catalogue, stats = build(env, http, previous, now, parse_age(args.max_age), None, args.max_probes, rules)
     print(f"catalog: listed {stats['listed']} models, probed {stats['probed']} (16 tokens max each; bound: at most {args.max_probes} a run)")
     for line in stats["route_errors"]:
         print(f"catalog: {line}", file=sys.stderr)
     # A run that listed nothing at all is a failed run, so the scheduled Process shows red.
     failed = stats["listed"] == 0
     if admin_url(env) and env.get("LITELLM_MASTER_KEY"):
-        result = reconcile(catalogue, env, http, max_removals=args.max_removals)
-        print(f"catalog: registered +{result['added']} -{result['removed']} (errors {len(result['errors'])}, deferred {result['deferred']})")
+        result = reconcile(catalogue, env, http, max_removals=args.max_removals, rules=rules)
+        print(f"catalog: registered +{result['added']} -{result['removed']} ~{result['replaced']} (errors {len(result['errors'])}, deferred {result['deferred']})")
         for line in result["errors"]:
             print(f"catalog: {line}", file=sys.stderr)
         if result["skipped_reason"]:

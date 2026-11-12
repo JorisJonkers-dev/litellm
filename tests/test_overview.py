@@ -49,6 +49,29 @@ CATALOGUE = {
             model("vibe-study", "mistral-large", "usable", probed_at="2026-11-08T12:00:00Z"),
         ], stale=True),
     },
+    "canonical": {
+        "claude-sonnet-4-5": {
+            "family": "anthropic", "modality": "chat", "registered": True,
+            "deployments": [{"route": "anthropic", "order": 1, "weight": 1, "model": "anthropic/claude-sonnet-4-5"}],
+            "metadata": {"credit": {"anthropic": 41.5}},
+        },
+        "glm-5.3": {
+            "family": "z-ai", "modality": "chat", "registered": True,
+            "deployments": [
+                {"route": "vibe", "order": 1, "weight": 2, "model": "vibe/glm-5.3"},
+                {"route": "vibe-study", "order": 1, "weight": 1, "model": "vibe-study/glm-5.3"},
+                {"route": "vibe-api", "order": 2, "weight": 2, "model": "vibe-api/glm-5.3"},
+                {"route": "vibe-study-api", "order": 2, "weight": 1, "model": "vibe-study-api/glm-5.3"},
+            ],
+            "metadata": {"credit": {"vibe": 255, "vibe-study": 128, "vibe-api": 50, "vibe-study-api": 25}},
+        },
+        "mistral-embed": {
+            "family": "mistral", "modality": "embedding", "registered": False,
+            "deployments": [{"route": "vibe", "order": 1, "weight": 1, "model": "vibe/mistral-embed"}],
+        },
+    },
+    "credit": {"vibe": 255, "vibe-study": None},
+    "possible_duplicates": [["opencode-go/glm-5.3", "openrouter/z-ai/glm-5.3"]],
 }
 
 
@@ -57,9 +80,9 @@ def cells(line):
 
 
 def table_rows(text, header):
-    """The data rows of the table whose header line starts with `header`."""
+    """The data rows of the table whose header line is exactly `header`."""
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith(f"| {header} |"))
+    start = lines.index(f"| {header} |")
     rows = []
     for line in lines[start + 2:]:
         if not line.startswith("|"):
@@ -103,7 +126,7 @@ class Render(unittest.TestCase):
         self.assertTrue(text.endswith("\n"))
 
     def test_summary_counts(self):
-        rows = {row[0]: row[1:] for row in table_rows(overview.render(CATALOGUE), "Route")}
+        rows = {row[0]: row[1:] for row in table_rows(overview.render(CATALOGUE), "Route | Listed | Usable | Registered | Blocked | Other")}
         self.assertEqual(rows["vibe"], ["4", "2", "1", "0", "2"])
         self.assertEqual(rows["opencode-go"], ["5", "1", "1", "1", "3"])
         self.assertEqual(rows["openrouter"], ["2", "1", "1", "0", "1"])
@@ -112,13 +135,82 @@ class Render(unittest.TestCase):
 
     def test_missing_metadata_counts_as_zero(self):
         bare = {"updated_at": "t", "providers": {"vibe": {"models": [{"id": "vibe/x", "metadata": {"status": "usable"}}]}}}
-        row = table_rows(overview.render(bare), "Route")[0]
+        row = table_rows(overview.render(bare), "Route | Listed | Usable | Registered | Blocked | Other")[0]
         self.assertEqual(row, ["vibe", "1", "1", "0", "0", "0"])
 
     def test_route_order_follows_the_catalogue(self):
         text = overview.render(CATALOGUE)
-        headings = [line[3:] for line in text.splitlines() if line.startswith("## ") and line not in ("## How this stays current", "## Summary")]
+        fixed = ("## How this stays current", "## Canonical models", "## Routing rules",
+                 "## Possible duplicates (not merged)", "## Summary")
+        headings = [line[3:] for line in text.splitlines() if line.startswith("## ") and line not in fixed]
         self.assertEqual(headings, list(CATALOGUE["providers"]))
+
+    def test_canonical_models_are_sorted_with_deployments_in_order(self):
+        rows = table_rows(overview.render(CATALOGUE), "Canonical | Family | Modality | Deployments in order | Remaining credit")
+        self.assertEqual(rows, [
+            ["claude-sonnet-4-5", "anthropic", "chat", "1: anthropic x1", "anthropic 41.50"],
+            ["glm-5.3", "z-ai", "chat", "1: vibe x2, vibe-study x1 > 2: vibe-api x2, vibe-study-api x1",
+             "vibe 255.00, vibe-study 128.00, vibe-api 50.00, vibe-study-api 25.00"],
+            ["mistral-embed", "mistral", "embedding", "1: vibe x1 (not registered)", "n/a"],
+        ])
+
+    def test_canonical_section_comes_before_the_route_sections(self):
+        text = overview.render(CATALOGUE)
+        self.assertLess(text.index("## Canonical models"), text.index("## Routing rules"))
+        self.assertLess(text.index("## Routing rules"), text.index("## Possible duplicates (not merged)"))
+        self.assertLess(text.index("## Possible duplicates (not merged)"), text.index("## Summary"))
+        self.assertLess(text.index("## Summary"), text.index("## vibe\n"))
+
+    def test_routing_rules_paragraph(self):
+        text = overview.render(CATALOGUE)
+        for phrase in ("Whichever provider serves a model first wins", "vibe 2:1 vibe-study",
+                       "vibe-api 2:1 vibe-study-api", "Google for Gemini", "Anthropic key for Claude",
+                       "OpenCode Go serves only a model none of those serve", "Free models are permitted"):
+            self.assertIn(phrase, text)
+
+    def test_credit_table_is_rendered_when_the_catalogue_has_one(self):
+        self.assertEqual(table_rows(overview.render(CATALOGUE), "Route | Remaining"),
+                         [["vibe", "255.00"], ["vibe-study", "n/a"]])
+        self.assertIn("Remaining credit per route:", overview.render(CATALOGUE))
+
+    def test_no_credit_table_without_credit(self):
+        text = overview.render({k: v for k, v in CATALOGUE.items() if k != "credit"})
+        self.assertNotIn("| Route | Remaining |", text)
+        self.assertNotIn("Remaining credit per route:", text)
+
+    def test_possible_duplicates_are_listed_for_the_owner(self):
+        text = overview.render(CATALOGUE)
+        self.assertIn("- opencode-go/glm-5.3, openrouter/z-ai/glm-5.3", text)
+        self.assertIn("Add an alias in `catalog/routing.json`", text)
+
+    def test_no_possible_duplicates_says_so(self):
+        text = overview.render({k: v for k, v in CATALOGUE.items() if k != "possible_duplicates"})
+        self.assertIn("None: no two routes list ids that look like the same model.", text)
+        self.assertNotIn("Add an alias", text)
+
+    def test_a_catalogue_without_canonical_models_says_so(self):
+        text = overview.render({"updated_at": "t", "providers": {}})
+        self.assertIn("## Canonical models", text)
+        self.assertIn("The catalogue holds no canonical models.", text)
+        self.assertIn("None: no two routes list ids that look like the same model.", text)
+
+    def test_canonical_cells_are_escaped_and_credit_is_two_decimals(self):
+        tricky = {"updated_at": "t", "providers": {}, "canonical": {"a|b": {
+            "family": "f", "modality": "chat", "registered": True,
+            "deployments": [{"route": "r|x", "order": 1, "weight": 1}],
+            "metadata": {"credit": {"r|x": 1.5}}}}}
+        self.assertIn("| a\\|b | f | chat | 1: r\\|x x1 | r\\|x 1.50 |", overview.render(tricky))
+        self.assertEqual(overview.credit(None), "n/a")
+        self.assertEqual(overview.credit(True), "n/a")
+        self.assertEqual(overview.credit("garbage"), "n/a")
+        self.assertEqual(overview.credit(12.34), "12.34")
+        self.assertEqual(overview.credit(255), "255.00")
+
+    def test_a_deployment_without_an_order_or_a_route_still_renders(self):
+        self.assertEqual(overview.deployments({"deployments": [{"route": "vibe"}, "junk", {"order": 2}]}), "0: vibe x1")
+        self.assertEqual(overview.deployments({}), "")
+        self.assertEqual(overview.remaining({}), "n/a")
+        self.assertEqual(overview.canonical_row("x", {"registered": False}), ["x", "", "", "(not registered)", "n/a"])
 
     def test_counts_line_omits_zeros(self):
         self.assertIn("4 listed: 2 usable, 1 unknown, 1 not-chat", section(overview.render(CATALOGUE), "vibe"))
@@ -126,7 +218,7 @@ class Render(unittest.TestCase):
                       section(overview.render(CATALOGUE), "opencode-go"))
 
     def test_usable_table_is_sorted_and_shows_registration(self):
-        rows = table_rows(overview.render(CATALOGUE), "Model")
+        rows = table_rows(overview.render(CATALOGUE), "Model | Free | Context | Last probed | In LiteLLM")
         self.assertEqual(rows, [
             ["vibe/mistral-large", "", "128k", "2026-11-10T12:00:00Z", "yes"],
             ["vibe/mistral-small", "", "8192", "2026-11-10T11:00:00Z", "no"],

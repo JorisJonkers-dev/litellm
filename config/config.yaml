@@ -40,6 +40,8 @@ litellm_settings:
   # Prometheus (open source in this release) and OpenTelemetry traces.
   callbacks: ["prometheus", "otel"]
   # Only these series are emitted, with these labels: no user, e-mail, client address or agent.
+  # model_id and api_base name the deployment that served a request, so a canonical model's
+  # fallback is visible per request (the spend log already stores both).
   prometheus_metrics_config:
     - group: spend-and-tokens
       metrics:
@@ -51,13 +53,24 @@ litellm_settings:
       include_labels: [api_key_alias, requested_model]
     - group: requests
       metrics: [litellm_proxy_total_requests_metric]
-      include_labels: [api_key_alias, requested_model, status_code]
+      include_labels: [api_key_alias, requested_model, status_code, model_id, api_base]
     - group: errors
       metrics: [litellm_proxy_failed_requests_metric]
-      include_labels: [api_key_alias, requested_model, exception_status]
+      include_labels: [api_key_alias, requested_model, exception_status, model_id, api_base]
     - group: budgets
       metrics: [litellm_remaining_api_key_budget_metric, litellm_api_key_max_budget_metric]
       include_labels: [api_key_alias]
+
+router_settings:
+  # A canonical model's deployments are tried by their `order`, lowest first. A 402 or 429 quota
+  # answer cools a deployment down for cooldown_time and the next order level serves, so a spent
+  # plan falls through instead of failing the request; plan credit is also capped per deployment by
+  # max_budget, which router_budget_limiting enforces before the call. rpm and tpm are enforced the
+  # same way, so a route's own limit is never exceeded by the fallback.
+  optional_pre_call_checks: [enforce_model_rate_limits, router_budget_limiting]
+  num_retries: 2
+  allowed_fails: 1
+  cooldown_time: 300
 
 general_settings:
   # Models added through the admin API (the catalogue sync, or the UI) are stored in the database

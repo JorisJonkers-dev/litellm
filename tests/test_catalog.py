@@ -157,6 +157,39 @@ class Listing(unittest.TestCase):
         self.assertFalse(sync.is_free_price({"prompt": "x"}))
         self.assertFalse(sync.is_free_price(None))
 
+    def test_modality_per_kind(self):
+        http = Http()
+        mistral = {m["id"]: m for m in sync.list_models(self.entry("vibe"), ENV, http)}
+        self.assertEqual(mistral["mistral-large"]["modality"], "chat")
+        self.assertEqual(mistral["mistral-embed"]["modality"], "embedding")
+        self.assertEqual(mistral["bare"]["modality"], "chat")
+        self.assertIs(mistral["mistral-embed"]["chat"], False)
+        self.assertIsNone(mistral["bare"]["chat"])
+
+
+class Rules(unittest.TestCase):
+    def test_load_rules_reads_a_file_and_the_env_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "routing.json")
+            with open(path, "w") as out:
+                json.dump({"tiers": [[["vibe", 1]]]}, out)
+            self.assertEqual(sync.load_rules(path), {"tiers": [[["vibe", 1]]]})
+            self.assertEqual(sync.load_rules(os.path.join(tmp, "missing.json")), {})
+            old = os.environ.get("CATALOG_RULES")
+            os.environ["CATALOG_RULES"] = path
+            try:
+                self.assertEqual(sync.load_rules(), {"tiers": [[["vibe", 1]]]})
+            finally:
+                if old is None:
+                    os.environ.pop("CATALOG_RULES", None)
+                else:
+                    os.environ["CATALOG_RULES"] = old
+            with open(path, "w") as out:
+                out.write("{")
+            with self.assertRaises(ValueError):
+                sync.load_rules(path)
+        self.assertEqual(sync.RULES_PATH, str(ROOT / "catalog" / "routing.json"))
+
 
 class Build(unittest.TestCase):
     def run_build(self, http, previous=None, **kw):
@@ -333,6 +366,13 @@ class Build(unittest.TestCase):
         mine = sync.list_models(next(e for e in sync.ROUTES if e["route"] == "openrouter"), ENV, Http(lists=lists))
         self.assertEqual([m["id"] for m in mine], ["only/mine:free"])
 
+    def test_possible_duplicates_are_reported_and_never_merged(self):
+        lists = dict(LISTS, **{"https://m/v1/models": {"data": [{"id": "glm-5.3"}]},
+                               "https://oc/v1/models": {"data": [{"id": "zai-glm-5.3"}]}})
+        cat, _ = self.run_build(Http(lists=lists))
+        self.assertEqual(cat["possible_duplicates"], [["opencode-go/zai-glm-5.3", "vibe-study/glm-5.3", "vibe/glm-5.3"]])
+        self.assertEqual(self.run_build(Http())[0]["possible_duplicates"], [])
+
     def test_admin_url_from_url_or_host_and_port(self):
         self.assertEqual(sync.admin_url(ENV), ADMIN)
         self.assertEqual(sync.admin_url({"LITELLM_HOST": "litellm.ns", "LITELLM_PORT": "4000"}), "http://litellm.ns:4000")
@@ -348,10 +388,19 @@ class Build(unittest.TestCase):
     def test_routes_match_config(self):
         config = (ROOT / "config" / "config.yaml").read_text()
         names = re.findall(r"^ {2}- model_name: (\S+)/\*$", config, re.M)
-        self.assertEqual(names, [e["route"] for e in sync.ROUTES])
+        routes = [e["route"] for e in sync.ROUTES]
+        # Every wildcard the config serves is a catalogue route, in the same order. The paid Vibe
+        # routes and the Google and Anthropic routes have no wildcard: the catalogue registers them.
+        self.assertEqual(names, [route for route in routes if route in names])
         for e in sync.ROUTES:
-            self.assertIn(f"os.environ/{e['base_env']}", config)
-            self.assertIn(f"os.environ/{e['key_env']}", config)
+            if e["route"] in names:
+                self.assertIn(f"os.environ/{e['base_env']}", config)
+                self.assertIn(f"os.environ/{e['key_env']}", config)
+        # A catalogue-only route reads its key from the Process env, so the proxy can resolve it.
+        env = (ROOT / "deploy" / "env" / "litellm" / "base.env").read_text()
+        for e in sync.ROUTES:
+            if e["route"] not in names:
+                self.assertIn(f"{e['key_env']}=", env)
 
 
 class Reconcile(unittest.TestCase):
@@ -518,6 +567,17 @@ class Reconcile(unittest.TestCase):
         self.assertTrue(result["skipped_reason"])
         self.assertNotIn("registered", cat["providers"]["local"]["models"][0]["metadata"])
 
+    def test_canonical_groups_are_recorded_without_rules(self):
+        cat = self.catalogue()
+        result = sync.reconcile(cat, ENV, Http(info=info()))
+        self.assertEqual(result["replaced"], 0)
+        self.assertEqual(cat["canonical"]["mistral-large"], {
+            "family": "mistral",
+            "modality": "chat",
+            "deployments": [{"route": "vibe", "order": 1, "weight": 1, "registered": True},
+                            {"route": "vibe-study", "order": 1, "weight": 1, "registered": True}],
+        })
+
 
 class Gh(Http):
     """GitHub's contents API over a dict of path -> text."""
@@ -600,7 +660,7 @@ class Main(unittest.TestCase):
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 sync.main(["--output", os.path.join(tmp, "c.json")], ENV, Http(info=info()), NOW)
-            self.assertIn("catalog: registered +", buf.getvalue())
+            self.assertRegex(buf.getvalue(), r"catalog: registered \+\d+ -\d+ ~\d+ \(errors \d+, deferred \d+\)")
 
     def test_no_key_reaches_a_published_file_or_a_reason(self):
         env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")

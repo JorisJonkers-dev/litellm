@@ -56,8 +56,8 @@ applications:
         egress:
           to: internet
           reason: >-
-            The proxy calls the Mistral API (Vibe and Vibe-study keys), the OpenCode Go API and
-            OpenRouter. The local/* route (the GPU workstation's model server) is not reachable
+            The proxy calls the Mistral API (Vibe, Vibe-study and the two paid keys), the OpenCode Go
+            API, OpenRouter, Google and Anthropic. The local/* route (the GPU workstation's model server) is not reachable
             by this declaration: the model has no edge to a host outside the cluster, and
             internet egress excludes every private and tailnet range (agent-kit follow-up).
 
@@ -69,7 +69,7 @@ applications:
           # oidc_client_secret is the admin UI's client secret at auth-api, minted there with its copy
           # in secret/auth-api (auth.clients.litellm.secret).
           - path: secret/data/platform/litellm
-            keys: [master_key, salt_key, oidc_client_secret, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key]
+            keys: [master_key, salt_key, oidc_client_secret, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key, vibe_api_key_paid, vibe_study_api_key_paid, google_api_key, anthropic_api_key]
             access: read
             delivery: env
             rotation: { tolerates: restart }
@@ -107,14 +107,14 @@ applications:
         egress:
           to: internet
           reason: >-
-            Lists models at the Mistral, OpenCode Go and OpenRouter APIs and publishes the
-            catalogue to GitHub.
+            Lists and probes models at the Mistral, OpenCode Go, OpenRouter, Google and Anthropic APIs
+            and publishes the catalogue to GitHub.
         secrets:
           # The same Vault path as the proxy: the master key authorises the probes, the three
           # provider keys list each provider's models, and catalog_publish_token is a
           # fine-grained token with contents:write on the catalogue repository only.
           - path: secret/data/platform/litellm
-            keys: [master_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key, catalog_publish_token]
+            keys: [master_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key, vibe_api_key_paid, vibe_study_api_key_paid, google_api_key, anthropic_api_key, catalog_publish_token]
             access: read
             delivery: env
             rotation: { tolerates: restart }

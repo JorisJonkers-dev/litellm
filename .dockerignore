@@ -2,3 +2,4 @@
 !config/
 !catalog/sync.py
 !catalog/overview.py
+!catalog/routing.json

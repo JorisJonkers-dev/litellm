@@ -6,8 +6,12 @@ LiteLLM, and why the rest is not. So this renders it, deterministically: one cat
 page, and only the `Last updated` line moves between runs, so a publish compares text and commits
 only a real change.
 
-Published: ids, status, reason text, free flag, context length and timestamps. Never a key, a
-prompt or a response body.
+The canonical groups come first: one LiteLLM model_name per canonical model, its deployments in
+the order the router tries them, and the ids that may be one model under two names so the owner
+can add an alias. The per-route sections follow, because a wildcard is removed per route.
+
+Published: ids, status, reason text, free flag, context length, credit and timestamps. Never a
+key, a prompt or a response body.
 
 Standard library only: it runs in the LiteLLM image beside the sync, and in CI.
 """
@@ -24,6 +28,15 @@ HOW = (
     "The catalogue itself is `model-catalog.json`, beside this file."
 )
 FOOTER = "Generated from `model-catalog.json` by `catalog/sync.py`. Edit nothing in this file by hand."
+# The routing policy in one paragraph: the tiers of catalog/routing.json, in the order the router
+# tries them. Prose, not a rendering of the rules: the rules are data the sync applies.
+ROUTING = (
+    "Whichever provider serves a model first wins. The local server answers first when it is "
+    "reachable, then Google for Gemini and the Anthropic key for Claude. The Vibe plan (vibe 2:1 "
+    "vibe-study) serves every model it offers, then the paid Mistral API keys (vibe-api 2:1 "
+    "vibe-study-api). OpenCode Go serves only a model none of those serve, and stands behind Google "
+    "as a backup. Free models are permitted everywhere."
+)
 
 
 def cell(text):
@@ -109,6 +122,111 @@ def summary(providers):
     return table(["Route", "Listed", "Usable", "Registered", "Blocked", "Other"], rows)
 
 
+def credit(value):
+    """A remaining credit as a person reads it: two decimals, or `n/a` when the route has none."""
+    if value is None or isinstance(value, bool):
+        return "n/a"
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return "n/a"
+
+
+def grouped(entry):
+    """A canonical model's deployments per order level: [(order, [(route, weight), ...]), ...].
+
+    LiteLLM tries the lowest order first and falls back to the next level, so the order is the
+    routing decision and the weight only splits traffic inside one level. Two deployments of one
+    route in one level add up, because the router sees one weight per deployment.
+    """
+    levels = {}
+    for deployment in entry.get("deployments") or []:
+        if not isinstance(deployment, dict):
+            continue
+        route = str(deployment.get("route") or "")
+        if not route:
+            continue
+        order = deployment.get("order")
+        order = order if isinstance(order, int) and not isinstance(order, bool) else 0
+        weight = deployment.get("weight")
+        weight = weight if isinstance(weight, int) and not isinstance(weight, bool) and weight > 0 else 1
+        levels.setdefault(order, {})
+        levels[order][route] = levels[order].get(route, 0) + weight
+    return [(order, sorted(levels[order].items())) for order in sorted(levels)]
+
+
+def deployments(entry):
+    """`1: vibe x2, vibe-study x1 > 2: vibe-api x2`: the group in the order the router tries it."""
+    return " > ".join(
+        f"{order}: " + ", ".join(f"{cell(route)} x{weight}" for route, weight in routes)
+        for order, routes in grouped(entry)
+    )
+
+
+def remaining(entry):
+    """What is left of each deployment route's credit, from the catalogue's own credit map."""
+    credit_map = (entry.get("metadata") or {}).get("credit")
+    if not isinstance(credit_map, dict):
+        return "n/a"
+    routes = []
+    for _, level in grouped(entry):
+        for route, _ in level:
+            if route not in routes:
+                routes.append(route)
+    if not routes:
+        return "n/a"
+    return ", ".join(f"{cell(route)} {credit(credit_map.get(route))}" for route in routes)
+
+
+def canonical_row(name, entry):
+    """One canonical model: what it is, where it is served in order, and what is left to spend."""
+    entry = entry or {}
+    order = deployments(entry)
+    if entry.get("registered") is False:
+        order = f"{order} (not registered)".strip()
+    return [cell(name), cell(entry.get("family") or ""), cell(entry.get("modality") or ""), order, remaining(entry)]
+
+
+def canonical_section(catalogue):
+    """The canonical groups, then what each route has left when the catalogue knows it."""
+    canonical = catalogue.get("canonical") or {}
+    lines = [
+        "## Canonical models",
+        "",
+        "One row per canonical model: the deployments that serve it, in the order the router tries "
+        "them (lower first, `xN` is the weight inside a level), and what is left of each route's credit.",
+        "",
+    ]
+    if not canonical:
+        lines.append("The catalogue holds no canonical models.")
+    else:
+        lines += table(
+            ["Canonical", "Family", "Modality", "Deployments in order", "Remaining credit"],
+            [canonical_row(name, canonical[name]) for name in sorted(canonical)],
+        )
+    credit_map = catalogue.get("credit")
+    if isinstance(credit_map, dict) and credit_map:
+        lines += ["", "Remaining credit per route:", ""]
+        lines += table(["Route", "Remaining"], [[cell(route), credit(credit_map[route])] for route in sorted(credit_map)])
+    return lines
+
+
+def duplicates_section(catalogue):
+    """The ids that may be one model under two names: the owner adds an alias, nothing is guessed."""
+    groups = [sorted(str(i) for i in group) for group in (catalogue.get("possible_duplicates") or []) if group]
+    lines = ["## Possible duplicates (not merged)", ""]
+    if not groups:
+        lines.append("None: no two routes list ids that look like the same model.")
+        return lines
+    lines += [
+        "These ids may name one model on different providers. Add an alias in `catalog/routing.json` "
+        "to merge one; nothing is merged on a guess.",
+        "",
+    ]
+    lines += [f"- {', '.join(cell(i) for i in group)}" for group in sorted(groups)]
+    return lines
+
+
 def section(route, provider):
     """One route: its counts, the usable models, and the rest folded away with their reasons."""
     tally = by_status(provider)
@@ -167,9 +285,11 @@ def render(catalogue):
         "",
         HOW,
         "",
-        "## Summary",
-        "",
     ]
+    lines += canonical_section(catalogue)
+    lines += ["", "## Routing rules", "", ROUTING]
+    lines += [""] + duplicates_section(catalogue)
+    lines += ["", "## Summary", ""]
     lines += summary(providers)
     if not providers:
         lines += ["", "The catalogue lists no routes."]

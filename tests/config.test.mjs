@@ -55,9 +55,77 @@ test('telemetry is metadata only', () => {
   }
 })
 
+test('the serving deployment is visible per request, and no label names a person', () => {
+  const groups = Object.fromEntries(
+    [...CONFIG.matchAll(/- group: (\S+)\n\s+metrics: \[[^\]]*\]\n\s+include_labels: \[([^\]]*)\]/g)]
+      .map((match) => [match[1], match[2].split(',').map((label) => label.trim())]),
+  )
+  for (const group of ['requests', 'errors']) {
+    assert.ok(groups[group]?.includes('model_id'), group)
+    assert.ok(groups[group]?.includes('api_base'), group)
+  }
+  const labels = Object.values(groups).flat()
+  for (const forbidden of ['user', 'user_email', 'end_user', 'client_ip', 'user_agent', 'team', 'hashed_api_key']) {
+    assert.ok(!labels.includes(forbidden), forbidden)
+  }
+})
+
+test('the router falls through a cooled-down or spent deployment', () => {
+  assert.match(CONFIG, /^router_settings:$/m)
+  assert.match(CONFIG, /optional_pre_call_checks: \[enforce_model_rate_limits, router_budget_limiting\]/)
+  assert.match(CONFIG, /^ {2}num_retries: 2$/m)
+  assert.match(CONFIG, /^ {2}allowed_fails: 1$/m)
+  assert.match(CONFIG, /^ {2}cooldown_time: 300$/m)
+})
+
 test('every env name the config reads is set by the Process env file', () => {
   const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8')
   for (const [, name] of CONFIG.matchAll(/os\.environ\/([A-Z_]+)/g)) assert.match(env, new RegExp(`^${name}=`, 'm'), name)
+})
+
+test('every env name the sync registers a deployment with is set by the proxy env file', () => {
+  const sync = readFileSync(`${ROOT}/catalog/sync.py`, 'utf8')
+  const start = sync.indexOf('ROUTES = [')
+  const block = sync.slice(start, sync.indexOf('\n]', start))
+  const names = [...block.matchAll(/(?:base|key)_env": "([A-Z_]+)"/g)].map((match) => match[1])
+  assert.ok(names.length >= 10, 'ROUTES is read')
+  // The proxy resolves os.environ/<NAME> for a deployment. A Google or Anthropic base is the
+  // provider's own default, so the proxy needs no base for those two.
+  const proxy = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8')
+  for (const name of names.filter((name) => !['GOOGLE_API_BASE', 'ANTHROPIC_API_BASE'].includes(name))) {
+    assert.match(proxy, new RegExp(`^${name}=`, 'm'), name)
+  }
+  // The sync lists and probes with the same names, so its own env file carries every one.
+  const catalog = readFileSync(`${ROOT}/deploy/env/litellm-catalog/base.env`, 'utf8')
+  for (const name of names) assert.match(catalog, new RegExp(`^${name}=`, 'm'), name)
+})
+
+test('the routing rules are the decided policy', () => {
+  const rules = JSON.parse(readFileSync(`${ROOT}/catalog/routing.json`, 'utf8'))
+  assert.deepEqual(rules.tiers, [
+    [['local', 1]],
+    [['google', 1], ['anthropic', 1]],
+    [['vibe', 2], ['vibe-study', 1]],
+    [['vibe-api', 2], ['vibe-study-api', 1]],
+    [['opencode-go', 1]],
+  ])
+  assert.deepEqual(rules.backup_only, { 'opencode-go': ['vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'anthropic'] })
+  assert.deepEqual(rules.exclusive, [{ match: '^claude', routes: ['anthropic'] }])
+  assert.deepEqual(rules.free_first_unless_served_by, ['google', 'anthropic', 'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api'])
+  assert.deepEqual(rules.api_only_routes, ['vibe-api', 'vibe-study-api'])
+  assert.deepEqual(rules.budgets.vibe, { max_budget: 255, budget_duration: '30d' })
+  assert.deepEqual(rules.budgets['vibe-study'], { max_budget: 128, budget_duration: '30d' })
+  assert.deepEqual(rules.limits.vibe, { rpm: 60, tpm: 1000000 })
+  assert.deepEqual(rules.limits['vibe-study'], { rpm: 30, tpm: 500000 })
+  // An alias points at a canonical name, never at a vendor path or a dotted id: only certain ids
+  // are aliased, because a fuzzy merge would put one model's traffic on another.
+  for (const [from, to] of Object.entries(rules.aliases)) {
+    assert.ok(!to.includes('.') && !to.includes('/'), `${from} -> ${to}`)
+  }
+})
+
+test('the image carries the routing rules', () => {
+  assert.match(readFileSync(`${ROOT}/Dockerfile`, 'utf8'), /^COPY .*catalog\/routing\.json/m)
 })
 
 test('the provider keys the config names are Vault keys the Project grants', () => {
