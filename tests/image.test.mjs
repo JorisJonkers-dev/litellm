@@ -242,7 +242,7 @@ test('no password login: neither the master key nor a guessed password signs in 
       body: new URLSearchParams({ username: 'admin', password }),
       redirect: 'manual',
     })
-    assert.ok(res.status >= 400, `password login answered ${res.status}`)
+    assert.ok(res.status >= 400 && res.status !== 404, `password login answered ${res.status}`)
     assert.equal(res.headers.get('set-cookie'), null)
   }
 })

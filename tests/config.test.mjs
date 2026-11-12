@@ -104,6 +104,8 @@ test('the admin UI is on and signs in through auth-api OIDC only', () => {
   }
   assert.match(env, /^PROXY_BASE_URL=https:\/\/litellm\.jorisjonkers\.dev$/m)
   assert.match(env, /^GENERIC_CLIENT_USE_PKCE=true$/m)
+  // The immutable subject identifies a user, never the renameable username.
+  assert.match(env, /^GENERIC_USER_ID_ATTRIBUTE=sub$/m)
   assert.doesNotMatch(env, /^GENERIC_CLIENT_STATE=/m)
   assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /keys: \[[^\]]*\boidc_client_secret\b/)
 })
