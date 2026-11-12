@@ -93,3 +93,25 @@ test('the base image tag names the LiteLLM version the images lock records', () 
   assert.match(from, /@sha256:[0-9a-f]{64}$/)
   assert.match(from.split('@')[0].split('/').pop(), /:v?\d+(\.\d+)+([._+-][0-9A-Za-z._+-]+)?$/)
 })
+
+test('the admin UI is on, signs in by password only, and its password is a Vault key', () => {
+  const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8').replace(/^\s*#.*$/gm, '')
+  assert.doesNotMatch(env, /DISABLE_ADMIN_UI/)
+  assert.match(env, /^UI_USERNAME=admin$/m)
+  assert.match(env, /^UI_PASSWORD=\$\{secret:secret\/data\/platform\/litellm#ui_password\}$/m)
+  assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /keys: \[[^\]]*\bui_password\b/)
+  // No SSO: the only UI login is the owner's username and password.
+  assert.doesNotMatch(env, /GOOGLE_CLIENT|MICROSOFT_CLIENT|GENERIC_CLIENT/)
+})
+
+test('the UI password is the proxy Process\'s alone, never the catalogue sync\'s', () => {
+  const catalog = PROJECT.slice(PROJECT.indexOf('id: litellm-catalog'))
+  assert.doesNotMatch(catalog, /ui_password/)
+})
+
+test('the UI is reached through the one edge-signed-in exposure and metrics stay unrouted', () => {
+  assert.equal((PROJECT.match(/^\s+host: /gm) ?? []).length, 1)
+  assert.match(PROJECT, /host: litellm\.jorisjonkers\.dev\n\s+audience: authenticated/)
+  assert.doesNotMatch(PROJECT, /surface: metrics\s*\}/)
+  assert.doesNotMatch(PROJECT, /audience: anonymous/)
+})

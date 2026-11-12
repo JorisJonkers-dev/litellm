@@ -117,7 +117,7 @@ before(async () => {
     // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.
     '-e', `OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:${otlpPort}`,
     '-e', 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf', '-e', 'OTEL_SERVICE_NAME=litellm',
-    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'DISABLE_ADMIN_UI=True',
+    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'UI_USERNAME=admin', '-e', 'UI_PASSWORD=sk-image-test-ui',
     IMAGE,
   )
   base = hostPort(4000)
@@ -195,4 +195,19 @@ test('no prompt or response text reaches the logs, the traces or the metrics', a
   const logs = spawnSync('docker', ['logs', NAME], { encoding: 'utf8' })
   assert.doesNotMatch(logs.stdout + logs.stderr, new RegExp(`${PROMPT}|${ANSWER}`))
   assert.doesNotMatch(await (await fetch(`${metrics}/metrics/`)).text(), new RegExp(`${PROMPT}|${ANSWER}`))
+})
+
+test('the admin UI is served, and key creation needs the master key', async () => {
+  const ui = await fetch(`${base}/ui/`, { redirect: 'manual' })
+  assert.ok([200, 301, 302, 307, 308].includes(ui.status), `GET /ui/ answered ${ui.status}`)
+  assert.doesNotMatch(await ui.text(), /UI is disabled|DISABLE_ADMIN_UI/i)
+  const generate = (headers) => fetch(`${base}/key/generate`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: '{}' })
+  assert.equal((await generate({})).status, 401)
+  assert.equal((await generate({ 'x-litellm-api-key': `Bearer ${MASTER}` })).status, 200)
+})
+
+test('the main port does not serve the metrics', async () => {
+  const res = await fetch(`${base}/metrics/`, { redirect: 'manual' })
+  assert.ok([401, 404, 307, 308].includes(res.status), `GET /metrics/ answered ${res.status}`)
+  assert.doesNotMatch(await res.text(), /litellm_spend_metric|# HELP/)
 })
