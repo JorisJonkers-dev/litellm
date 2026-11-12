@@ -19,7 +19,7 @@ permissions: {}
 
 jobs:
   publish-image:
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@ab93bf1c435304c5933ab33f9febe087ff8be214 # v0.43.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
     with:
       image-name: litellm
       version: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -98,7 +98,7 @@ jobs:
 
       - name: lock-images
         id: lock
-        uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@ab93bf1c435304c5933ab33f9febe087ff8be214 # v0.43.0
+        uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
         with:
           name: litellm
           images: litellm
@@ -110,7 +110,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@ab93bf1c435304c5933ab33f9febe087ff8be214 # v0.43.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
     with:
       project-file: deploy/litellm.project.yml
       version: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
