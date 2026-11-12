@@ -422,12 +422,22 @@ class Reconcile(unittest.TestCase):
         sync.reconcile(cat, ENV, http)
         self.assertEqual(len(http.deleted), 2)
 
+    def test_removal_guard_names_the_flag_that_confirms(self):
+        cat = {"providers": {"vibe": {"metadata": {}, "models": [{"id": "vibe/live", "metadata": {"status": "usable"}}]}}}
+        http = Http(info=info(*[managed(f"vibe/g{i}") for i in range(3)]))
+        result = sync.reconcile(cat, ENV, http, max_removals=2)
+        self.assertEqual(http.deleted, [])
+        self.assertIn("--max-removals 3", result["errors"][0])
+        result = sync.reconcile(cat, ENV, Http(info=info(*[managed(f"vibe/g{i}") for i in range(3)])), max_removals=3)
+        self.assertEqual(result["removed"], 3)
+
     def test_respects_max_adds(self):
         cat = self.catalogue()
         http = Http(info=info())
         result = sync.reconcile(cat, ENV, http, max_adds=2)
         self.assertEqual([b["model_name"] for b in http.added], ["local/qwen3:32b", "opencode-go/deepseek-v4-pro"])
         self.assertEqual(result["added"], 2)
+        self.assertGreater(result["deferred"], 0)
 
     def test_removal_guard_removes_nothing(self):
         cat = self.catalogue()
@@ -540,7 +550,7 @@ class Main(unittest.TestCase):
             sync.main(["--output", out], env, http, NOW + datetime.timedelta(hours=1))
             self.assertEqual(http.probed(), [])
             self.assertEqual(json.load(open(out))["version"], 1)
-            self.assertTrue(os.path.exists(os.path.join(tmp, "README.md")))
+            self.assertTrue(os.path.exists(os.path.join(tmp, "model-overview.md")))
 
     def test_a_run_that_lists_nothing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:

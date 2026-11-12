@@ -357,7 +357,7 @@ def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
     the current set changes nothing, because an add could duplicate and a removal could hit a
     model that is not ours.
     """
-    result = {"added": 0, "removed": 0, "errors": [], "skipped_reason": ""}
+    result = {"added": 0, "removed": 0, "deferred": 0, "errors": [], "skipped_reason": ""}
     url, master = admin_url(env), env.get("LITELLM_MASTER_KEY") or ""
     if not (url and master):
         result["skipped_reason"] = "no admin URL or master key"
@@ -382,15 +382,18 @@ def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
         for model in provider.get("models", []):
             wanted[model["id"]] = model
     by_route = {entry["route"]: entry for entry in ROUTES}
-    adds = [
+    adds_all = [
         model
         for name, model in sorted(wanted.items())
         if (model.get("metadata") or {}).get("status") == "usable"
         and "absent_runs" not in (model.get("metadata") or {})
         and name not in managed
     ]
+    adds = adds_all[:max_adds]
+    if len(adds_all) > max_adds:
+        result["deferred"] = len(adds_all) - max_adds  # registered by the next runs
     added = set()
-    for model in adds[:max_adds]:
+    for model in adds:
         route, upstream_id = model["id"].split("/", 1)
         entry = by_route.get(route)
         if not entry:
@@ -422,7 +425,7 @@ def reconcile(catalogue, env, http, max_adds=100, max_removals=25):
         if meta.get("failing_probes", 0) >= 2 and meta.get("status") not in keep and route_alive:
             removals.append((name, info))
     if len(removals) > max_removals:
-        result["errors"].append(f"removal guard: {len(removals)} removals exceed {max_removals}")
+        result["errors"].append(f"removal guard: {len(removals)} removals exceed {max_removals}; run once with --max-removals {len(removals)} to confirm")
         removals = []
     removed = set()
     for name, info in removals:
@@ -506,6 +509,7 @@ def main(argv=None, env=None, http=None, now=None):
     ap.add_argument("--output", default="model-catalog.json", help="where the catalogue is written when it is not published")
     ap.add_argument("--max-age", default="24h")
     ap.add_argument("--max-probes", type=int, default=250)
+    ap.add_argument("--max-removals", type=int, default=25, help="the most models one run may remove; a larger removal is refused until confirmed with a higher value")
     args = ap.parse_args(argv)
     env = os.environ if env is None else env
     http = http or make_http()
@@ -527,8 +531,8 @@ def main(argv=None, env=None, http=None, now=None):
     # A run that listed nothing at all is a failed run, so the scheduled Process shows red.
     failed = stats["listed"] == 0
     if admin_url(env) and env.get("LITELLM_MASTER_KEY"):
-        result = reconcile(catalogue, env, http)
-        print(f"catalog: registered +{result['added']} -{result['removed']} (errors {len(result['errors'])})")
+        result = reconcile(catalogue, env, http, max_removals=args.max_removals)
+        print(f"catalog: registered +{result['added']} -{result['removed']} (errors {len(result['errors'])}, deferred {result['deferred']})")
         for line in result["errors"]:
             print(f"catalog: {line}", file=sys.stderr)
         if result["skipped_reason"]:
@@ -560,7 +564,7 @@ def main(argv=None, env=None, http=None, now=None):
             github_put_text(repo, readme, token, overview, readme_sha, http, "chore: refresh model overview")
             print(f"catalog: published the overview to {repo}/{readme}")
     else:
-        local = os.path.join(os.path.dirname(args.output), readme)
+        local = os.path.join(os.path.dirname(args.output), "model-overview.md")  # never the working directory's README.md
         with open(local, "w") as out:
             out.write(overview)
         print(f"catalog: wrote {local}")
