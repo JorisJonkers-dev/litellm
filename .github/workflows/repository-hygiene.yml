@@ -2,6 +2,7 @@ name: 'Repository Hygiene'
 
 'on':
   pull_request:
+    types: [opened, reopened, synchronize, edited]
 
 'concurrency':
   'group': '${{ github.workflow }}-${{ github.ref }}'
@@ -13,5 +14,5 @@ permissions:
 
 jobs:
   repository-hygiene:
-    uses: 'JorisJonkers-dev/github-workflows/.github/workflows/repository-hygiene-guard.yml@ab93bf1c435304c5933ab33f9febe087ff8be214' # v0.43.0
+    uses: 'JorisJonkers-dev/github-workflows/.github/workflows/repository-hygiene-guard.yml@8aaf024208bf4b29acb468aecd3cd7ee130d5ac1' # v0.49.1
     secrets: 'inherit'
