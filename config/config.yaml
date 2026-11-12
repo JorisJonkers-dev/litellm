@@ -55,8 +55,9 @@ litellm_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  # The virtual key travels in this header; Authorization carries the edge's service token.
-  litellm_key_header_name: x-litellm-api-key
+  # The virtual key is a standard `Authorization: Bearer sk-...`. The x-litellm-api-key header is
+  # always accepted too (LiteLLM hard-codes it, and it wins over Authorization), which keeps
+  # callers that still send it, with an edge token as the bearer, working.
   allow_requests_on_db_unavailable: false
   # The admin UI signs in through SSO only (auth-api). The username and password login, and the
   # master key as its fallback password, are off; the master key still works as an API bearer.

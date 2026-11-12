@@ -155,6 +155,15 @@ test('the models list is for the master key only, and lists what the live provid
   for (const id of ['opencode-go/listed-one', 'opencode-go/listed-two', 'local/listed-one']) assert.ok(ids.includes(id), id)
 })
 
+test('a key works as a standard Authorization bearer, and x-litellm-api-key still works', async () => {
+  const bearer = await fetch(`${base}/v1/models`, { headers: { authorization: `Bearer ${MASTER}` } })
+  assert.equal(bearer.status, 200)
+  const both = await fetch(`${base}/v1/models`, { headers: { authorization: 'Bearer an-edge-token', 'x-litellm-api-key': `Bearer ${MASTER}` } })
+  assert.equal(both.status, 200)
+  const wrong = await fetch(`${base}/v1/models`, { headers: { authorization: 'Bearer sk-not-a-key' } })
+  assert.equal(wrong.status, 401)
+})
+
 test('a wildcard route passes any model id to its provider with that route\'s own key', async () => {
   for (const [route, { key, env }] of Object.entries(ROUTES)) {
     const id = route === 'openrouter' ? 'vendor/brand-new-model:free' : 'brand-new-model-1'
