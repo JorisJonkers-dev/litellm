@@ -486,6 +486,10 @@ class Gh(Http):
         if url.startswith(base + "/git/refs/heads/") and method == "PATCH":
             self.refs[url.rsplit("/", 1)[1]] = body["sha"]
             return 200, {}
+        if url.startswith(base + "/pulls/") and method == "PATCH":
+            number = int(url.rsplit("/", 1)[1])
+            self.pulls = [pull for pull in self.pulls if pull["number"] != number]
+            return 200, {}
         if url.startswith(base + "/pulls"):
             if method == "GET":
                 return 200, self.pulls
@@ -516,6 +520,12 @@ class Main(unittest.TestCase):
             models = open(os.path.join(tmp, "models.generated.yaml")).read()
             self.assertTrue(models.startswith(sync.MODELS_HEADER))
             self.assertIn("model_list", json.loads("\n".join(line for line in models.splitlines() if not line.startswith("#"))))
+
+    def test_a_stale_pull_request_is_closed_when_main_already_holds_the_text(self):
+        gh = Gh(files={"config/models.generated.yaml": "same"}, pulls=[{"number": 7, "head": "o:bot/model-catalog"}])
+        self.assertFalse(sync.publish_models("o/r", "t", "same", gh))
+        self.assertEqual(gh.pulls, [])
+        self.assertEqual(gh.puts, [])
 
     def test_a_run_that_lists_nothing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -629,12 +639,12 @@ class Models(unittest.TestCase):
             gh = Gh()
             sync.main(["--output", out], self.env(), gh, NOW)
             text = base64.b64decode(next(b for p, b in gh.puts if p == sync.MODELS_PATH)["content"]).decode()
-            # the pull request was merged: main holds the file, so a run writes nothing at all
+            # main holds the file (the pull request was merged, or it is stale): nothing is written
             gh = Gh({sync.MODELS_PATH: text}, pulls=[{"number": 7}])
             self.assertEqual(sync.main(["--output", out], self.env(), gh, NOW + datetime.timedelta(hours=1)), 0)
             self.assertEqual(gh.puts, [])
             self.assertEqual(gh.refs, {"main": "sha-main"})
-            self.assertEqual(len(gh.pulls), 1)
+            self.assertEqual(gh.pulls, [])  # a stale open pull request is closed
 
     def test_the_body_counts_the_deployments_against_main(self):
         before = sync.render_models([])

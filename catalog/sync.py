@@ -32,7 +32,7 @@ a pull request in the litellm repository from a bot branch. The sync never write
 proxy and needs no master key.
 
 Canonical groups: one LiteLLM model_name per canonical model (mistral-large, devstral,
-gemini-2.5-pro, claude-sonnet, glm-5.3) whose deployments are the routes that serve it, ordered
+gemini-2.5-pro, claude-sonnet-4-5, glm-5.3) whose deployments are the routes that serve it, ordered
 by catalog/routing.json. Deployments that share a model_name form a group in LiteLLM: `order` is
 tried lowest first and the router falls back to the next level when a level fails or is cooled
 down, `weight` splits traffic inside a level, and max_budget/budget_duration cap one deployment.
@@ -133,14 +133,19 @@ SECRETISH = re.compile(r"(sk-|key-|Bearer\s+)[A-Za-z0-9_\-.]{6,}|[A-Za-z0-9]{32,
 def load_rules(path=None):
     """The routing rules: catalog/routing.json beside this script, or CATALOG_RULES, or `path`.
 
-    A missing file is no rules, so the sync runs before the rules are written; a malformed one
-    raises, because a rule that cannot be read must not silently route traffic.
+    A missing explicit path is no rules (tests); a missing default file or a malformed one raises,
+    because a rule that cannot be read must not silently route traffic.
     """
-    path = path or os.environ.get("CATALOG_RULES") or RULES_PATH
+    explicit = path or os.environ.get("CATALOG_RULES")
+    path = explicit or RULES_PATH
     try:
         with open(path) as handle:
             rules = json.load(handle)
     except FileNotFoundError:
+        if not explicit:
+            # The image ships the rules: their absence is a broken image, and without them Google
+            # would land in the normal groups.
+            raise RuntimeError(f"the routing rules {RULES_PATH} are missing")
         return {}
     return rules if isinstance(rules, dict) else {}
 
@@ -792,6 +797,10 @@ def github_open_pr(repo, branch, token, http):
     return body[0].get("number") if body and isinstance(body[0], dict) else None
 
 
+def github_close_pr(repo, number, token, http):
+    http("PATCH", f"{GITHUB}/repos/{repo}/pulls/{number}", github_headers(token), {"state": "closed"})
+
+
 def github_create_pr(repo, branch, token, http, title, body):
     status, answer = http("POST", f"{GITHUB}/repos/{repo}/pulls", github_headers(token),
                           {"title": title, "body": body, "head": branch, "base": "main"})
@@ -839,6 +848,11 @@ def publish_models(repo, token, text, http, env=None):
     branch = env.get("MODELS_BRANCH", MODELS_BRANCH)
     current, sha = github_get_text(repo, path, token, http, ref="main")
     if current == text:
+        # Main already holds this text: an open pull request carrying another text is stale, and
+        # merging it would move main away from what the catalogue justifies. Close it.
+        stale = github_open_pr(repo, branch, token, http)
+        if stale is not None:
+            github_close_pr(repo, stale, token, http)
         return False
     if github_open_pr(repo, branch, token, http) is not None:
         # An open pull request that already carries this text is left alone: no hourly churn.
