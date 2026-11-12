@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 // Comments are prose; only the configuration itself is checked.
 const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8').replace(/^\s*#.*$/gm, '')
 const ROUTES = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)$/gm)].map((match) => match[1])
-const WILDCARDS = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)\n {4}litellm_params: \{ model: (\S+), litellm_credential_name: (\S+) \}/gm)]
+const WILDCARDS = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)\n {4}litellm_params: \{ model: (\S+), litellm_credential_name: ([^\s,]+)(?:, extra_headers: \{ x-opencode-session: litellm-proxy \})? \}/gm)]
   .map((match) => ({ name: match[1], model: match[2], credential: match[3] }))
 const CREDENTIAL_BLOCK = CONFIG.slice(CONFIG.indexOf('credential_list:'), CONFIG.indexOf('model_list:'))
 const CREDENTIALS = [...CREDENTIAL_BLOCK.matchAll(/^ {2}- credential_name: (\S+)$/gm)].map((match) => match[1])

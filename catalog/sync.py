@@ -136,18 +136,20 @@ def load_rules(path=None):
     A missing explicit path is no rules (tests); a missing default file or a malformed one raises,
     because a rule that cannot be read must not silently route traffic.
     """
-    explicit = path or os.environ.get("CATALOG_RULES")
-    path = explicit or RULES_PATH
+    path_arg = path
+    path = path or os.environ.get("CATALOG_RULES") or RULES_PATH
     try:
         with open(path) as handle:
             rules = json.load(handle)
     except FileNotFoundError:
-        if not explicit:
-            # The image ships the rules: their absence is a broken image, and without them Google
-            # would land in the normal groups.
-            raise RuntimeError(f"the routing rules {RULES_PATH} are missing")
+        if not path_arg:
+            # The image ships the rules (or CATALOG_RULES names them): their absence is a broken
+            # deployment, and without them Google would land in the normal groups.
+            raise RuntimeError(f"the routing rules {path} are missing")
         return {}
-    return rules if isinstance(rules, dict) else {}
+    if not isinstance(rules, dict):
+        raise RuntimeError(f"the routing rules {path} are not a JSON object")
+    return rules
 
 
 def classify(status, text):
@@ -372,7 +374,11 @@ def litellm_params(entry, upstream_id):
     config/config.yaml's credential_list holds the key and base as os.environ/<NAME>; a deployment
     names the credential and LiteLLM resolves it at load.
     """
-    return {"model": f"{PREFIXES[entry['kind']]}/{upstream_id}", "litellm_credential_name": entry["route"]}
+    params = {"model": f"{PREFIXES[entry['kind']]}/{upstream_id}", "litellm_credential_name": entry["route"]}
+    if entry["route"] == "opencode-go":
+        # OpenCode answers 400 MissingSessionID without a session header, as the probe found.
+        params["extra_headers"] = {"x-opencode-session": "litellm-proxy"}
+    return params
 
 
 def primary_mode(routes):

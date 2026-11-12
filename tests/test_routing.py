@@ -2,7 +2,10 @@
 import datetime
 import json
 import sys
+import tempfile
+import os
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -259,6 +262,22 @@ class Plan(unittest.TestCase):
             self.assertNotIn("allowed_fails_policy", spec["model_info"])
         # no cooldown in the rules: nothing to cool down
         self.assertNotIn("allowed_fails_policy", sync.plan_groups(cat, dict(RULES, cooldowns={}))[0]["model_info"])
+
+    def test_opencode_go_deployments_carry_the_session_header_and_others_do_not(self):
+        cat = catalogue(("opencode-go", "glm-x", "usable", {}), ("anthropic", "claude-y", "usable", {}))
+        plan = {d["route"]: d for d in sync.plan_groups(cat, RULES)}
+        self.assertEqual(plan["opencode-go"]["litellm_params"]["extra_headers"], {"x-opencode-session": "litellm-proxy"})
+        self.assertNotIn("extra_headers", plan["anthropic"]["litellm_params"])
+
+    def test_a_missing_default_rules_file_and_a_non_object_raise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "r.json")
+            open(path, "w").write("[1]")
+            with self.assertRaises(RuntimeError):
+                sync.load_rules(path)
+            with mock.patch.dict(os.environ, {"CATALOG_RULES": os.path.join(tmp, "missing.json")}):
+                with self.assertRaises(RuntimeError):
+                    sync.load_rules()
 
     def test_a_route_policy_from_the_rules_is_added(self):
         rules = dict(RULES, policies={"anthropic": {"BadRequestErrorAllowedFails": 2}}, cooldowns={"anthropic": 300})

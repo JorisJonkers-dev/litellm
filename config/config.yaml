@@ -66,7 +66,7 @@ model_list:
     litellm_params: { model: mistral/*, litellm_credential_name: vibe-study-api }
     model_info: { health_check_model: mistral/mistral-small-latest }
   - model_name: opencode-go/*
-    litellm_params: { model: openai/*, litellm_credential_name: opencode-go }
+    litellm_params: { model: openai/*, litellm_credential_name: opencode-go, extra_headers: { x-opencode-session: litellm-proxy } }
     model_info: { health_check_model: openai/glm-5.3-flash }
   - model_name: local/*
     litellm_params: { model: openai/*, litellm_credential_name: local }
