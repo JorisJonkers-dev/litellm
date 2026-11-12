@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test --test-concurrency=1 tests/*.test.mjs && npm run test:catalog",
-    "test:catalog": "python3 -I -m unittest discover -s tests -p 'test_catalog.py'",
+    "test:catalog": "python3 -I -m unittest discover -s tests -p 'test_*.py'",
     "test:image": "node --test --test-concurrency=1 tests/image.test.mjs"
   },
   "engines": {

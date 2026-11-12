@@ -9,7 +9,7 @@
 FROM ghcr.io/berriai/litellm-non_root:v1.108.0@sha256:08d313a00c46509c875d84f60c1448a260c478f399ade3c2abb940d358d5b724
 
 COPY config/config.yaml /app/config.yaml
-COPY catalog/sync.py /app/catalog/sync.py
+COPY catalog/sync.py catalog/overview.py /app/catalog/
 
 # Numeric, so the images lock can record the uid and gid (nobody). The process's writablePaths
 # (/tmp and /app/.cache, which is HOME's cache) are the only places it writes at runtime.

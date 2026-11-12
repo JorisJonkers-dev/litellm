@@ -134,3 +134,8 @@ test('the UI is reached through the one edge-signed-in exposure and metrics stay
   assert.doesNotMatch(PROJECT, /surface: metrics\s*\}/)
   assert.doesNotMatch(PROJECT, /audience: anonymous/)
 })
+
+test('models added through the admin API are stored in the database, wildcards stay as the fallback', () => {
+  assert.match(CONFIG, /^ {2}store_model_in_db: true$/m)
+  assert.ok(ROUTES.every((route) => route.endsWith('/*')))
+})

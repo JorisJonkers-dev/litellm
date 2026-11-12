@@ -1,6 +1,12 @@
-# Model routes. A caller sends <route>/<upstream model id>; the route's wildcard hands the
-# id to its provider unchanged, so any model a provider offers works the day it appears
-# (the catalogue in catalog/ lists what each provider offers now). api_key and api_base
+# Model routes. A caller sends <route>/<upstream model id>. Two layers answer it:
+#   - the explicit models catalog/sync.py keeps registered in the proxy database (store_model_in_db),
+#     one per usable provider model, named <route>/<upstream id>, grouped by access group <route>
+#     and visible on the admin UI's Models page; the sync is their source of truth;
+#   - the wildcards below, kept as the rollout fallback: an exact name wins over a wildcard, so
+#     explicit models take over as they are registered, and a wildcard is removed only after the
+#     overview (litellm-model-catalog README) shows every usable model of its route registered.
+# Virtual keys restrict to the wildcard pattern (models: ["vibe/*"]), which matches explicit names too,
+# so no key changes when a wildcard goes. api_key and api_base
 # values are environment names only. Each cheap agent id gets its own virtual key
 # (docs/LITELLM.md in agent-kit) restricted to its route and capped with max_budget.
 #
@@ -54,6 +60,9 @@ litellm_settings:
       include_labels: [api_key_alias]
 
 general_settings:
+  # Models added through the admin API (the catalogue sync, or the UI) are stored in the database
+  # and loaded next to the config's own. The sync touches only models it tagged itself.
+  store_model_in_db: true
   master_key: os.environ/LITELLM_MASTER_KEY
   # The virtual key travels in this header; Authorization carries the edge's service token.
   litellm_key_header_name: x-litellm-api-key
