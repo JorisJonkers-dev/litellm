@@ -4,6 +4,9 @@
 #
 # Internal only: the edge signs a caller in before LiteLLM sees the request, so a caller sends
 # an auth-api service token as the bearer and its LiteLLM virtual key in x-litellm-api-key.
+# The admin UI (/ui) is on behind that same edge sign-in and signs in through auth-api (OIDC,
+# the litellm client): ROLE_ADMIN is proxy admin, nobody else gets in, and there is no
+# password login.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -63,8 +66,10 @@ applications:
           # openrouter_api_key is the OpenRouter key made with a 5 EUR credit limit.
           # master_key and salt_key are generated there; salt_key must never change once
           # virtual keys exist, because it encrypts the upstream keys stored in the database.
+          # oidc_client_secret is the admin UI's client secret at auth-api, minted there with its copy
+          # in secret/auth-api (auth.clients.litellm.secret).
           - path: secret/data/platform/litellm
-            keys: [master_key, salt_key, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key]
+            keys: [master_key, salt_key, oidc_client_secret, vibe_api_key, vibe_study_api_key, opencode_go_api_key, openrouter_api_key]
             access: read
             delivery: env
             rotation: { tolerates: restart }

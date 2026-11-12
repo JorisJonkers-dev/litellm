@@ -58,5 +58,10 @@ general_settings:
   # The virtual key travels in this header; Authorization carries the edge's service token.
   litellm_key_header_name: x-litellm-api-key
   allow_requests_on_db_unavailable: false
+  # The admin UI signs in through SSO only (auth-api). The username and password login, and the
+  # master key as its fallback password, are off; the master key still works as an API bearer.
+  disable_env_credential_login: true
+  # Only proxy admins (ROLE_ADMIN at auth-api) and proxy admin viewers may sign in to the UI.
+  ui_access_mode: admin_only
   # The spend log keeps cost and token counts, never the request or response body.
   store_prompts_in_spend_logs: false

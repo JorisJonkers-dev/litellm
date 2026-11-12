@@ -15,6 +15,7 @@ const NAME = `litellm-image-test-${process.pid}`
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 const WRITABLE = PROJECT.match(/writablePaths: \[([^\]]*)\]/)[1].split(',').map((path) => path.trim())
 const MASTER = 'sk-image-test-master'
+const SSO_AUTHORIZE = 'https://auth.example.test/api/oauth2/authorize'
 const PROMPT = 'PROMPT-TEXT-MUST-NOT-BE-LOGGED'
 const ANSWER = 'ANSWER-TEXT-MUST-NOT-BE-LOGGED'
 // route -> the upstream key it must be called with, and the stub standing in for its provider.
@@ -89,6 +90,32 @@ async function chat(model) {
   return res.json()
 }
 
+function runLitellm(name, extra = []) {
+  const upstream = (envName) => `http://host.docker.internal:${stubs[envName].port}/v1`
+  docker(
+    'run', '-d', '--name', name, '--add-host', 'host.docker.internal:host-gateway',
+    '-p', '127.0.0.1::4000', '-p', '127.0.0.1::4001', '--read-only',
+    ...WRITABLE.flatMap((path) => ['--tmpfs', path]),
+    '-e', `LITELLM_MASTER_KEY=${MASTER}`, '-e', 'LITELLM_SALT_KEY=sk-image-test-salt',
+    '-e', 'VIBE_API_KEY=upstream-vibe', '-e', 'VIBE_STUDY_API_KEY=upstream-vibe-study',
+    '-e', 'OPENCODE_GO_API_KEY=upstream-opencode-go', '-e', 'OPENROUTER_API_KEY=upstream-openrouter',
+    '-e', 'LOCAL_LLM_API_KEY=none',
+    '-e', `MISTRAL_API_BASE=${upstream('MISTRAL_API_BASE')}`, '-e', `OPENCODE_GO_API_BASE=${upstream('OPENCODE_GO_API_BASE')}`,
+    '-e', `OPENROUTER_API_BASE=${upstream('OPENROUTER_API_BASE')}`, '-e', `LOCAL_LLM_API_BASE=${upstream('LOCAL_LLM_API_BASE')}`,
+    // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.
+    '-e', `OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:${otlpPort}`,
+    '-e', 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf', '-e', 'OTEL_SERVICE_NAME=litellm',
+    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'PROXY_BASE_URL=https://litellm.example.test', '-e', 'GENERIC_CLIENT_ID=litellm', '-e', 'GENERIC_CLIENT_SECRET=image-test-oidc',
+    '-e', `GENERIC_AUTHORIZATION_ENDPOINT=${SSO_AUTHORIZE}`, '-e', 'GENERIC_TOKEN_ENDPOINT=https://auth.example.test/api/oauth2/token',
+    '-e', 'GENERIC_USERINFO_ENDPOINT=https://auth.example.test/api/userinfo', '-e', 'GENERIC_SCOPE=openid email profile',
+    '-e', 'GENERIC_CLIENT_USE_PKCE=true', '-e', 'GENERIC_INCLUDE_TOKEN_CLAIMS=true',
+    '-e', 'GENERIC_ROLE_MAPPINGS_GROUP_CLAIM=roles', '-e', "GENERIC_ROLE_MAPPINGS_ROLES={'proxy_admin':['ROLE_ADMIN']}",
+    '-e', 'GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer',
+    ...extra,
+    IMAGE,
+  )
+}
+
 before(async () => {
   for (const envName of new Set(Object.values(ROUTES).map((route) => route.env))) await startStub(envName)
   const otlp = await listen((req, res) => {
@@ -103,23 +130,7 @@ before(async () => {
   otlpPort = otlp.port
   stubs.otlp = otlp
   if (!process.env.IMAGE) docker('build', '-t', IMAGE, '.')
-  const upstream = (envName) => `http://host.docker.internal:${stubs[envName].port}/v1`
-  docker(
-    'run', '-d', '--name', NAME, '--add-host', 'host.docker.internal:host-gateway',
-    '-p', '127.0.0.1::4000', '-p', '127.0.0.1::4001', '--read-only',
-    ...WRITABLE.flatMap((path) => ['--tmpfs', path]),
-    '-e', `LITELLM_MASTER_KEY=${MASTER}`, '-e', 'LITELLM_SALT_KEY=sk-image-test-salt',
-    '-e', 'VIBE_API_KEY=upstream-vibe', '-e', 'VIBE_STUDY_API_KEY=upstream-vibe-study',
-    '-e', 'OPENCODE_GO_API_KEY=upstream-opencode-go', '-e', 'OPENROUTER_API_KEY=upstream-openrouter',
-    '-e', 'LOCAL_LLM_API_KEY=none',
-    '-e', `MISTRAL_API_BASE=${upstream('MISTRAL_API_BASE')}`, '-e', `OPENCODE_GO_API_BASE=${upstream('OPENCODE_GO_API_BASE')}`,
-    '-e', `OPENROUTER_API_BASE=${upstream('OPENROUTER_API_BASE')}`, '-e', `LOCAL_LLM_API_BASE=${upstream('LOCAL_LLM_API_BASE')}`,
-    // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.
-    '-e', `OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:${otlpPort}`,
-    '-e', 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf', '-e', 'OTEL_SERVICE_NAME=litellm',
-    '-e', 'LITELLM_TELEMETRY=False', '-e', 'LITELLM_MODE=PRODUCTION', '-e', 'DISABLE_ADMIN_UI=True',
-    IMAGE,
-  )
+  runLitellm(NAME)
   base = hostPort(4000)
   metrics = hostPort(4001)
   await waitForLive(base, 240_000)
@@ -195,4 +206,78 @@ test('no prompt or response text reaches the logs, the traces or the metrics', a
   const logs = spawnSync('docker', ['logs', NAME], { encoding: 'utf8' })
   assert.doesNotMatch(logs.stdout + logs.stderr, new RegExp(`${PROMPT}|${ANSWER}`))
   assert.doesNotMatch(await (await fetch(`${metrics}/metrics/`)).text(), new RegExp(`${PROMPT}|${ANSWER}`))
+})
+
+test('the admin UI is served, and key creation needs the master key', async () => {
+  const ui = await fetch(`${base}/ui/`, { redirect: 'manual' })
+  assert.ok([200, 301, 302, 307, 308].includes(ui.status), `GET /ui/ answered ${ui.status}`)
+  assert.doesNotMatch(await ui.text(), /UI is disabled|DISABLE_ADMIN_UI/i)
+  // The test has no database, so only the refusal is checkable here: no credential, no key.
+  const anonymous = await fetch(`${base}/key/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+  assert.equal(anonymous.status, 401)
+})
+
+test('the main port does not serve the metrics', async () => {
+  const res = await fetch(`${base}/metrics/`, { redirect: 'manual' })
+  assert.ok([401, 404, 307, 308].includes(res.status), `GET /metrics/ answered ${res.status}`)
+  assert.doesNotMatch(await res.text(), /litellm_spend_metric|# HELP/)
+})
+
+test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state) and never by password', async () => {
+  // SSO needs a database (the free tier counts its users there), so this runs a second proxy
+  // against a throwaway Postgres.
+  const pg = `${NAME}-pg`
+  const proxy = `${NAME}-db`
+  try {
+    docker('run', '-d', '--name', pg, '-e', 'POSTGRES_PASSWORD=image-test', '-e', 'POSTGRES_DB=litellm', '-p', '5432', 'postgres:16-alpine')
+    const pgPort = docker('port', pg, '5432/tcp').split('\n')[0].split(':').pop()
+    for (const deadline = Date.now() + 60_000; ; await new Promise((resolve) => setTimeout(resolve, 1000))) {
+      if (spawnSync('docker', ['exec', pg, 'pg_isready', '-U', 'postgres', '-d', 'litellm']).status === 0) break
+      assert.ok(Date.now() < deadline, 'postgres did not start')
+    }
+    runLitellm(proxy, ['-e', `DATABASE_URL=postgresql://postgres:image-test@host.docker.internal:${pgPort}/litellm`])
+    const sso = `http://127.0.0.1:${docker('port', proxy, '4000/tcp').split('\n')[0].split(':').pop()}`
+    const stop = Date.now() + 280_000
+    for (; Date.now() < stop; await new Promise((resolve) => setTimeout(resolve, 3000))) {
+      try {
+        if ((await fetch(`${sso}/health/liveliness`)).status === 200) break
+      } catch {
+        // not listening yet
+      }
+    }
+    const live = await fetch(`${sso}/health/liveliness`).then((r) => r.status === 200, () => false)
+    assert.ok(live, `the proxy with a database was not live:\n${spawnSync('docker', ['logs', proxy], { encoding: 'utf8' }).stderr.slice(-6000)}`)
+    const start = () => fetch(`${sso}/sso/key/generate`, { redirect: 'manual' })
+    const first = await start()
+    assert.ok([302, 303, 307].includes(first.status), `GET /sso/key/generate answered ${first.status}: ${await first.clone().text()}`)
+    const url = new URL(first.headers.get('location'))
+    assert.equal(`${url.origin}${url.pathname}`, SSO_AUTHORIZE)
+    assert.equal(url.searchParams.get('client_id'), 'litellm')
+    assert.equal(url.searchParams.get('redirect_uri'), 'https://litellm.example.test/sso/callback')
+    assert.equal(url.searchParams.get('response_type'), 'code')
+    assert.equal(url.searchParams.get('code_challenge_method'), 'S256')
+    assert.ok(url.searchParams.get('code_challenge'))
+    assert.ok(url.searchParams.get('state'))
+    const second = new URL((await start()).headers.get('location'))
+    assert.notEqual(second.searchParams.get('state'), url.searchParams.get('state'))
+    // No password login either: neither the master key nor a guessed password signs in.
+    for (const password of [MASTER, 'admin', 'password']) {
+      const res = await fetch(`${sso}/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: 'admin', password }),
+        redirect: 'manual',
+      })
+      assert.ok(res.status >= 400 && res.status < 500 && res.status !== 404, `password login answered ${res.status}`)
+      assert.equal(res.headers.get('set-cookie'), null)
+    }
+  } finally {
+    for (const name of [proxy, pg]) {
+      try {
+        docker('rm', '-f', name)
+      } catch {
+        // already gone
+      }
+    }
+  }
 })
