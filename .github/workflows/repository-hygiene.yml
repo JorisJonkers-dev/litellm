@@ -4,9 +4,12 @@ name: 'Repository Hygiene'
   pull_request:
     types: [opened, reopened, synchronize, edited]
 
+# A cancelled run of a required check on the head commit blocks the merge even
+# when a later run of the same check succeeds, and bots label and edit a pull
+# request right after it opens. Each run gets its own group and none is cancelled.
 'concurrency':
-  'group': '${{ github.workflow }}-${{ github.ref }}'
-  'cancel-in-progress': '${{ github.ref != ''refs/heads/main'' }}'
+  'group': '${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }}'
+  'cancel-in-progress': false
 
 permissions:
   contents: 'read'
