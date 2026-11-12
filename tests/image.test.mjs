@@ -229,7 +229,7 @@ test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state
   const pg = `${NAME}-pg`
   const proxy = `${NAME}-db`
   try {
-    docker('run', '-d', '--name', pg, '-e', 'POSTGRES_PASSWORD=image-test', '-e', 'POSTGRES_DB=litellm', '-p', '127.0.0.1::5432', 'postgres:16-alpine')
+    docker('run', '-d', '--name', pg, '-e', 'POSTGRES_PASSWORD=image-test', '-e', 'POSTGRES_DB=litellm', '-p', '5432', 'postgres:16-alpine')
     const pgPort = docker('port', pg, '5432/tcp').split('\n')[0].split(':').pop()
     for (const deadline = Date.now() + 60_000; ; await new Promise((resolve) => setTimeout(resolve, 1000))) {
       if (spawnSync('docker', ['exec', pg, 'pg_isready', '-U', 'postgres', '-d', 'litellm']).status === 0) break
