@@ -90,23 +90,10 @@ async function chat(model) {
   return res.json()
 }
 
-before(async () => {
-  for (const envName of new Set(Object.values(ROUTES).map((route) => route.env))) await startStub(envName)
-  const otlp = await listen((req, res) => {
-    const chunks = []
-    req.on('data', (chunk) => chunks.push(chunk))
-    req.on('end', () => {
-      spans.push(Buffer.concat(chunks).toString('latin1'))
-      res.statusCode = 200
-      res.end()
-    })
-  })
-  otlpPort = otlp.port
-  stubs.otlp = otlp
-  if (!process.env.IMAGE) docker('build', '-t', IMAGE, '.')
+function runLitellm(name, extra = []) {
   const upstream = (envName) => `http://host.docker.internal:${stubs[envName].port}/v1`
   docker(
-    'run', '-d', '--name', NAME, '--add-host', 'host.docker.internal:host-gateway',
+    'run', '-d', '--name', name, '--add-host', 'host.docker.internal:host-gateway',
     '-p', '127.0.0.1::4000', '-p', '127.0.0.1::4001', '--read-only',
     ...WRITABLE.flatMap((path) => ['--tmpfs', path]),
     '-e', `LITELLM_MASTER_KEY=${MASTER}`, '-e', 'LITELLM_SALT_KEY=sk-image-test-salt',
@@ -124,8 +111,26 @@ before(async () => {
     '-e', 'GENERIC_CLIENT_USE_PKCE=true', '-e', 'GENERIC_INCLUDE_TOKEN_CLAIMS=true',
     '-e', 'GENERIC_ROLE_MAPPINGS_GROUP_CLAIM=roles', '-e', "GENERIC_ROLE_MAPPINGS_ROLES={'proxy_admin':['ROLE_ADMIN']}",
     '-e', 'GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer',
+    ...extra,
     IMAGE,
   )
+}
+
+before(async () => {
+  for (const envName of new Set(Object.values(ROUTES).map((route) => route.env))) await startStub(envName)
+  const otlp = await listen((req, res) => {
+    const chunks = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => {
+      spans.push(Buffer.concat(chunks).toString('latin1'))
+      res.statusCode = 200
+      res.end()
+    })
+  })
+  otlpPort = otlp.port
+  stubs.otlp = otlp
+  if (!process.env.IMAGE) docker('build', '-t', IMAGE, '.')
+  runLitellm(NAME)
   base = hostPort(4000)
   metrics = hostPort(4001)
   await waitForLive(base, 240_000)
@@ -218,31 +223,59 @@ test('the main port does not serve the metrics', async () => {
   assert.doesNotMatch(await res.text(), /litellm_spend_metric|# HELP/)
 })
 
-test('the admin UI sign-in goes to auth-api with the pinned callback, PKCE and a fresh state', async () => {
-  const start = async () => fetch(`${base}/sso/key/generate`, { redirect: 'manual' })
-  const first = await start()
-  assert.ok([302, 303, 307].includes(first.status), `GET /sso/key/generate answered ${first.status}`)
-  const url = new URL(first.headers.get('location'))
-  assert.equal(`${url.origin}${url.pathname}`, SSO_AUTHORIZE)
-  assert.equal(url.searchParams.get('client_id'), 'litellm')
-  assert.equal(url.searchParams.get('redirect_uri'), 'https://litellm.example.test/sso/callback')
-  assert.equal(url.searchParams.get('response_type'), 'code')
-  assert.equal(url.searchParams.get('code_challenge_method'), 'S256')
-  assert.ok(url.searchParams.get('code_challenge'))
-  assert.ok(url.searchParams.get('state'))
-  const second = new URL((await start()).headers.get('location'))
-  assert.notEqual(second.searchParams.get('state'), url.searchParams.get('state'))
-})
-
-test('no password login: neither the master key nor a guessed password signs in to the UI', async () => {
-  for (const password of [MASTER, 'admin', 'password']) {
-    const res = await fetch(`${base}/login`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ username: 'admin', password }),
-      redirect: 'manual',
-    })
-    assert.ok(res.status >= 400 && res.status !== 404, `password login answered ${res.status}`)
-    assert.equal(res.headers.get('set-cookie'), null)
+test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state) and never by password', async () => {
+  // SSO needs a database (the free tier counts its users there), so this runs a second proxy
+  // against a throwaway Postgres.
+  const pg = `${NAME}-pg`
+  const proxy = `${NAME}-db`
+  try {
+    docker('run', '-d', '--name', pg, '-e', 'POSTGRES_PASSWORD=image-test', '-e', 'POSTGRES_DB=litellm', '-p', '127.0.0.1::5432', 'postgres:16-alpine')
+    const pgPort = docker('port', pg, '5432/tcp').split('\n')[0].split(':').pop()
+    for (const deadline = Date.now() + 60_000; ; await new Promise((resolve) => setTimeout(resolve, 1000))) {
+      if (spawnSync('docker', ['exec', pg, 'pg_isready', '-U', 'postgres', '-d', 'litellm']).status === 0) break
+      assert.ok(Date.now() < deadline, 'postgres did not start')
+    }
+    runLitellm(proxy, ['-e', `DATABASE_URL=postgresql://postgres:image-test@host.docker.internal:${pgPort}/litellm`])
+    const sso = `http://127.0.0.1:${docker('port', proxy, '4000/tcp').split('\n')[0].split(':').pop()}`
+    const stop = Date.now() + 280_000
+    for (; Date.now() < stop; await new Promise((resolve) => setTimeout(resolve, 3000))) {
+      try {
+        if ((await fetch(`${sso}/health/liveliness`)).status === 200) break
+      } catch {
+        // not listening yet
+      }
+    }
+    const start = () => fetch(`${sso}/sso/key/generate`, { redirect: 'manual' })
+    const first = await start()
+    assert.ok([302, 303, 307].includes(first.status), `GET /sso/key/generate answered ${first.status}: ${await first.clone().text()}`)
+    const url = new URL(first.headers.get('location'))
+    assert.equal(`${url.origin}${url.pathname}`, SSO_AUTHORIZE)
+    assert.equal(url.searchParams.get('client_id'), 'litellm')
+    assert.equal(url.searchParams.get('redirect_uri'), 'https://litellm.example.test/sso/callback')
+    assert.equal(url.searchParams.get('response_type'), 'code')
+    assert.equal(url.searchParams.get('code_challenge_method'), 'S256')
+    assert.ok(url.searchParams.get('code_challenge'))
+    assert.ok(url.searchParams.get('state'))
+    const second = new URL((await start()).headers.get('location'))
+    assert.notEqual(second.searchParams.get('state'), url.searchParams.get('state'))
+    // No password login either: neither the master key nor a guessed password signs in.
+    for (const password of [MASTER, 'admin', 'password']) {
+      const res = await fetch(`${sso}/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: 'admin', password }),
+        redirect: 'manual',
+      })
+      assert.ok(res.status >= 400 && res.status < 500 && res.status !== 404, `password login answered ${res.status}`)
+      assert.equal(res.headers.get('set-cookie'), null)
+    }
+  } finally {
+    for (const name of [proxy, pg]) {
+      try {
+        docker('rm', '-f', name)
+      } catch {
+        // already gone
+      }
+    }
   }
 })
