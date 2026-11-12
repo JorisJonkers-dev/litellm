@@ -1,5 +1,6 @@
 *
 !config/
+!config/models.generated.yaml
 !catalog/sync.py
 !catalog/overview.py
 !catalog/routing.json

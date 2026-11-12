@@ -1,6 +1,5 @@
 """The canonical model groups: naming, the routing rules, and the deployments they plan."""
 import datetime
-import hashlib
 import json
 import sys
 import unittest
@@ -11,14 +10,13 @@ sys.path.insert(0, str(ROOT / "catalog"))
 import sync  # noqa: E402
 
 NOW = datetime.datetime(2026, 11, 10, 12, 0, tzinfo=datetime.timezone.utc)
-ADMIN = "http://litellm:4000"
 ENV = {
     "MISTRAL_API_BASE": "https://m/v1", "OPENCODE_GO_API_BASE": "https://oc/v1", "OPENROUTER_API_BASE": "https://or/v1",
     "GOOGLE_API_BASE": "https://g/v1", "ANTHROPIC_API_BASE": "https://a/v1", "LOCAL_LLM_API_BASE": "http://local/v1",
-    "VIBE_API_KEY": "k-vibe", "VIBE_STUDY_API_KEY": "k-study", "VIBE_API_KEY_PAID": "k-paid",
-    "VIBE_STUDY_API_KEY_PAID": "k-study-paid", "OPENCODE_GO_API_KEY": "k-oc", "OPENROUTER_API_KEY": "k-or",
-    "GOOGLE_API_KEY": "k-google", "ANTHROPIC_API_KEY": "k-anthropic", "LOCAL_LLM_API_KEY": "none",
-    "LITELLM_URL": ADMIN, "LITELLM_MASTER_KEY": "sk-master-secret",
+    "VIBE_API_KEY": "k-vibe", "VIBE_STUDY_API_KEY": "k-study",
+    "VIBE_API_GENERAL_KEY": "k-general", "VIBE_STUDY_API_GENERAL_KEY": "k-study-general",
+    "OPENCODE_GO_API_KEY": "k-oc", "OPENROUTER_API_KEY": "k-or",
+    "GEMINI_API_KEY": "k-gemini", "ANTHROPIC_API_KEY": "k-anthropic", "LOCAL_LLM_API_KEY": "none",
 }
 LISTS = {
     "https://m/v1/models": {"data": [
@@ -40,43 +38,35 @@ LISTS = {
 # The rules a real catalog/routing.json holds, inline: the tests must not depend on that file.
 RULES = {
     "tiers": [
-        [["vibe", 1], ["vibe-study", 1]],
-        [["vibe-api", 1], ["vibe-study-api", 1]],
+        [["local", 1]],
         [["google", 1], ["anthropic", 1]],
-        [["opencode-go", 1], ["openrouter", 1], ["local", 1]],
+        [["vibe", 2], ["vibe-study", 1]],
+        [["vibe-api", 2], ["vibe-study-api", 1]],
+        [["opencode-go", 1]],
     ],
-    "backup_only": {"opencode-go": ["google", "anthropic", "vibe", "vibe-study", "vibe-api", "vibe-study-api"]},
+    "backup_only": {"opencode-go": ["vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic"]},
     "exclusive": [{"match": "^claude", "routes": ["anthropic"]}],
-    "free_first_unless_served_by": ["vibe", "vibe-study", "vibe-api", "vibe-study-api", "google", "anthropic"],
-    "aliases": {"mistral-large-2411": "mistral-large", "claude-sonnet-4-5-20250929": "claude-sonnet"},
+    "free_first_unless_served_by": ["vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic"],
+    "aliases": {"claude-sonnet-4-5-20250929": "claude-sonnet-4-5"},
     "api_only_routes": ["vibe-api", "vibe-study-api"],
-    "budgets": {"vibe-api": {"max_budget": 20, "budget_duration": "30d"}},
-    "limits": {"vibe-api": {"rpm": 60, "tpm": 100000}},
+    "budgets": {"vibe-api": {"max_budget": 50, "budget_duration": "30d"}},
+    "cooldowns": {"vibe": 5, "vibe-study": 5, "vibe-api": 5, "vibe-study-api": 5,
+                  "google": 120, "anthropic": 5, "opencode-go": 5, "openrouter": 5, "local": 5},
+    "public_routes": ["google"],
 }
 
 
 class Http:
-    """A stub transport: provider lists, probe answers and the proxy's admin API."""
+    """A stub transport: provider lists and probe answers."""
 
-    def __init__(self, lists=None, info=None, new=None, delete=None):
+    def __init__(self, lists=None):
         self.lists = LISTS if lists is None else lists
-        self.info = info
-        self.new = new or {}
-        self.delete = delete or {}
-        self.calls, self.added, self.deleted = [], [], []
+        self.calls = []
 
     def __call__(self, method, url, headers, body):
         self.calls.append((method, url, headers, body))
         if method == "POST" and url.endswith(("/chat/completions", "/messages")):
             return 200, {"choices": [{"message": {"content": "SECRET-RESPONSE"}}]}
-        if method == "POST" and url.endswith("/model/new"):
-            self.added.append(body)
-            return self.new.get(body["model_name"], (200, {"model_id": "x"}))
-        if method == "POST" and url.endswith("/model/delete"):
-            self.deleted.append(body["id"])
-            return self.delete.get(body["id"], (200, {}))
-        if method == "GET" and url.endswith("/model/info"):
-            return self.info if self.info is not None else (200, {"data": []})
         if method == "GET" and url in self.lists:
             return 200, self.lists[url]
         return 404, "no"
@@ -95,16 +85,6 @@ def catalogue(*models):
     return {"providers": providers}
 
 
-def info(*entries):
-    """A /model/info answer: (model_name, model_info) pairs."""
-    return 200, {"data": [{"model_name": name, "model_info": meta} for name, meta in entries]}
-
-
-def managed(body):
-    """The /model/info entry the proxy keeps for a model this catalogue added."""
-    return (body["model_name"], dict(body["model_info"], db_model=True))
-
-
 class Naming(unittest.TestCase):
     def test_canonical_names(self):
         cases = [
@@ -115,7 +95,7 @@ class Naming(unittest.TestCase):
             ("openrouter", "mistralai/mistral-large", "mistral-large"),
             ("openrouter", "z-ai/glm-4.6:free", "glm-4.6"),
             ("openrouter", "deepseek/deepseek-chat-v3-0324:free", "deepseek-chat-v3"),
-            ("anthropic", "claude-sonnet-4-5-20250929", "claude-sonnet"),
+            ("anthropic", "claude-sonnet-4-5-20250929", "claude-sonnet-4-5"),
             ("opencode-go", "glm-5.3", "glm-5.3"),
             ("local", "qwen3:32b", "qwen3:32b"),
         ]
@@ -127,6 +107,12 @@ class Naming(unittest.TestCase):
         self.assertEqual(sync.canonical_name("opencode-go", "glm-5.3", rules), "glm")
         self.assertEqual(sync.canonical_name("vibe", "mistral-large-2411", rules), "mistral-large")
         self.assertEqual(sync.canonical_name("vibe", "mistral-large", rules), "mistral-large")
+
+    def test_a_route_that_names_the_model_it_serves_is_normalised_from_that_name(self):
+        self.assertEqual(sync.canonical_name("opencode-go", "glm-5.3-flash", RULES, "zhipuai/glm-5.3"), "glm-5.3")
+        self.assertEqual(sync.canonical_name("opencode-go", "glm-5.3-flash", RULES), "glm-5.3-flash")
+        # the alias table is consulted with the name the route gives, after normalisation
+        self.assertEqual(sync.canonical_name("opencode-go", "glm-5.3-flash", {"aliases": {"glm-5.3": "glm"}}, "zhipuai/glm-5.3"), "glm")
 
     def test_two_spellings_are_never_merged_by_a_guess(self):
         self.assertNotEqual(sync.canonical_name("vibe", "mistral-large", RULES),
@@ -144,17 +130,44 @@ class Naming(unittest.TestCase):
 
 
 class Plan(unittest.TestCase):
-    def test_mistral_uses_the_plan_tiers_and_never_a_free_route(self):
+    def test_mistral_uses_the_plan_tiers_and_never_a_free_route_first(self):
         cat = catalogue(
             ("vibe", "mistral-large-latest", "usable", {}),
             ("vibe-api", "mistral-large-2411", "usable", {}),
             ("opencode-go", "mistral-large", "usable", {}),
-            ("openrouter", "mistralai/mistral-large", "unprobed", {}),
+            ("openrouter", "mistralai/mistral-large:free", "usable", {"free": True}),
         )
         specs = sync.plan_groups(cat, RULES)
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in specs], [("vibe", 1, 1), ("vibe-api", 2, 1)])
+        # vibe is tier 3 and vibe-api tier 4, renumbered from 1; opencode-go is a backup because
+        # vibe serves the model; the free deployment comes after the last tier.
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in specs],
+                         [("vibe", 1, 2), ("vibe-api", 2, 2), ("openrouter", 3, 1)])
 
-    def test_a_non_chat_model_is_registered_only_on_an_api_only_route(self):
+    def test_a_vibe_served_non_mistral_model_uses_the_vibe_tiers(self):
+        cat = catalogue(
+            ("vibe", "glm-5.3", "usable", {}),
+            ("vibe-study", "glm-5.3", "usable", {}),
+            ("vibe-api", "glm-5.3", "usable", {}),
+            ("vibe-study-api", "glm-5.3", "usable", {}),
+            ("opencode-go", "glm-5.3", "usable", {}),
+        )
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
+                         [("vibe", 1, 2), ("vibe-study", 1, 1), ("vibe-api", 2, 2), ("vibe-study-api", 2, 1)])
+
+    def test_a_model_only_opencode_go_serves_is_order_one(self):
+        cat = catalogue(("opencode-go", "glm-5.3", "usable", {}))
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
+                         [("opencode-go", 1, 1)])
+
+    def test_a_canonical_id_puts_opencode_go_in_the_same_group(self):
+        cat = catalogue(
+            ("vibe", "glm-5.3", "usable", {}),
+            ("opencode-go", "glm-5.3-flash", "usable", {"canonical_id": "zhipuai/glm-5.3"}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"]) for s in specs], [("glm-5.3", "vibe")])
+
+    def test_a_non_chat_model_is_deployed_only_on_an_api_only_route(self):
         cat = catalogue(
             ("vibe", "mistral-embed", "not-chat", {"modality": "embedding"}),
             ("vibe-api", "mistral-embed", "not-chat", {"modality": "embedding"}),
@@ -165,84 +178,156 @@ class Plan(unittest.TestCase):
         self.assertEqual([(s["name"], s["route"], s["model_info"].get("mode")) for s in specs],
                          [("mistral-embed", "vibe-api", "embedding"), ("mistral-ocr", "vibe-api", "ocr")])
 
-    def test_gemini_goes_to_google_and_opencode_go_is_only_a_backup(self):
-        cat = catalogue(("google", "gemini-2.5-pro", "usable", {}), ("opencode-go", "gemini-2.5-pro", "usable", {}))
-        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(cat, RULES)], [("google", 1)])
-        # with no google deployment the backup route serves it, at the first order of its own tiers
-        cat = catalogue(("opencode-go", "gemini-2.5-pro", "usable", {}))
-        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(cat, RULES)], [("opencode-go", 1)])
+    def test_a_mode_conflict_gives_the_odd_one_its_own_group(self):
+        cat = catalogue(
+            ("vibe", "bge-m3", "usable", {"modality": "chat"}),
+            ("vibe-api", "bge-m3", "not-chat", {"modality": "embedding"}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["model_info"].get("mode")) for s in specs],
+                         [("bge-m3", "vibe", None), ("bge-m3:embedding", "vibe-api", "embedding")])
 
-    def test_an_exclusive_model_is_only_on_its_route_and_never_free(self):
+    def test_claude_is_only_on_anthropic_and_never_free(self):
         cat = catalogue(
             ("anthropic", "claude-sonnet-4-5-20250929", "usable", {}),
-            ("openrouter", "anthropic/claude-sonnet:free", "usable", {"free": True}),
+            ("openrouter", "anthropic/claude-sonnet-4-5:free", "usable", {"free": True}),
             ("vibe", "claude-sonnet-4-5", "usable", {}),
         )
         specs = sync.plan_groups(cat, RULES)
-        self.assertEqual([(s["route"], s["order"], s["model_info"]["free"]) for s in specs], [("anthropic", 1, False)])
+        self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs], [("claude-sonnet-4-5", "anthropic", 1)])
+
+    def test_openrouter_carries_free_ids_only_with_the_privacy_extra_body(self):
+        cat = catalogue(
+            ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
+            ("openrouter", "z-ai/glm-4.6", "usable", {"free": False}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["route"], s["upstream_id"]) for s in specs], [("openrouter", "z-ai/glm-4.6:free")])
+        self.assertEqual(specs[0]["litellm_params"]["extra_body"],
+                         {"provider": {"data_collection": "deny", "allow_fallbacks": False}})
+
+    def test_local_is_a_normal_tier_and_not_a_free_deployment(self):
+        rules = dict(RULES, tiers=[[["local", 2]], [["vibe", 1]]])
+        cat = catalogue(("local", "glm-4.6", "usable", {"free": True}), ("vibe", "glm-4.6", "usable", {}))
+        # local keeps its tier's weight: a free deployment would be order 1 at weight 1
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, rules)],
+                         [("local", 1, 2), ("vibe", 2, 1)])
 
     def test_a_free_deployment_comes_first_when_no_plan_route_serves_the_model(self):
         cat = catalogue(
             ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
-            ("local", "glm-4.6", "usable", {"free": True}),
+            ("opencode-go", "glm-4.6", "usable", {}),
         )
         self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
-                         [("local", 1, 1), ("openrouter", 1, 1)])
+                         [("openrouter", 1, 1), ("opencode-go", 2, 1)])
 
-    def test_a_free_deployment_comes_after_the_last_tier_when_the_plan_serves_the_model(self):
+    def test_a_free_deployment_comes_after_the_last_tier_when_a_plan_route_serves_the_model(self):
         cat = catalogue(
             ("vibe", "mistral-large", "usable", {}),
             ("openrouter", "mistralai/mistral-large:free", "usable", {"free": True}),
         )
-        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(cat, RULES)], [("openrouter", 2), ("vibe", 1)])
+        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(cat, RULES)], [("vibe", 1), ("openrouter", 2)])
 
-    def test_order_and_weight_come_from_the_tier(self):
-        rules = dict(RULES, tiers=[[["vibe", 3], ["vibe-study", 1]], [["vibe-api", 2]]])
-        cat = catalogue(("vibe", "devstral", "usable", {}), ("vibe-study", "devstral", "usable", {}),
-                        ("vibe-api", "devstral", "usable", {}))
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, rules)],
-                         [("vibe", 1, 3), ("vibe-api", 2, 2), ("vibe-study", 1, 1)])
+    def test_google_is_only_in_a_public_group(self):
+        cat = catalogue(("google", "gemini-2.5-pro", "usable", {}), ("vibe", "gemini-2.5-pro", "usable", {}))
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
+            ("gemini-2.5-pro", "vibe", 1, ["canonical"]),
+            ("public/gemini-2.5-pro", "google", 1, ["google-free-public"]),
+            ("public/gemini-2.5-pro", "vibe", 2, ["google-free-public"]),
+        ])
+        public = {s["route"]: s for s in specs if s["name"].startswith("public/")}
+        self.assertEqual(public["google"]["litellm_params"]["cooldown_time"], 120)
+        self.assertNotIn("max_budget", public["google"]["litellm_params"])
+        self.assertEqual(public["google"]["model_info"]["id"], "public/google/gemini-2.5-pro")
+        self.assertEqual(public["vibe"]["model_info"]["id"], "public/vibe/gemini-2.5-pro")
 
-    def test_a_route_no_tier_names_comes_after_every_tier(self):
-        rules = {"tiers": [[["vibe", 1]]]}
-        cat = catalogue(("vibe", "devstral", "usable", {}), ("opencode-go", "devstral", "usable", {}))
-        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(cat, rules)], [("opencode-go", 2), ("vibe", 1)])
+    def test_a_model_only_google_serves_has_only_the_public_group(self):
+        cat = catalogue(("google", "gemini-2.5-pro", "usable", {}))
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs], [("public/gemini-2.5-pro", "google", 1)])
+        self.assertEqual(specs[0]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
 
-    def test_budgets_and_limits_are_copied_from_the_rules(self):
+    def test_a_single_deployment_group_with_a_cooldown_cools_down(self):
+        cat = catalogue(("vibe", "devstral", "usable", {}))
+        spec = sync.plan_groups(cat, RULES)[0]
+        self.assertEqual(spec["litellm_params"]["cooldown_time"], 5)
+        self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
+        # two deployments: the router falls back to the next order level instead
+        cat = catalogue(("vibe", "devstral", "usable", {}), ("vibe-study", "devstral", "usable", {}))
+        for spec in sync.plan_groups(cat, RULES):
+            self.assertNotIn("allowed_fails_policy", spec["model_info"])
+        # no cooldown in the rules: nothing to cool down
+        self.assertNotIn("allowed_fails_policy", sync.plan_groups(cat, dict(RULES, cooldowns={}))[0]["model_info"])
+
+    def test_a_route_policy_from_the_rules_is_added(self):
+        rules = dict(RULES, policies={"anthropic": {"BadRequestErrorAllowedFails": 2}}, cooldowns={"anthropic": 300})
+        cat = catalogue(("anthropic", "claude-sonnet-4-5", "usable", {}))
+        plan = sync.plan_groups(cat, rules)
+        self.assertEqual(plan[0]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0, "BadRequestErrorAllowedFails": 2})
+        self.assertEqual(plan[0]["litellm_params"]["cooldown_time"], 300)
+
+    def test_budgets_and_cooldowns_are_copied_from_the_rules(self):
         cat = catalogue(("vibe-api", "mistral-large", "usable", {}))
         spec = sync.plan_groups(cat, RULES)[0]
         self.assertEqual(spec["litellm_params"], {
             "model": "mistral/mistral-large",
-            "api_base": "os.environ/MISTRAL_API_BASE",
-            "api_key": "os.environ/VIBE_API_KEY_PAID",
+            "litellm_credential_name": "vibe-api",
             "order": 1,
-            "weight": 1,
-            "rpm": 60,
-            "tpm": 100000,
-            "max_budget": 20,
+            "weight": 2,
+            "max_budget": 50,
             "budget_duration": "30d",
+            "cooldown_time": 5,
         })
-        self.assertEqual(spec["model_info"]["id"],
-                         "catalog-c-" + hashlib.sha1(b"mistral-large|vibe-api|mistral-large").hexdigest()[:12])
-        self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
-        self.assertEqual(spec["model_info"]["modality"], "chat")
-        self.assertNotIn("mode", spec["model_info"])
+        self.assertEqual(spec["model_info"], {
+            "id": "vibe-api/mistral-large",
+            "route": "vibe-api",
+            "canonical": "mistral-large",
+            "access_groups": ["canonical"],
+            "allowed_fails_policy": {"RateLimitErrorAllowedFails": 0},
+        })
 
-    def test_google_and_anthropic_deployments_carry_no_api_base(self):
-        cat = catalogue(("google", "gemini-2.5-pro", "usable", {}), ("anthropic", "claude-sonnet", "usable", {}))
-        specs = {s["route"]: s for s in sync.plan_groups(cat, RULES)}
-        self.assertEqual(specs["google"]["litellm_params"],
-                         {"model": "gemini/gemini-2.5-pro", "api_key": "os.environ/GOOGLE_API_KEY", "order": 1, "weight": 1})
-        self.assertEqual(specs["anthropic"]["litellm_params"],
-                         {"model": "anthropic/claude-sonnet", "api_key": "os.environ/ANTHROPIC_API_KEY", "order": 1, "weight": 1})
+    def test_a_transient_state_keeps_the_deployment(self):
+        cat = catalogue(("vibe", "mistral-large", "error", {"was_usable": True}))
+        self.assertEqual([s["route"] for s in sync.plan_groups(cat, RULES)], ["vibe"])
+        cat = catalogue(("vibe", "mistral-large", "blocked", {"was_usable": True, "failing_probes": 2}))
+        self.assertEqual(sync.plan_groups(cat, RULES), [])
+
+    def test_a_model_absent_once_keeps_its_deployment(self):
+        cat = catalogue(("vibe", "mistral-large", "usable", {"absent_runs": 1}))
+        self.assertEqual([s["route"] for s in sync.plan_groups(cat, RULES)], ["vibe"])
+        cat = catalogue(("vibe", "mistral-large", "usable", {"absent_runs": 2}))
+        self.assertEqual(sync.plan_groups(cat, RULES), [])
 
     def test_two_ids_of_one_route_keep_the_shortest(self):
         cat = catalogue(("vibe", "mistral-large-latest", "usable", {}), ("vibe", "mistral-large-2411", "usable", {}))
         self.assertEqual([s["upstream_id"] for s in sync.plan_groups(cat, RULES)], ["mistral-large-2411"])
 
-    def test_an_absent_model_is_not_planned(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {"absent_runs": 1}))
-        self.assertEqual(sync.plan_groups(cat, RULES), [])
+    def test_every_deployment_id_is_unique(self):
+        cat = catalogue(
+            ("google", "gemini-2.5-pro", "usable", {}),
+            ("vibe", "gemini-2.5-pro", "usable", {}),
+            ("vibe", "mistral-large", "usable", {}),
+            ("vibe-api", "mistral-large", "usable", {}),
+        )
+        ids = [s["model_info"]["id"] for s in sync.plan_groups(cat, RULES)]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_the_plan_is_deterministic(self):
+        cat = catalogue(
+            ("vibe", "mistral-large", "usable", {}),
+            ("vibe-study", "mistral-large", "usable", {}),
+            ("vibe-api", "mistral-large", "usable", {}),
+            ("google", "gemini-2.5-pro", "usable", {}),
+            ("vibe", "gemini-2.5-pro", "usable", {}),
+            ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
+            ("opencode-go", "glm-4.6", "usable", {}),
+        )
+        first = sync.plan_groups(cat, RULES)
+        second = sync.plan_groups(json.loads(json.dumps(cat)), RULES)
+        self.assertEqual(json.dumps(first), json.dumps(second))
+        keys = [(s["name"], s["order"], s["route"]) for s in first]
+        self.assertEqual(keys, sorted(keys))
 
     def test_near_duplicates_are_reported_and_never_merged(self):
         cat = catalogue(
@@ -267,12 +352,12 @@ class Routes(unittest.TestCase):
         self.assertEqual(found["gemini-2.5-pro"]["modality"], "chat")
         self.assertEqual(found["gemini-embedding-001"]["modality"], "embedding")
         self.assertIs(found["gemini-embedding-001"]["chat"], False)
-        self.assertEqual(http.calls[0][2], {"Authorization": "Bearer k-google"})
+        self.assertEqual(http.calls[0][2], {"Authorization": "Bearer k-gemini"})
         self.assertEqual(sync.probe(entry("google"), "gemini-2.5-pro", ENV, http)[0], "usable")
         call = http.calls[-1]
         self.assertEqual(call[1], "https://g/v1/chat/completions")
         self.assertEqual(call[3]["model"], "gemini-2.5-pro")
-        self.assertEqual(call[2]["Authorization"], "Bearer k-google")
+        self.assertEqual(call[2]["Authorization"], "Bearer k-gemini")
 
     def test_anthropic_lists_and_probes_with_its_own_headers(self):
         http = Http()
@@ -295,11 +380,11 @@ class Routes(unittest.TestCase):
             sync.list_models(entry(route), ENV, http)
             sync.probe(entry(route), "x", ENV, http)
         bodies = json.dumps([c[3] for c in http.calls])
-        for secret in ("k-google", "k-anthropic", "k-vibe", "k-paid", "sk-master-secret"):
+        for secret in ("k-gemini", "k-anthropic", "k-vibe", "k-general", "k-study-general"):
             self.assertNotIn(secret, bodies)
 
     def test_a_route_whose_key_is_unset_is_skipped_silently(self):
-        env = {k: v for k, v in ENV.items() if k != "GOOGLE_API_KEY"}
+        env = {k: v for k, v in ENV.items() if k != "GEMINI_API_KEY"}
         http = Http()
         cat, stats = sync.build(env, http, {}, NOW)
         self.assertEqual(stats["route_errors"], [])
@@ -326,112 +411,23 @@ class Routes(unittest.TestCase):
         self.assertEqual(meta["vibe/mistral-embed"]["status"], "not-chat")
         self.assertEqual(meta["vibe/mistral-ocr-latest"]["status"], "not-chat")
 
-
-class Reconcile(unittest.TestCase):
-    def test_the_sync_registers_canonical_groups(self):
+    def test_the_sync_plans_the_whole_catalogue_without_a_proxy(self):
         cat, _ = sync.build(ENV, Http(), {}, NOW)
-        http = Http(info=info())
-        sync.reconcile(cat, ENV, http, rules=RULES)
-        names = {b["model_name"] for b in http.added}
-        for name in ("mistral-large", "gemini-2.5-pro", "claude-sonnet", "glm-4.6", "glm-5.3"):
+        specs = sync.plan_groups(cat, RULES)
+        names = {s["name"] for s in specs}
+        # Gemini is served only by Google's free tier, so it has only its public group.
+        for name in ("mistral-large", "public/gemini-2.5-pro", "claude-sonnet-4-5", "glm-4.6", "glm-5.3"):
             self.assertIn(name, names)
+        self.assertNotIn("gemini-2.5-pro", names)
         self.assertNotIn("mistral-moderation", names)
-        embed = [b for b in http.added if b["model_name"] == "mistral-embed"]
-        self.assertEqual([b["model_info"]["route"] for b in embed], ["vibe-api", "vibe-study-api"])
+        embed = [s for s in specs if s["name"] == "mistral-embed"]
+        self.assertEqual([s["route"] for s in embed], ["vibe-api", "vibe-study-api"])
         self.assertEqual(embed[0]["model_info"]["mode"], "embedding")
         self.assertEqual(embed[0]["litellm_params"]["model"], "mistral/mistral-embed")
-        # the values are env names, never the secrets
-        bodies = json.dumps([c[3] for c in http.calls])
-        for secret in ("k-vibe", "k-paid", "k-google", "k-anthropic", "sk-master-secret"):
+        # the values are credential names, never the secrets
+        bodies = json.dumps(specs)
+        for secret in ("k-vibe", "k-general", "k-gemini", "k-anthropic"):
             self.assertNotIn(secret, bodies)
-
-    def test_a_changed_rule_replaces_the_deployment(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}))
-        http = Http(info=info())
-        sync.reconcile(cat, ENV, http, rules=RULES)
-        body = next(b for b in http.added if b["model_name"] == "mistral-large")
-        self.assertEqual(body["litellm_params"]["order"], 1)
-        self.assertEqual(body["litellm_params"]["weight"], 1)
-        # the same rules again: nothing to replace
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=RULES)
-        self.assertEqual((result["replaced"], result["removed"]), (0, 0))
-        self.assertEqual(http.deleted, [])
-        # a changed weight: delete, then add
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=dict(RULES, tiers=[[["vibe", 2]]]))
-        self.assertEqual((result["replaced"], result["removed"]), (1, 0))
-        self.assertEqual(http.deleted, [body["model_info"]["id"]])
-        self.assertEqual(http.added[-1]["litellm_params"]["weight"], 2)
-
-    def test_canonical_deployments_never_touch_a_model_it_did_not_create(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}))
-        http = Http(info=info(("mistral-large", {"id": "hand-1", "db_model": True}),
-                              ("vibe/*", {"id": "config-1", "db_model": False})))
-        result = sync.reconcile(cat, ENV, http, rules=RULES)
-        self.assertEqual(http.deleted, [])
-        self.assertEqual(result["removed"], 0)
-        self.assertEqual(len(http.added), 2)  # the explicit model and its canonical deployment
-
-    def test_a_stale_route_keeps_its_canonical_deployments(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}))
-        http = Http(info=info())
-        sync.reconcile(cat, ENV, http, rules=RULES)
-        body = next(b for b in http.added if b["model_name"] == "mistral-large")
-        cat["providers"]["vibe"]["models"] = []
-        cat["providers"]["vibe"]["metadata"]["stale"] = True
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=RULES)
-        self.assertEqual(http.deleted, [])
-        self.assertEqual(result["removed"], 0)
-        # a live route that lost the model does remove it
-        cat["providers"]["vibe"]["metadata"].pop("stale")
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=RULES)
-        self.assertEqual(http.deleted, [body["model_info"]["id"]])
-        self.assertEqual(result["removed"], 1)
-
-    def test_a_deployment_goes_when_its_model_failed_twice(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}), ("vibe", "alive", "usable", {}))
-        http = Http(info=info())
-        sync.reconcile(cat, ENV, http, rules=RULES)
-        body = next(b for b in http.added if b["model_name"] == "mistral-large")
-        model = cat["providers"]["vibe"]["models"][0]
-        model["metadata"].update(status="blocked", failing_probes=2)
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=RULES)
-        self.assertEqual(http.deleted, [body["model_info"]["id"]])
-        self.assertEqual(result["removed"], 1)
-
-    def test_canonical_adds_count_toward_max_adds(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}), ("vibe", "devstral", "usable", {}))
-        http = Http(info=info())
-        result = sync.reconcile(cat, ENV, http, rules=RULES, max_adds=1)
-        self.assertEqual(result["added"], 1)
-        self.assertEqual(len(http.added), 1)
-
-    def test_the_removal_guard_covers_canonical_deployments(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}))
-        http = Http(info=info())
-        sync.reconcile(cat, ENV, http, rules=RULES)
-        body = next(b for b in http.added if b["model_name"] == "mistral-large")
-        cat["providers"]["vibe"]["models"] = [{"id": "vibe/other", "metadata": {"status": "usable"}}]
-        http = Http(info=info(managed(body)))
-        result = sync.reconcile(cat, ENV, http, rules=RULES, max_removals=0)
-        self.assertEqual(http.deleted, [])
-        self.assertIn("removal guard", result["errors"][0])
-
-    def test_the_catalogue_records_the_groups(self):
-        cat = catalogue(("vibe", "mistral-large", "usable", {}), ("vibe-api", "mistral-large", "usable", {}))
-        sync.reconcile(cat, ENV, Http(info=info()), rules=RULES)
-        self.assertEqual(cat["canonical"], {"mistral-large": {
-            "family": "mistral",
-            "modality": "chat",
-            "deployments": [
-                {"route": "vibe", "order": 1, "weight": 1, "registered": True},
-                {"route": "vibe-api", "order": 2, "weight": 1, "registered": True},
-            ],
-        }})
 
 
 if __name__ == "__main__":

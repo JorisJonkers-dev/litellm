@@ -1,12 +1,10 @@
-"""The catalogue sync: listing, probing at the provider, classification, caching, registration, publishing."""
+"""The catalogue sync: listing, probing at the provider, classification, caching, publishing."""
 import base64
 import contextlib
 import datetime
-import hashlib
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import unittest
@@ -18,12 +16,11 @@ import sync  # noqa: E402
 import overview  # noqa: E402
 
 NOW = datetime.datetime(2026, 11, 10, 12, 0, tzinfo=datetime.timezone.utc)
-ADMIN = "http://litellm:4000"
 ENV = {
     "MISTRAL_API_BASE": "https://m/v1", "OPENCODE_GO_API_BASE": "https://oc/v1", "OPENROUTER_API_BASE": "https://or/v1",
     "LOCAL_LLM_API_BASE": "http://local/v1", "VIBE_API_KEY": "k-vibe", "VIBE_STUDY_API_KEY": "k-study",
+    "VIBE_API_GENERAL_KEY": "k-general", "VIBE_STUDY_API_GENERAL_KEY": "k-study-general",
     "OPENCODE_GO_API_KEY": "k-oc", "OPENROUTER_API_KEY": "k-or", "LOCAL_LLM_API_KEY": "none",
-    "LITELLM_URL": ADMIN, "LITELLM_MASTER_KEY": "sk-master-secret",
 }
 LISTS = {
     "https://m/v1/models": {"data": [{"id": "mistral-large", "name": "L", "max_context_length": 1000, "capabilities": {"completion_chat": True}},
@@ -33,37 +30,27 @@ LISTS = {
                                        {"id": "c/d", "pricing": {"prompt": "0.1", "completion": "0.1"}}, {"id": "e/f", "pricing": {"prompt": "0", "completion": "0"}}]},
     "http://local/v1/models": {"data": [{"id": "qwen3:32b"}]},
 }
+# The rules a real catalog/routing.json holds, inline: the tests must not depend on that file.
+RULES = {"tiers": [[["vibe", 1]], [["vibe-api", 1]]], "cooldowns": {"vibe": 5}}
 
 
 class Http:
-    """A stub transport: provider lists, probe answers, the proxy's admin API and GitHub.
+    """A stub transport: provider lists, probe answers and GitHub.
 
     `answers` maps (provider url, upstream model id) to (status, body), or to a list of those
     consumed in order, so a retried probe sees the next answer.
     """
 
-    def __init__(self, answers=None, lists=None, info=None, new=None, delete=None):
+    def __init__(self, answers=None, lists=None):
         self.answers = answers or {}
         self.lists = LISTS if lists is None else lists
-        self.info = info
-        self.new = new or {}
-        self.delete = delete or {}
         self.calls, self.puts = [], []
-        self.added, self.deleted = [], []
 
     def __call__(self, method, url, headers, body):
         self.calls.append((method, url, headers, body))
-        if method == "POST" and url.endswith("/chat/completions"):
+        if method == "POST" and url.endswith(("/chat/completions", "/messages")):
             answer = self.answers.get((url, body["model"]), (200, {"choices": [{"message": {"content": "SECRET-RESPONSE"}}]}))
             return answer.pop(0) if isinstance(answer, list) else answer
-        if method == "POST" and url.endswith("/model/new"):
-            self.added.append(body)
-            return self.new.get(body["model_name"], (200, {"model_id": "x"}))
-        if method == "POST" and url.endswith("/model/delete"):
-            self.deleted.append(body["id"])
-            return self.delete.get(body["id"], (200, {}))
-        if method == "GET" and url.endswith("/model/info"):
-            return self.info if self.info is not None else (404, "no")
         if method == "PUT":
             self.puts.append((url, body))
             return 201, {}
@@ -73,21 +60,10 @@ class Http:
 
     def probed(self):
         """(provider url, upstream id) of every probe: the provider is asked, never the proxy."""
-        return [(c[1], c[3]["model"]) for c in self.calls if c[0] == "POST" and c[1].endswith("/chat/completions")]
+        return [(c[1], c[3]["model"]) for c in self.calls if c[0] == "POST" and c[1].endswith(("/chat/completions", "/messages"))]
 
     def probed_ids(self):
         return [model for _, model in self.probed()]
-
-
-def info(*entries):
-    """A /model/info answer: (model_name, model_info) pairs."""
-    return 200, {"data": [{"model_name": name, "model_info": meta} for name, meta in entries]}
-
-
-def managed(name, route=None, id=None, **extra):
-    """A model this catalogue registered earlier."""
-    return (name, {"id": id or "catalog-" + name.replace("/", "-"), "managed_by": "litellm-catalog",
-                   "db_model": True, "route": route or name.split("/", 1)[0], **extra})
 
 
 class Classify(unittest.TestCase):
@@ -166,6 +142,20 @@ class Listing(unittest.TestCase):
         self.assertIs(mistral["mistral-embed"]["chat"], False)
         self.assertIsNone(mistral["bare"]["chat"])
 
+    def test_the_four_mistral_accounts_read_their_own_keys(self):
+        http = Http()
+        for route, key in (("vibe", "k-vibe"), ("vibe-study", "k-study"),
+                           ("vibe-api", "k-general"), ("vibe-study-api", "k-study-general")):
+            sync.list_models(self.entry(route), ENV, http)
+            self.assertEqual(http.calls[-1][2], {"Authorization": f"Bearer {key}"}, route)
+
+    def test_opencode_go_canonical_id_is_kept(self):
+        lists = dict(LISTS, **{"https://oc/v1/models": {"data": [{"id": "glm-5.3-flash", "canonical_id": "zhipuai/glm-5.3"},
+                                                           {"id": "plain"}]}})
+        found = {m["id"]: m for m in sync.list_models(self.entry("opencode-go"), ENV, Http(lists=lists))}
+        self.assertEqual(found["glm-5.3-flash"]["canonical_id"], "zhipuai/glm-5.3")
+        self.assertNotIn("canonical_id", found["plain"])
+
 
 class Rules(unittest.TestCase):
     def test_load_rules_reads_a_file_and_the_env_override(self):
@@ -223,9 +213,9 @@ class Build(unittest.TestCase):
         vibe = next(c for c in http.calls if c[0] == "POST" and c[1] == "https://m/v1/chat/completions")
         self.assertEqual(vibe[2]["Authorization"], "Bearer k-vibe")
         self.assertNotIn("x-opencode-session", vibe[2])
-        # the proxy is never asked to answer a probe, and never sees the master key here
-        self.assertEqual([c for c in http.calls if c[1].startswith(ADMIN)], [])
-        self.assertNotIn("sk-master-secret", json.dumps([c[2] for c in http.calls]))
+        # the provider is asked, never a proxy: every call goes to a provider base
+        bases = ("https://m/v1", "https://oc/v1", "https://or/v1", "http://local/v1")
+        self.assertEqual([c[1] for c in http.calls if not c[1].startswith(bases)], [])
 
     def test_a_probe_retries_once_at_the_providers_minimum(self):
         url = "https://oc/v1/chat/completions"
@@ -246,7 +236,7 @@ class Build(unittest.TestCase):
 
     def test_published_catalogue_holds_no_key_and_no_response(self):
         text = json.dumps(self.run_build(Http())[0])
-        for secret in ("k-vibe", "k-study", "k-oc", "k-or", "sk-master-secret", "SECRET-RESPONSE"):
+        for secret in ("k-vibe", "k-study", "k-general", "k-study-general", "k-oc", "k-or", "SECRET-RESPONSE"):
             self.assertNotIn(secret, text)
 
     def test_cache_skips_fresh_models_and_reprobes_stale_errored_and_new(self):
@@ -343,13 +333,6 @@ class Build(unittest.TestCase):
         self.assertNotIn("local", cat["providers"])
         self.assertIn("opencode-go", cat["providers"])
 
-    def test_probing_needs_no_proxy(self):
-        http = Http()
-        env = {k: v for k, v in ENV.items() if k not in ("LITELLM_URL", "LITELLM_MASTER_KEY")}
-        cat, stats = sync.build(env, http, {}, NOW)
-        self.assertGreater(stats["probed"], 0)
-        self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "usable")
-
     def test_opencode_probe_carries_a_session_header_and_hints_are_flagged(self):
         http = Http()
         cat, _ = self.run_build(http, route_limits={})
@@ -370,14 +353,10 @@ class Build(unittest.TestCase):
         lists = dict(LISTS, **{"https://m/v1/models": {"data": [{"id": "glm-5.3"}]},
                                "https://oc/v1/models": {"data": [{"id": "zai-glm-5.3"}]}})
         cat, _ = self.run_build(Http(lists=lists))
-        self.assertEqual(cat["possible_duplicates"], [["opencode-go/zai-glm-5.3", "vibe-study/glm-5.3", "vibe/glm-5.3"]])
+        self.assertEqual(cat["possible_duplicates"], [[
+            "opencode-go/zai-glm-5.3", "vibe-api/glm-5.3", "vibe-study-api/glm-5.3", "vibe-study/glm-5.3", "vibe/glm-5.3",
+        ]])
         self.assertEqual(self.run_build(Http())[0]["possible_duplicates"], [])
-
-    def test_admin_url_from_url_or_host_and_port(self):
-        self.assertEqual(sync.admin_url(ENV), ADMIN)
-        self.assertEqual(sync.admin_url({"LITELLM_HOST": "litellm.ns", "LITELLM_PORT": "4000"}), "http://litellm.ns:4000")
-        self.assertEqual(sync.admin_url({"LITELLM_HOST": "litellm.ns"}), "http://litellm.ns:4000")
-        self.assertEqual(sync.admin_url({}), "")
 
     def test_age(self):
         self.assertEqual(sync.parse_age("2d"), datetime.timedelta(days=2))
@@ -385,211 +364,108 @@ class Build(unittest.TestCase):
         with self.assertRaises(ValueError):
             sync.parse_age("soon")
 
-    def test_routes_match_config(self):
-        config = (ROOT / "config" / "config.yaml").read_text()
-        names = re.findall(r"^ {2}- model_name: (\S+)/\*$", config, re.M)
-        routes = [e["route"] for e in sync.ROUTES]
-        # Every wildcard the config serves is a catalogue route, in the same order. The paid Vibe
-        # routes and the Google and Anthropic routes have no wildcard: the catalogue registers them.
-        self.assertEqual(names, [route for route in routes if route in names])
-        for e in sync.ROUTES:
-            if e["route"] in names:
-                self.assertIn(f"os.environ/{e['base_env']}", config)
-                self.assertIn(f"os.environ/{e['key_env']}", config)
-        # A catalogue-only route reads its key from the Process env, so the proxy can resolve it.
-        env = (ROOT / "deploy" / "env" / "litellm" / "base.env").read_text()
-        for e in sync.ROUTES:
-            if e["route"] not in names:
-                self.assertIn(f"{e['key_env']}=", env)
+
+class Grace(unittest.TestCase):
+    """A model that was usable keeps its place through a transient state, and through one absence."""
+
+    def meta(self, **kw):
+        return dict({"status": "usable", "was_usable": True}, **kw)
+
+    def test_a_transient_state_keeps_the_model_a_candidate(self):
+        for status in ("error", "budget-exhausted", "pending", "blocked", "unknown"):
+            self.assertTrue(sync.candidate(self.meta(status=status, failing_probes=1), "chat", "vibe", set()), status)
+        # two blocked or unknown probes in a row are what drops it
+        for status in ("blocked", "unknown"):
+            self.assertFalse(sync.candidate(self.meta(status=status, failing_probes=2), "chat", "vibe", set()), status)
+        # a model that was never usable is not a candidate
+        self.assertFalse(sync.candidate({"status": "error"}, "chat", "vibe", set()))
+        self.assertFalse(sync.candidate({"status": "blocked", "failing_probes": 1}, "chat", "vibe", set()))
+
+    def test_one_absence_keeps_the_model_and_two_drop_it(self):
+        self.assertTrue(sync.candidate(self.meta(absent_runs=1), "chat", "vibe", set()))
+        self.assertFalse(sync.candidate(self.meta(absent_runs=2), "chat", "vibe", set()))
+
+    def test_a_non_chat_model_is_a_candidate_only_on_an_api_only_route(self):
+        meta = {"status": "not-chat", "modality": "embedding"}
+        self.assertTrue(sync.candidate(meta, "embedding", "vibe-api", {"vibe-api"}))
+        self.assertFalse(sync.candidate(meta, "embedding", "vibe", {"vibe-api"}))
+        self.assertFalse(sync.candidate({"status": "not-chat"}, "moderation", "vibe-api", {"vibe-api"}))
+
+    def test_a_paid_openrouter_model_is_never_a_candidate(self):
+        self.assertFalse(sync.candidate({"status": "usable", "free": False}, "chat", "openrouter", set()))
+        self.assertTrue(sync.candidate({"status": "usable", "free": True}, "chat", "openrouter", set()))
+
+    def test_build_marks_a_usable_model_and_carries_the_mark(self):
+        cat, _ = sync.build(ENV, Http(), {}, NOW)
+        meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
+        self.assertNotIn("was_usable", meta["openrouter/c/d"])  # unprobed, never usable
+        fresh, _ = sync.build(ENV, Http(), cat, NOW + datetime.timedelta(hours=1))
+        meta = {m["id"]: m["metadata"] for p in fresh["providers"].values() for m in p["models"]}
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
+
+    def test_build_clears_the_mark_after_two_blocked_probes(self):
+        url = "https://oc/v1/chat/completions"
+        blocked = (403, '{"error":{"message":"hosted outside Europe"}}')
+        first, _ = sync.build(ENV, Http(), {}, NOW)
+        meta = {m["id"]: m["metadata"] for p in first["providers"].values() for m in p["models"]}
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
+        second, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), first, NOW + datetime.timedelta(hours=25))
+        meta = {m["id"]: m["metadata"] for p in second["providers"].values() for m in p["models"]}
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)  # one bad probe keeps its place
+        third, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), second, NOW + datetime.timedelta(hours=50))
+        meta = {m["id"]: m["metadata"] for p in third["providers"].values() for m in p["models"]}
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 2)
+        self.assertNotIn("was_usable", meta["opencode-go/glm-5.3-flash"])
 
 
-class Reconcile(unittest.TestCase):
-    def catalogue(self, http=None):
-        return sync.build(ENV, http or Http(), {}, NOW)[0]
+class Render(unittest.TestCase):
+    def test_the_file_is_a_header_then_a_json_document(self):
+        cat = {"providers": {
+            "vibe": {"metadata": {}, "models": [{"id": "vibe/mistral-large", "metadata": {"status": "usable"}}]},
+            "vibe-api": {"metadata": {}, "models": [{"id": "vibe-api/mistral-large", "metadata": {"status": "usable"}}]},
+        }}
+        text = sync.render_models(sync.plan_groups(cat, RULES))
+        lines = text.splitlines()
+        self.assertEqual(lines[0], "# Generated by catalog/sync.py from the probed catalogue. Do not edit by hand.")
+        self.assertTrue(lines[1].startswith("#"))
+        document = json.loads("\n".join(line for line in lines if not line.startswith("#")))
+        self.assertEqual([item["model_name"] for item in document["model_list"]], ["mistral-large", "mistral-large"])
+        self.assertEqual(list(document["model_list"][0]), ["model_name", "litellm_params", "model_info"])
+        self.assertTrue(text.endswith("\n"))
 
-    def test_adds_only_usable_models_with_env_names_and_both_auth_headers(self):
-        blocked = ("https://oc/v1/chat/completions", "deepseek-v4-pro")
-        cat = self.catalogue(Http(answers={blocked: (403, '{"error":{"message":"hosted outside Europe"}}')}))
-        http = Http(info=info())
-        result = sync.reconcile(cat, ENV, http)
-        names = [body["model_name"] for body in http.added]
-        self.assertIn("opencode-go/glm-5.3-flash", names)
-        self.assertNotIn("opencode-go/deepseek-v4-pro", names)  # blocked
-        self.assertNotIn("openrouter/c/d", names)  # unprobed
-        self.assertNotIn("vibe/mistral-embed", names)  # not-chat
-        self.assertEqual(result["added"], len(names))
-        body = next(b for b in http.added if b["model_name"] == "opencode-go/glm-5.3-flash")
-        self.assertEqual(body["litellm_params"], {"model": "openai/glm-5.3-flash",
-                                                  "api_base": "os.environ/OPENCODE_GO_API_BASE",
-                                                  "api_key": "os.environ/OPENCODE_GO_API_KEY"})
-        self.assertEqual(body["model_info"]["managed_by"], "litellm-catalog")
-        self.assertEqual(body["model_info"]["route"], "opencode-go")
-        self.assertEqual(body["model_info"]["access_groups"], ["opencode-go"])
-        self.assertIs(body["model_info"]["free"], False)
-        self.assertEqual(body["model_info"]["id"], "catalog-opencode-go-" + hashlib.sha1(b"opencode-go/glm-5.3-flash").hexdigest()[:12])
-        mistral = next(b for b in http.added if b["model_name"] == "vibe/mistral-large")
-        self.assertEqual(mistral["litellm_params"]["model"], "mistral/mistral-large")
-        # the values are env names, never the secrets
-        text = json.dumps(http.added)
-        for secret in ("k-vibe", "k-study", "k-oc", "k-or", "sk-master-secret"):
-            self.assertNotIn(secret, text)
-        # both key headers on every admin call
-        admin = [c for c in http.calls if c[1].startswith(ADMIN)]
-        self.assertTrue(admin)
-        for call in admin:
-            self.assertEqual(call[2]["Authorization"], "Bearer sk-master-secret")
-            self.assertEqual(call[2]["x-litellm-api-key"], "Bearer sk-master-secret")
-            self.assertEqual(call[2]["Content-Type"], "application/json")
-
-    def test_never_touches_models_it_did_not_create(self):
-        cat = self.catalogue()
-        http = Http(info=info(
-            ("vibe/*", {"id": "config-1", "db_model": False}),
-            ("hand/made", {"id": "hand-1", "db_model": True}),
-            managed("local/gone"),
-        ))
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(http.deleted, ["catalog-local-gone"])
-        self.assertEqual(result["removed"], 1)
-
-    def test_a_route_missing_from_the_catalogue_is_not_evidence(self):
-        cat = {"providers": {}}
-        http = Http(info=info(managed("vibe/a"), managed("vibe/b")))
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(http.deleted, [])
-        self.assertEqual(result["removed"], 0)
-
-    def test_failing_probes_remove_nothing_on_a_route_where_nothing_is_usable(self):
-        cat = {"providers": {"vibe": {"metadata": {}, "models": [
-            {"id": "vibe/a", "metadata": {"status": "unknown", "failing_probes": 2}},
-            {"id": "vibe/b", "metadata": {"status": "unknown", "failing_probes": 2}}]}}}
-        http = Http(info=info(managed("vibe/a"), managed("vibe/b")))
-        sync.reconcile(cat, ENV, http)
-        self.assertEqual(http.deleted, [])
-        cat["providers"]["vibe"]["models"].append({"id": "vibe/c", "metadata": {"status": "usable"}})
-        http = Http(info=info(managed("vibe/a"), managed("vibe/b")))
-        sync.reconcile(cat, ENV, http)
-        self.assertEqual(len(http.deleted), 2)
-
-    def test_removal_guard_names_the_flag_that_confirms(self):
-        cat = {"providers": {"vibe": {"metadata": {}, "models": [{"id": "vibe/live", "metadata": {"status": "usable"}}]}}}
-        http = Http(info=info(*[managed(f"vibe/g{i}") for i in range(3)]))
-        result = sync.reconcile(cat, ENV, http, max_removals=2)
-        self.assertEqual(http.deleted, [])
-        self.assertIn("--max-removals 3", result["errors"][0])
-        result = sync.reconcile(cat, ENV, Http(info=info(*[managed(f"vibe/g{i}") for i in range(3)])), max_removals=3)
-        self.assertEqual(result["removed"], 3)
-
-    def test_respects_max_adds(self):
-        cat = self.catalogue()
-        http = Http(info=info())
-        result = sync.reconcile(cat, ENV, http, max_adds=2)
-        self.assertEqual([b["model_name"] for b in http.added], ["local/qwen3:32b", "opencode-go/deepseek-v4-pro"])
-        self.assertEqual(result["added"], 2)
-        self.assertGreater(result["deferred"], 0)
-
-    def test_removal_guard_removes_nothing(self):
-        cat = self.catalogue()
-        http = Http(info=info(*[managed(f"local/gone{i}") for i in range(3)]))
-        result = sync.reconcile(cat, ENV, http, max_removals=2)
-        self.assertEqual(http.deleted, [])
-        self.assertEqual(result["removed"], 0)
-        self.assertTrue(result["errors"][0].startswith("removal guard: 3 removals exceed 2"))
-
-    def test_a_stale_route_removes_nothing_and_keeps_its_published_flags(self):
-        first = self.catalogue()
-        sync.reconcile(first, ENV, Http(info=info()))
-        flags = {m["id"]: m["metadata"]["registered"] for m in first["providers"]["local"]["models"]}
-        lists = dict(LISTS, **{"http://local/v1/models": None})
-        cat = sync.build(ENV, Http(lists=lists), first, NOW + datetime.timedelta(hours=1))[0]
-        self.assertTrue(cat["providers"]["local"]["metadata"]["stale"])
-        http = Http(info=info(managed("local/gone")))
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(http.deleted, [])
-        self.assertEqual(result["removed"], 0)
-        self.assertEqual({m["id"]: m["metadata"]["registered"] for m in cat["providers"]["local"]["models"]}, flags)
-
-    def test_model_info_failure_changes_nothing(self):
-        for answer in ((500, "down"), (200, {"nope": 1})):
-            cat = self.catalogue()
-            before = json.dumps(cat, sort_keys=True)
-            http = Http(info=answer)
-            result = sync.reconcile(cat, ENV, http)
-            self.assertEqual(json.dumps(cat, sort_keys=True), before)
-            self.assertEqual(http.added, [])
-            self.assertEqual(http.deleted, [])
-            self.assertIn("model/info", result["skipped_reason"])
-            self.assertEqual(result["errors"], [])
-
-    def test_a_model_that_failed_twice_is_removed_but_not_one_that_is_flapping(self):
-        cat = self.catalogue()
-        for provider in cat["providers"].values():
-            for model in provider["models"]:
-                if model["id"] == "opencode-go/glm-5.3-flash":
-                    model["metadata"].update(status="blocked", failing_probes=2)
-                if model["id"] == "opencode-go/deepseek-v4-pro":
-                    model["metadata"].update(status="error", failing_probes=2)
-                if model["id"] == "openrouter/c/d":
-                    model["metadata"].update(status="unprobed", failing_probes=2)
-        cat["providers"]["opencode-go"]["models"].append({"id": "opencode-go/alive", "metadata": {"status": "usable"}})  # the route itself works
-        cat["providers"]["openrouter"]["models"].append({"id": "openrouter/alive", "metadata": {"status": "usable"}})
-        http = Http(info=info(managed("opencode-go/glm-5.3-flash"), managed("opencode-go/deepseek-v4-pro"), managed("openrouter/c/d")))
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(http.deleted, ["catalog-opencode-go-glm-5.3-flash"])
-        self.assertEqual(result["removed"], 1)
-
-    def test_registered_flags_and_counts_come_from_the_final_managed_set(self):
-        cat = self.catalogue()
-        sync.reconcile(cat, ENV, Http(info=info(managed("vibe/mistral-large"))))
-        vibe = {m["id"]: m["metadata"]["registered"] for m in cat["providers"]["vibe"]["models"]}
-        self.assertEqual(vibe, {"vibe/mistral-large": True, "vibe/bare": True, "vibe/mistral-embed": False})
-        self.assertEqual(cat["providers"]["vibe"]["metadata"]["registered_count"], 2)
-        self.assertEqual(cat["providers"]["local"]["metadata"]["registered_count"], 1)
-
-    def test_an_already_registered_answer_counts_as_registered(self):
-        cat = self.catalogue()
-        http = Http(info=info(), new={"local/qwen3:32b": (400, '{"error":"model_name already exists"}')})
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(result["errors"], [])
-        self.assertTrue(cat["providers"]["local"]["models"][0]["metadata"]["registered"])
-
-    def test_a_failed_add_is_an_error_and_not_registered(self):
-        cat = self.catalogue()
-        http = Http(info=info(), new={"local/qwen3:32b": (500, "boom " + "x " * 300)})
-        result = sync.reconcile(cat, ENV, http)
-        self.assertEqual(len(result["errors"]), 1)
-        self.assertEqual(len(result["errors"][0].split(": ", 1)[1]), 200)
-        self.assertFalse(cat["providers"]["local"]["models"][0]["metadata"]["registered"])
-
-    def test_no_admin_access_skips(self):
-        cat = self.catalogue()
-        result = sync.reconcile(cat, {k: v for k, v in ENV.items() if k != "LITELLM_MASTER_KEY"}, Http())
-        self.assertTrue(result["skipped_reason"])
-        self.assertNotIn("registered", cat["providers"]["local"]["models"][0]["metadata"])
-
-    def test_canonical_groups_are_recorded_without_rules(self):
-        cat = self.catalogue()
-        result = sync.reconcile(cat, ENV, Http(info=info()))
-        self.assertEqual(result["replaced"], 0)
-        self.assertEqual(cat["canonical"]["mistral-large"], {
-            "family": "mistral",
-            "modality": "chat",
-            "deployments": [{"route": "vibe", "order": 1, "weight": 1, "registered": True},
-                            {"route": "vibe-study", "order": 1, "weight": 1, "registered": True}],
-        })
+    def test_an_empty_plan_is_an_empty_model_list(self):
+        document = json.loads("\n".join(line for line in sync.render_models([]).splitlines() if not line.startswith("#")))
+        self.assertEqual(document, {"model_list": []})
 
 
 class Gh(Http):
-    """GitHub's contents API over a dict of path -> text."""
+    """GitHub's contents, refs, pulls and labels APIs over a dict of path -> text on main.
 
-    def __init__(self, files=None, **kw):
+    `fail` maps (method, url suffix) to the status that call answers, so one step can be broken.
+    """
+
+    def __init__(self, files=None, pulls=None, fail=None, **kw):
         super().__init__(**kw)
         self.files = dict(files or {})
+        self.refs = {"main": "sha-main"}
+        self.pulls = list(pulls or [])
+        self.labels = []
+        self.requests = []
+        self.fail = dict(fail or {})
 
     def __call__(self, method, url, headers, body):
-        prefix = "https://api.github.com/repos/o/r/contents/"
-        if url.startswith(prefix):
-            path = url[len(prefix):]
+        if not url.startswith("https://api.github.com/"):
+            return super().__call__(method, url, headers, body)
+        self.calls.append((method, url, headers, body))
+        self.requests.append((method, url, body))
+        for (fail_method, suffix), status in self.fail.items():
+            if method == fail_method and url.endswith(suffix):
+                return status, "down"
+        base = "https://api.github.com/repos/o/r"
+        if url.startswith(base + "/contents/"):
+            path = url[len(base + "/contents/"):].split("?")[0]
             if method == "GET":
                 if path not in self.files:
                     return 404, ""
@@ -597,20 +473,49 @@ class Gh(Http):
             self.puts.append((path, body))
             self.files[path] = base64.b64decode(body["content"]).decode()
             return 201, {}
+        if url == base + "/git/ref/heads/main":
+            if "main" not in self.refs:
+                return 500, "down"
+            return 200, {"object": {"sha": self.refs["main"]}}
+        if url == base + "/git/refs" and method == "POST":
+            branch = body["ref"].removeprefix("refs/heads/")
+            if branch in self.refs:
+                return 422, {"message": "Reference already exists"}
+            self.refs[branch] = body["sha"]
+            return 201, {}
+        if url.startswith(base + "/git/refs/heads/") and method == "PATCH":
+            self.refs[url.rsplit("/", 1)[1]] = body["sha"]
+            return 200, {}
+        if url.startswith(base + "/pulls"):
+            if method == "GET":
+                return 200, self.pulls
+            self.pulls.append({"number": len(self.pulls) + 1, "title": body["title"], "body": body["body"], "head": body["head"]})
+            return 201, self.pulls[-1]
+        if url.startswith(base + "/issues/") and url.endswith("/labels"):
+            self.labels.append((url, body["labels"]))
+            return 200, []
         return super().__call__(method, url, headers, body)
 
 
 class Main(unittest.TestCase):
+    def catalogue_of(self, env, now=NOW):
+        """The catalogue main() publishes: the build, plus the groups it planned."""
+        cat, _ = sync.build(env, Http(), {}, now)
+        cat["groups"] = sync.record_groups(sync.plan_groups(cat, sync.load_rules()))
+        return cat
+
     def test_writes_a_local_file_and_reads_it_back_as_the_cache(self):
-        env = {k: v for k, v in ENV.items() if k != "LITELLM_MASTER_KEY"}
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, "c.json")
-            self.assertEqual(sync.main(["--output", out], env, Http(), NOW), 0)
+            self.assertEqual(sync.main(["--output", out], ENV, Http(), NOW), 0)
             http = Http()
-            sync.main(["--output", out], env, http, NOW + datetime.timedelta(hours=1))
+            sync.main(["--output", out], ENV, http, NOW + datetime.timedelta(hours=1))
             self.assertEqual(http.probed(), [])
             self.assertEqual(json.load(open(out))["version"], 1)
             self.assertTrue(os.path.exists(os.path.join(tmp, "model-overview.md")))
+            models = open(os.path.join(tmp, "models.generated.yaml")).read()
+            self.assertTrue(models.startswith(sync.MODELS_HEADER))
+            self.assertIn("model_list", json.loads("\n".join(line for line in models.splitlines() if not line.startswith("#"))))
 
     def test_a_run_that_lists_nothing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -618,60 +523,64 @@ class Main(unittest.TestCase):
 
     def test_publishes_the_catalogue_when_changed_and_not_when_unchanged(self):
         env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
-        env.pop("LITELLM_MASTER_KEY")
-        cat, _ = sync.build(env, Http(), {}, NOW)
-        gh = Gh({"model-catalog.json": json.dumps(cat)})
-        sync.main([], env, gh, NOW + datetime.timedelta(hours=1))
-        self.assertEqual([p for p, _ in gh.puts if p == "model-catalog.json"], [])
-        gh = Gh({"model-catalog.json": json.dumps(cat)})
-        sync.main([], env, gh, NOW + datetime.timedelta(hours=25))
-        puts = [b for p, b in gh.puts if p == "model-catalog.json"]
-        self.assertEqual(len(puts), 1)
-        self.assertEqual(puts[0]["sha"], "sha-model-catalog.json")
-        self.assertEqual(puts[0]["message"], "chore: refresh model catalogue")
+        cat = self.catalogue_of(env)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "c.json")
+            gh = Gh({"model-catalog.json": json.dumps(cat)})
+            sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=1))
+            self.assertEqual([p for p, _ in gh.puts if p == "model-catalog.json"], [])
+            gh = Gh({"model-catalog.json": json.dumps(cat)})
+            sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=25))
+            puts = [b for p, b in gh.puts if p == "model-catalog.json"]
+            self.assertEqual(len(puts), 1)
+            self.assertEqual(puts[0]["sha"], "sha-model-catalog.json")
+            self.assertEqual(puts[0]["message"], "chore: refresh model catalogue")
 
     def test_publishes_the_overview_only_when_it_changed_ignoring_the_stamp(self):
         env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
-        env.pop("LITELLM_MASTER_KEY")
-        cat, _ = sync.build(env, Http(), {}, NOW)
-        # a different run time alone is not a change
-        gh = Gh({"model-catalog.json": json.dumps(cat), "README.md": overview.render(dict(cat, updated_at="1999-01-01T00:00:00Z"))})
-        sync.main([], env, gh, NOW + datetime.timedelta(hours=1))
-        self.assertEqual([p for p, _ in gh.puts if p == "README.md"], [])
-        # a real change is
-        changed = json.loads(json.dumps(cat))
-        changed["providers"]["local"]["models"][0]["metadata"]["status"] = "blocked"
-        gh = Gh({"model-catalog.json": json.dumps(cat), "README.md": overview.render(changed)})
-        sync.main([], env, gh, NOW + datetime.timedelta(hours=1))
-        puts = [b for p, b in gh.puts if p == "README.md"]
-        self.assertEqual(len(puts), 1)
-        self.assertEqual(puts[0]["message"], "chore: refresh model overview")
-        self.assertEqual(puts[0]["sha"], "sha-README.md")
-
-    def test_a_reconcile_error_fails_the_run_but_still_publishes(self):
-        env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
-        cat, _ = sync.build(env, Http(), {}, NOW)
-        gh = Gh({"model-catalog.json": json.dumps(cat)}, info=(500, "down"))
-        self.assertEqual(sync.main([], env, gh, NOW + datetime.timedelta(hours=25)), 1)
-        self.assertEqual(len([p for p, _ in gh.puts if p == "model-catalog.json"]), 1)
-
-    def test_prints_one_registration_summary_line(self):
+        cat = self.catalogue_of(env)
         with tempfile.TemporaryDirectory() as tmp:
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                sync.main(["--output", os.path.join(tmp, "c.json")], ENV, Http(info=info()), NOW)
-            self.assertRegex(buf.getvalue(), r"catalog: registered \+\d+ -\d+ ~\d+ \(errors \d+, deferred \d+\)")
+            out = os.path.join(tmp, "c.json")
+            # a different run time alone is not a change
+            gh = Gh({"model-catalog.json": json.dumps(cat), "README.md": overview.render(dict(cat, updated_at="1999-01-01T00:00:00Z"))})
+            sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=1))
+            self.assertEqual([p for p, _ in gh.puts if p == "README.md"], [])
+            # a real change is
+            changed = json.loads(json.dumps(cat))
+            changed["providers"]["local"]["models"][0]["metadata"]["status"] = "blocked"
+            gh = Gh({"model-catalog.json": json.dumps(cat), "README.md": overview.render(changed)})
+            sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=1))
+            puts = [b for p, b in gh.puts if p == "README.md"]
+            self.assertEqual(len(puts), 1)
+            self.assertEqual(puts[0]["message"], "chore: refresh model overview")
+            self.assertEqual(puts[0]["sha"], "sha-README.md")
+
+    def test_a_catalogue_publish_failure_fails_the_run(self):
+        env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh(fail={("PUT", "model-catalog.json"): 500})
+            buf, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], env, gh, NOW), 1)
+            self.assertIn("publishing to o/r/model-catalog.json answered 500", err.getvalue())
+
+    def test_a_catalogue_read_failure_fails_the_run(self):
+        env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh(fail={("GET", "model-catalog.json"): 500})
+            buf, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], env, gh, NOW), 1)
+            self.assertIn("reading o/r/model-catalog.json answered 500", err.getvalue())
 
     def test_no_key_reaches_a_published_file_or_a_reason(self):
         env = dict(ENV, CATALOG_REPO="o/r", CATALOG_TOKEN="t")
-        gh = Gh(info=info())
-        sync.main([], env, gh, NOW)
-        published = json.dumps(gh.files)
-        for secret in ("k-vibe", "k-study", "k-oc", "k-or", "sk-master-secret", "SECRET-RESPONSE"):
-            self.assertNotIn(secret, published)
-        cat, _ = sync.build(env, Http(), {}, NOW)
-        result = sync.reconcile(cat, ENV, Http(info=info(), new={"local/qwen3:32b": (500, "bad key sk-master-secret")}))
-        self.assertNotIn("sk-master-secret", json.dumps(result))
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh()
+            sync.main(["--output", os.path.join(tmp, "c.json")], env, gh, NOW)
+            published = json.dumps(gh.files)
+            for secret in ("k-vibe", "k-study", "k-general", "k-oc", "k-or", "SECRET-RESPONSE"):
+                self.assertNotIn(secret, published)
 
     def test_github_errors_surface(self):
         with self.assertRaisesRegex(RuntimeError, "reading"):
@@ -679,6 +588,93 @@ class Main(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "publishing"):
             sync.github_put("o/r", "p", "t", {}, None, lambda *a: (422, "x"))
         self.assertEqual(sync.github_get_text("o/r", "p", "t", lambda *a: (404, "")), (None, None))
+
+
+class Models(unittest.TestCase):
+    """The generated deployments: a bot branch and a pull request in the litellm repository."""
+
+    def env(self, **extra):
+        return dict(ENV, MODELS_REPO="o/r", MODELS_TOKEN="t-models", **extra)
+
+    def test_opens_a_branch_a_file_and_a_pull_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh()
+            self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], self.env(), gh, NOW), 0)
+            self.assertEqual(gh.refs[sync.MODELS_BRANCH], "sha-main")
+            put = next(b for p, b in gh.puts if p == sync.MODELS_PATH)
+            self.assertEqual(put["branch"], sync.MODELS_BRANCH)
+            self.assertNotIn("sha", put)  # the file is new on main
+            text = base64.b64decode(put["content"]).decode()
+            self.assertTrue(text.startswith(sync.MODELS_HEADER))
+            self.assertEqual(len(gh.pulls), 1)
+            self.assertEqual(gh.pulls[0]["title"], "chore(models): refresh the generated model deployments")
+            self.assertEqual(gh.pulls[0]["head"], sync.MODELS_BRANCH)
+            self.assertIn("deployments added:", gh.pulls[0]["body"])
+            self.assertIn("deployments removed:", gh.pulls[0]["body"])
+            self.assertEqual(gh.labels, [("https://api.github.com/repos/o/r/issues/1/labels", ["type: chore", "area: platform"])])
+
+    def test_a_second_run_reuses_the_open_pull_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "c.json")
+            sync.main(["--output", out], self.env(), Gh(), NOW)
+            gh = Gh(pulls=[{"number": 7}])
+            self.assertEqual(sync.main(["--output", out], self.env(), gh, NOW + datetime.timedelta(hours=1)), 0)
+            self.assertEqual([p for p, _ in gh.puts], [sync.MODELS_PATH])
+            self.assertEqual(len(gh.pulls), 1)  # the open pull request is reused, not duplicated
+            self.assertEqual(gh.labels[0][0], "https://api.github.com/repos/o/r/issues/7/labels")
+
+    def test_a_repository_that_already_holds_the_file_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "c.json")
+            gh = Gh()
+            sync.main(["--output", out], self.env(), gh, NOW)
+            text = base64.b64decode(next(b for p, b in gh.puts if p == sync.MODELS_PATH)["content"]).decode()
+            # the pull request was merged: main holds the file, so a run writes nothing at all
+            gh = Gh({sync.MODELS_PATH: text}, pulls=[{"number": 7}])
+            self.assertEqual(sync.main(["--output", out], self.env(), gh, NOW + datetime.timedelta(hours=1)), 0)
+            self.assertEqual(gh.puts, [])
+            self.assertEqual(gh.refs, {"main": "sha-main"})
+            self.assertEqual(len(gh.pulls), 1)
+
+    def test_the_body_counts_the_deployments_against_main(self):
+        before = sync.render_models([])
+        after = sync.render_models([{"name": "mistral-large", "litellm_params": {}, "model_info": {"id": "vibe/mistral-large"}}])
+        self.assertEqual(sync.models_body(before, after), (
+            "The catalogue sync regenerated `config/models.generated.yaml` from the probed catalogue.\n\n"
+            "- deployments added: 1\n- deployments removed: 0\n"
+        ))
+        self.assertEqual(sync.models_body(after, before).count("deployments removed: 1"), 1)
+        self.assertEqual(sync.models_body(None, after).count("deployments added: 1"), 1)
+
+    def test_no_token_reaches_a_request_body_or_the_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh()
+            buf, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                sync.main(["--output", os.path.join(tmp, "c.json")], self.env(), gh, NOW)
+            self.assertNotIn("t-models", json.dumps([body for _, _, body in gh.requests]))
+            self.assertNotIn("t-models", buf.getvalue() + err.getvalue())
+            self.assertNotIn("t-models", json.dumps(gh.files))
+            github = [c for c in gh.calls if c[1].startswith("https://api.github.com")]
+            self.assertTrue(github)
+            for call in github:
+                self.assertEqual(call[2]["Authorization"], "Bearer t-models")
+
+    def test_a_github_failure_fails_the_run_and_names_the_step(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh()
+            gh.refs = {}  # main cannot be read
+            buf, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], self.env(), gh, NOW), 1)
+            self.assertIn("reading o/r's main answered 500", err.getvalue())
+            self.assertNotIn("t-models", err.getvalue())
+
+    def test_a_label_failure_does_not_fail_the_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh(fail={("POST", "/labels"): 422})
+            self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], self.env(), gh, NOW), 0)
+            self.assertEqual(len(gh.pulls), 1)
 
 
 class Transport(unittest.TestCase):

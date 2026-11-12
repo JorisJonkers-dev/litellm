@@ -9,6 +9,8 @@
 FROM ghcr.io/berriai/litellm-non_root:v1.108.0@sha256:08d313a00c46509c875d84f60c1448a260c478f399ade3c2abb940d358d5b724
 
 COPY config/config.yaml /app/config.yaml
+# The config's `include` resolves next to it, so the generated deployments land in /app too.
+COPY config/models.generated.yaml /app/models.generated.yaml
 COPY catalog/sync.py catalog/overview.py catalog/routing.json /app/catalog/
 
 # Numeric, so the images lock can record the uid and gid (nobody). The process's writablePaths
