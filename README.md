@@ -40,6 +40,30 @@ Published: ids, classification, reason text, free flag, context length, registra
 
 Probe cost bound: each probe is about 8 input and at most 16 output tokens (doubled only for a provider that demands a higher minimum), once per model per day, at most 250 a run and 30 free OpenRouter models a run; free and local models cost nothing. A Grafana panel for registered versus usable counts per route can be built from the catalogue's `by_status` and `registered_count`; none ships here.
 
+## Canonical models and routing
+
+Agents can ask for one canonical name per model (`mistral-large`, `devstral`, `gemini-2.5-pro`, `claude-sonnet-4-5`, `glm-5.3`) instead of `<route>/<id>`; the `<route>/<id>` names keep resolving. The sync builds one LiteLLM model group per canonical name from `catalog/routing.json`: the deployments are the routes whose probe says they serve the model (`usable`), ordered by which provider serves it, not by model family.
+
+| Order | Route | Weight | Used for |
+|---|---|---|---|
+| 1 | `local` | 1 | models the GPU host serves, when it is reachable |
+| 2 | `google`, `anthropic` | 1 | Gemini; Claude (only here, never any other route or a free deployment) |
+| 3 | `vibe` : `vibe-study` | 2 : 1 | every model the Vibe plan serves (Mistral, and GLM or DeepSeek when the probe shows the plan serves them) |
+| 4 | `vibe-api` : `vibe-study-api` | 2 : 1 | the paid Mistral API keys: fallback once the plan credit or quota is out, and the only home of API-only models (audio, OCR, embeddings) |
+| 5 | `opencode-go` | 1 | only models none of the above serve (never a model Vibe, the paid Mistral keys or Anthropic serve; it does back up Gemini after Google) |
+
+Free models (OpenRouter `:free`) are allowed everywhere except Claude: first for a model only the backups serve, after the last tier otherwise. Orders are renumbered per model, so a model served only by OpenCode Go has order 1. There is no paid OpenRouter fallback.
+
+How LiteLLM v1.108 does it (read from its source): deployments sharing a `model_name` form a group; `order` picks the lowest level first and the router falls back to the next level when the level fails or is cooled down; a 402, 429, 401, 404 or 408 cools a deployment down (`cooldown_time` 300 s here); inside a level `weight` is a request-share pick (2:1 is a ratio of requests, not of spend); `rpm` and `tpm` are enforced with `enforce_model_rate_limits`, so a burst on `vibe` spills to `vibe-study` first, then to the next level; `max_budget` with `budget_duration` caps a deployment's spend and takes it out of the pick with `router_budget_limiting`. A budget only counts what LiteLLM can price. Every request's serving deployment is in the spend log (`model_id`, `custom_llm_provider`, `api_base`) and on the request and error metrics (`model_id`, `api_base`).
+
+Canonical names come from one explicit mapping: normalisation (lower-case, vendor prefix, `:free`, `-latest`, a trailing version stamp are stripped) plus the `aliases` table in `routing.json`. Two ids that still differ are two models; nothing is merged by a fuzzy guess. The overview's `Possible duplicates (not merged)` section lists ids that look alike on different routes, so an alias can be added.
+
+Modality is recorded per model (`chat`, `embedding`, `ocr`, `transcription`). Non-chat models are registered only from the paid Mistral routes (the list is the only evidence, they are never probed) with `model_info.mode` set, so an audio, OCR or embedding request reaches only deployments that support it.
+
+Keys: canonical deployments carry `model_info.access_groups: [canonical]`; a virtual key can list `canonical` (all canonical models) or specific canonical names, with its own caps unchanged. Existing keys restricted to `<route>/*` keep working.
+
+Proposed defaults in `routing.json` for the owner to confirm: budgets per 30 days (`vibe` 255, `vibe-study` 128, `vibe-api` 50, `vibe-study-api` 25, `google` 50, `anthropic` 50) and Vibe limits (`vibe` 60 requests and 1,000,000 tokens a minute, `vibe-study` 30 and 500,000). The Vibe limits are placeholders until the plan's real limits are known. New secrets in `secret/platform/litellm`: `vibe_api_key_paid`, `vibe_study_api_key_paid`, `google_api_key`, `anthropic_api_key` (estate `bootstrap/secrets.sh`). A route whose key is unset is skipped by the sync.
+
 ## Deployment
 
 `deploy/litellm.project.yml` is the deploy-kit Project Intent: Project `litellm` in `litellm-system` at `litellm.jorisjonkers.dev`, with its environment in `deploy/env/litellm/base.env` and its secrets at `secret/data/platform/litellm` (`master_key`, `salt_key`, `vibe_api_key`, `vibe_study_api_key`, `opencode_go_api_key`, `openrouter_api_key`, `catalog_publish_token`). CI validates both with the deploy-kit release `tools/deploy-kit` pins:
