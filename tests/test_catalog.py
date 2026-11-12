@@ -445,7 +445,7 @@ class Reconcile(unittest.TestCase):
         result = sync.reconcile(cat, ENV, http, max_removals=2)
         self.assertEqual(http.deleted, [])
         self.assertEqual(result["removed"], 0)
-        self.assertIn("removal guard: 3 removals exceed 2", result["errors"])
+        self.assertTrue(result["errors"][0].startswith("removal guard: 3 removals exceed 2"))
 
     def test_a_stale_route_removes_nothing_and_keeps_its_published_flags(self):
         first = self.catalogue()
