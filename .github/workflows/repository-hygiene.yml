@@ -4,12 +4,15 @@ name: 'Repository Hygiene'
   pull_request:
     types: [opened, reopened, synchronize, edited]
 
-# A cancelled run of a required check on the head commit blocks the merge even
-# when a later run of the same check succeeds, and bots label and edit a pull
-# request right after it opens. Each run gets its own group and none is cancelled.
+# A new commit on a pull request cancels the run still going for the older commit: runners are
+# limited and the older result is of no use, and the head commit always gets a fresh run, so a
+# cancelled older run cannot block the merge. A title edit has its own group, so it neither cancels
+# nor is cancelled by a push. Labels do not trigger this workflow: a bot labelling a new pull
+# request starts nothing, so the override label must be on the pull request when it is opened. Add
+# or remove it later and the result is stale until the run is re-run by hand (Actions, Re-run all jobs).
 'concurrency':
-  'group': '${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }}'
-  'cancel-in-progress': false
+  'group': '${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ github.event.action == ''edited'' && github.run_id || ''commits'' }}'
+  'cancel-in-progress': true
 
 permissions:
   contents: 'read'
