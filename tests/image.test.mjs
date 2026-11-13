@@ -22,8 +22,9 @@ const ANSWER = 'ANSWER-TEXT-MUST-NOT-BE-LOGGED'
 const ROUTES = {
   vibe: { key: 'upstream-vibe', env: 'MISTRAL_API_BASE' },
   'vibe-study': { key: 'upstream-vibe-study', env: 'MISTRAL_API_BASE' },
+  'vibe-api': { key: 'upstream-vibe-api', env: 'MISTRAL_API_BASE' },
+  'vibe-study-api': { key: 'upstream-vibe-study-api', env: 'MISTRAL_API_BASE' },
   'opencode-go': { key: 'upstream-opencode-go', env: 'OPENCODE_GO_API_BASE' },
-  openrouter: { key: 'upstream-openrouter', env: 'OPENROUTER_API_BASE' },
   local: { key: 'none', env: 'LOCAL_LLM_API_BASE' },
 }
 const stubs = {} // env name -> { server, port, seen: [] }
@@ -98,10 +99,12 @@ function runLitellm(name, extra = []) {
     ...WRITABLE.flatMap((path) => ['--tmpfs', path]),
     '-e', `LITELLM_MASTER_KEY=${MASTER}`, '-e', 'LITELLM_SALT_KEY=sk-image-test-salt',
     '-e', 'VIBE_API_KEY=upstream-vibe', '-e', 'VIBE_STUDY_API_KEY=upstream-vibe-study',
+    '-e', 'VIBE_API_GENERAL_KEY=upstream-vibe-api', '-e', 'VIBE_STUDY_API_GENERAL_KEY=upstream-vibe-study-api',
     '-e', 'OPENCODE_GO_API_KEY=upstream-opencode-go', '-e', 'OPENROUTER_API_KEY=upstream-openrouter',
+    '-e', 'GEMINI_API_KEY=upstream-google', '-e', 'ANTHROPIC_API_KEY=upstream-anthropic', '-e', 'GOOGLE_API_BASE=https://google.example.test/v1', '-e', 'ANTHROPIC_API_BASE=https://anthropic.example.test/v1',
     '-e', 'LOCAL_LLM_API_KEY=none',
     '-e', `MISTRAL_API_BASE=${upstream('MISTRAL_API_BASE')}`, '-e', `OPENCODE_GO_API_BASE=${upstream('OPENCODE_GO_API_BASE')}`,
-    '-e', `OPENROUTER_API_BASE=${upstream('OPENROUTER_API_BASE')}`, '-e', `LOCAL_LLM_API_BASE=${upstream('LOCAL_LLM_API_BASE')}`,
+    '-e', 'OPENROUTER_API_BASE=https://openrouter.example.test/v1', '-e', `LOCAL_LLM_API_BASE=${upstream('LOCAL_LLM_API_BASE')}`,
     // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.
     '-e', `OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:${otlpPort}`,
     '-e', 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf', '-e', 'OTEL_SERVICE_NAME=litellm',
@@ -175,13 +178,22 @@ test('a key is read from a standard Authorization bearer, and x-litellm-api-key 
 
 test('a wildcard route passes any model id to its provider with that route\'s own key', async () => {
   for (const [route, { key, env }] of Object.entries(ROUTES)) {
-    const id = route === 'openrouter' ? 'vendor/brand-new-model:free' : 'brand-new-model-1'
+    const id = 'brand-new-model-1'
     await chat(`${route}/${id}`)
     const call = stubs[env].seen.filter((seen) => seen.method === 'POST').at(-1)
     assert.equal(call.model, id, route)
     assert.equal(call.auth, `Bearer ${key}`, route)
     assert.equal(call.path, '/v1/chat/completions', route)
   }
+})
+
+test('OpenRouter has no wildcard: an id without a generated deployment is refused', async () => {
+  const res = await fetch(`${base}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'x-litellm-api-key': `Bearer ${MASTER}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'openrouter/vendor/paid-model', messages: [{ role: 'user', content: 'x' }] }),
+  })
+  assert.equal(res.status, 400)
 })
 
 test('a model outside every route is refused', async () => {
