@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.3.0...v1.3.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **catalog:** open the generated-config PR as a fix so merging it releases ([#25](https://github.com/JorisJonkers-dev/litellm/issues/25)) ([7a5d466](https://github.com/JorisJonkers-dev/litellm/commit/7a5d46639d9e5699fe28df6954ebfbb7b40fa431))
+
 ## [1.3.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.2.0...v1.3.0) (2026-11-13)
 
 
