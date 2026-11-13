@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.2.0...v1.3.0) (2026-11-13)
+
+
+### Features
+
+* **catalog:** generated model routing config with per-account credentials ([#19](https://github.com/JorisJonkers-dev/litellm/issues/19)) ([0d8efeb](https://github.com/JorisJonkers-dev/litellm/commit/0d8efebe44bce69d65551f147abe5c243d9c49dc))
+
 ## [1.2.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.1.0...v1.2.0) (2026-11-13)
 
 
