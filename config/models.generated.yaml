@@ -3241,6 +3241,27 @@
       }
     },
     {
+      "model_name": "public/gemini-4-hydrogen",
+      "litellm_params": {
+        "model": "gemini/gemini-4-hydrogen",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "public/google/gemini-4-hydrogen",
+        "route": "google",
+        "canonical": "gemini-4-hydrogen",
+        "access_groups": [
+          "google-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "public/gemini-flash-lite",
       "litellm_params": {
         "model": "gemini/gemini-flash-lite-latest",
