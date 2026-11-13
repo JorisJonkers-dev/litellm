@@ -2,11 +2,14 @@
 # their models through, from both workstations (agent-kit#454). It holds each agent id's
 # virtual key and its hard budget, in litellm_db on the platform's Postgres.
 #
-# Internal only: the edge signs a caller in before LiteLLM sees the request, so a caller sends
-# an auth-api service token as the bearer and its LiteLLM virtual key in x-litellm-api-key.
-# The admin UI (/ui) is on behind that same edge sign-in and signs in through auth-api (OIDC,
-# the litellm client): ROLE_ADMIN is proxy admin, nobody else gets in, and there is no
-# password login.
+# Anonymous at the edge: LiteLLM authenticates every request itself, so a caller sends its
+# LiteLLM virtual key as a standard `Authorization: Bearer sk-...` from any client, with no
+# edge sign-in or auth-api service token in front. (Forward-auth would take the bearer for
+# its own token and refuse a LiteLLM key.) The admin UI (/ui) redirects straight to the
+# auth-api sign-in (OIDC, the litellm client): ROLE_ADMIN is proxy admin, nobody else gets in,
+# and there is no password login. No route is rate limited: this tier counts clients by the
+# connection's address, which behind Cloudflare is its edge, so a limit would throttle everyone
+# together. Virtual-key auth and each key's max_budget are the controls.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -22,7 +25,7 @@ applications:
     exposure:
       - name: api
         host: litellm.jorisjonkers.dev
-        audience: authenticated
+        audience: anonymous
         routes:
           - { path: /, match: prefix, process: litellm, surface: http }
 

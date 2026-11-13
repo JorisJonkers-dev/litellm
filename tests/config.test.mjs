@@ -128,9 +128,20 @@ test('the UI password is the proxy Process\'s alone, never the catalogue sync\'s
   assert.doesNotMatch(catalog, /oidc_client_secret/)
 })
 
-test('the UI is reached through the one edge-signed-in exposure and metrics stay unrouted', () => {
+test('the one exposure is anonymous at the edge, so a LiteLLM key works as a plain bearer, and metrics stay unrouted', () => {
   assert.equal((PROJECT.match(/^\s+host: /gm) ?? []).length, 1)
-  assert.match(PROJECT, /host: litellm\.jorisjonkers\.dev\n\s+audience: authenticated/)
-  assert.doesNotMatch(PROJECT, /surface: metrics\s*\}/)
-  assert.doesNotMatch(PROJECT, /audience: anonymous/)
+  assert.match(PROJECT, /host: litellm\.jorisjonkers\.dev\n\s+audience: anonymous/)
+  assert.doesNotMatch(PROJECT, /audience: authenticated/)
+  assert.doesNotMatch(PROJECT, /surface:\s*metrics\s*\}/)
+  // Forward-auth would read the bearer as its own token: the key header setting is gone.
+  assert.doesNotMatch(CONFIG, /^\s*litellm_key_header_name:/m)
+})
+
+test('the UI redirects to the SSO sign-in and the API docs are off', () => {
+  const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8').replace(/^\s*#.*$/gm, '')
+  assert.match(env, /^AUTO_REDIRECT_UI_LOGIN_TO_SSO=true$/m)
+  assert.match(env, /^NO_DOCS=true$/m)
+  assert.match(env, /^NO_REDOC=true$/m)
+  assert.match(env, /^NO_OPENAPI=true$/m)
+  assert.match(CONFIG, /disable_env_credential_login: true/)
 })

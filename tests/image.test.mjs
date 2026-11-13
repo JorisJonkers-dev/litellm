@@ -111,6 +111,8 @@ function runLitellm(name, extra = []) {
     '-e', 'GENERIC_CLIENT_USE_PKCE=true', '-e', 'GENERIC_INCLUDE_TOKEN_CLAIMS=true',
     '-e', 'GENERIC_ROLE_MAPPINGS_GROUP_CLAIM=roles', '-e', "GENERIC_ROLE_MAPPINGS_ROLES={'proxy_admin':['ROLE_ADMIN']}",
     '-e', 'GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer',
+    // The public-host settings of deploy/env/litellm/base.env.
+    '-e', 'AUTO_REDIRECT_UI_LOGIN_TO_SSO=true', '-e', 'NO_DOCS=true', '-e', 'NO_REDOC=true', '-e', 'NO_OPENAPI=true',
     ...extra,
     IMAGE,
   )
@@ -153,6 +155,22 @@ test('the models list is for the master key only, and lists what the live provid
   const ids = (await res.json()).data.map((model) => model.id)
   // OpenAI-compatible routes are listed from the provider's own /models.
   for (const id of ['opencode-go/listed-one', 'opencode-go/listed-two', 'local/listed-one']) assert.ok(ids.includes(id), id)
+})
+
+test('a key is read from a standard Authorization bearer, and x-litellm-api-key still wins when both are sent', async () => {
+  const bearer = await fetch(`${base}/v1/models`, { headers: { authorization: `Bearer ${MASTER}` } })
+  assert.equal(bearer.status, 200)
+  const both = await fetch(`${base}/v1/models`, { headers: { authorization: 'Bearer an-edge-token', 'x-litellm-api-key': `Bearer ${MASTER}` } })
+  assert.equal(both.status, 200)
+  const wrong = await fetch(`${base}/v1/models`, { headers: { authorization: 'Bearer sk-not-a-key' } })
+  // No database in this test: an unknown key is refused as 400 (cannot look it up) or 401.
+  assert.ok([400, 401].includes(wrong.status), `an unknown bearer answered ${wrong.status}`)
+  // The schema of every route is not served on the public host.
+  assert.equal((await fetch(`${base}/openapi.json`)).status, 404)
+  assert.equal((await fetch(`${base}/docs`)).status, 404)
+  // The UI is told to go straight to the SSO sign-in.
+  const ui = await (await fetch(`${base}/.well-known/litellm-ui-config`)).json()
+  assert.equal(ui.auto_redirect_to_sso, true)
 })
 
 test('a wildcard route passes any model id to its provider with that route\'s own key', async () => {
