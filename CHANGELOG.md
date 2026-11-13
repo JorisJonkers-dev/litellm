@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.1.0...v1.2.0) (2026-11-13)
+
+
+### Features
+
+* **deploy:** serve LiteLLM anonymously at the edge and redirect the UI to SSO ([#17](https://github.com/JorisJonkers-dev/litellm/issues/17)) ([c895ed9](https://github.com/JorisJonkers-dev/litellm/commit/c895ed950d459dfa17e8502eee86189382e5684b))
+
 ## [1.1.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.0.3...v1.1.0) (2026-11-12)
 
 
