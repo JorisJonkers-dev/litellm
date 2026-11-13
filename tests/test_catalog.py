@@ -617,7 +617,7 @@ class Models(unittest.TestCase):
             text = base64.b64decode(put["content"]).decode()
             self.assertTrue(text.startswith(sync.MODELS_HEADER))
             self.assertEqual(len(gh.pulls), 1)
-            self.assertEqual(gh.pulls[0]["title"], "chore(models): refresh the generated model deployments")
+            self.assertEqual(gh.pulls[0]["title"], "fix(models): refresh the generated model deployments")
             self.assertEqual(gh.pulls[0]["head"], sync.MODELS_BRANCH)
             self.assertIn("deployments added:", gh.pulls[0]["body"])
             self.assertIn("deployments removed:", gh.pulls[0]["body"])
