@@ -12,7 +12,7 @@ and the route's own upstream key, and classifies the result:
   budget-exhausted  credit or quota is spent
   error             anything else (rate limit, 5xx, timeout); tried again next run
   not-chat          the provider lists it as no chat model (embeddings, OCR, transcription)
-  unprobed          not probed on purpose (a paid model on a free-only route: OpenRouter, OpenCode Zen)
+  unprobed          not probed on purpose (a paid OpenRouter model: the route is used for `:free` ids)
   pending           due for a probe but over this run's cap; probed in a later run
 
 The probe goes to the provider, not through the proxy: a model the proxy does not know yet
@@ -69,8 +69,6 @@ ROUTES = [
     {"route": "vibe-study-api", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_STUDY_API_GENERAL_KEY", "kind": "mistral"},
     {"route": "opencode-go", "base_env": "OPENCODE_GO_API_BASE", "key_env": "OPENCODE_GO_API_KEY", "kind": "openai"},
     {"route": "openrouter", "base_env": "OPENROUTER_API_BASE", "key_env": "OPENROUTER_API_KEY", "kind": "openrouter"},
-    # OpenCode Zen (pay as you go), for its free models only: the account holds no credit.
-    {"route": "opencode-free", "base_env": "OPENCODE_FREE_API_BASE", "key_env": "OPENCODE_FREE_API_KEY", "kind": "opencode-zen"},
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
     {"route": "google", "base_env": "GOOGLE_API_BASE", "key_env": "GEMINI_API_KEY", "kind": "google"},
     {"route": "anthropic", "base_env": "ANTHROPIC_API_BASE", "key_env": "ANTHROPIC_API_KEY", "kind": "anthropic"},
@@ -79,9 +77,9 @@ ROUTES = [
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
-DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "opencode-free": 20}
+DEFAULT_ROUTE_LIMITS = {"openrouter": 30}
 # Why a paid model on a free-only route has no probe.
-PAID_REASON = {"openrouter": "paid OpenRouter models are not probed", "opencode-free": "paid OpenCode Zen models are not probed"}
+PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -92,20 +90,18 @@ PROBE_MINIMUM = re.compile(r">= (\d+)")
 # The retry honours the provider's floor, but never a number that would make a probe expensive.
 PROBE_RETRY_CEILING = 256
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
-PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter", "opencode-zen": "openai",
-            "google": "gemini", "anthropic": "anthropic"}
+PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter", "google": "gemini", "anthropic": "anthropic"}
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
-FREE_KINDS = ("openrouter", "opencode-zen")
+FREE_KINDS = ("openrouter",)
 FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
 # A free-only route is public work only: a free-tier provider may train on the prompts, so its
 # deployments are never in `canonical` (the group every key holds). Each one gets its own
 # "<route>/<canonical>" group and its own access group, so a key reaches it only by holding that
 # group, and that key reaches nothing paid. One group per route, not one shared free group: a
-# shared group would let every free key reach every free provider (a Google free-tier key the
-# OpenRouter models, say), and LiteLLM grants access per model name, so two routes in one name
-# would leak each other's deployments. This is code, not a rule in routing.json, so no rules
+# shared group would let every free key reach every free provider, and LiteLLM grants access per
+# model name, so two routes in one name would leak each other's deployments. This is code, not a rule in routing.json, so no rules
 # edit can put a free deployment back in `canonical`.
-FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public", "opencode-free": "opencode-free-public"}
+FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public"}
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
@@ -208,15 +204,6 @@ def is_free_price(pricing):
         return False
 
 
-def is_zen_free(cost):
-    """OpenCode Zen lists a price per million tokens; a free model's input and output are 0."""
-    try:
-        text = cost["text"]
-        return float(text["input"]["price"]) == 0 and float(text["output"]["price"]) == 0
-    except (TypeError, ValueError, KeyError, AttributeError):
-        return False
-
-
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -273,13 +260,6 @@ def list_models(entry, env, http):
         elif kind == "openrouter":
             out["context_length"] = item.get("context_length")
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
-        elif kind == "opencode-zen":
-            out["context_length"] = (item.get("limit") or {}).get("context")
-            out["free"] = is_zen_free(item.get("cost"))
-            # LiteLLM's openai provider speaks chat-completions only: a free model served on
-            # another API is listed and never deployed. A paid one is never probed anyway.
-            if out["free"] and (item.get("type") != "chat" or "chat-completions" not in (item.get("api") or {})):
-                out["chat"] = False
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
         elif entry["route"] == "local":
@@ -310,9 +290,8 @@ def probe(entry, upstream_id, env, http):
     else:
         if key:
             headers["Authorization"] = f"Bearer {key}"
-        if entry["kind"] == "opencode-zen" or entry["route"] == "opencode-go":
-            # OpenCode answers 400 MissingSessionID without a session header (Go requires it,
-            # Zen asks for one so a conversation routes consistently).
+        if entry["route"] == "opencode-go":
+            # OpenCode answers 400 MissingSessionID without a session header.
             headers["x-opencode-session"] = "litellm-catalog-probe"
         url = f"{base}/chat/completions"
         body = {"model": upstream_id, "messages": [{"role": "user", "content": "ping"}], "max_tokens": PROBE_MAX_TOKENS}
@@ -410,7 +389,7 @@ def litellm_params(entry, upstream_id):
     names the credential and LiteLLM resolves it at load.
     """
     params = {"model": f"{PREFIXES[entry['kind']]}/{upstream_id}", "litellm_credential_name": entry["route"]}
-    if entry["kind"] == "opencode-zen" or entry["route"] == "opencode-go":
+    if entry["route"] == "opencode-go":
         # OpenCode answers 400 MissingSessionID without a session header, as the probe found.
         params["extra_headers"] = {"x-opencode-session": "litellm-proxy"}
     return params
@@ -484,7 +463,7 @@ def plan_groups(catalogue, rules):
     group: it gets a "public/<canonical>" group of its own, first, with the normal deployments
     behind it, and only a key carrying the public access group sees it.
 
-    A free-only route (OpenRouter, OpenCode Zen) is public work only too, and free only: it is in
+    A free-only route (OpenRouter) is public work only too, and free only: it is in
     no normal group and no public/ group, only in its own "<route>/<canonical>" group with its own
     access group (FREE_ACCESS_GROUPS), so the key that holds that group reaches nothing paid.
     """

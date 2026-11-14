@@ -64,12 +64,10 @@ test('no Zen route, no catch-all wildcard and no paid OpenRouter wildcard', () =
   assert.doesNotMatch(CONFIG, /opencode\.ai\/zen\/v1/)
   // OpenRouter is free only, and a suffix wildcard is not verified against the pinned release.
   assert.doesNotMatch(CONFIG, /model_name: openrouter\//)
-  // Zen lists paid models beside the free ones, so the free route has no wildcard either.
-  assert.doesNotMatch(CONFIG, /model_name: opencode-free\//)
 })
 
 test('no free-route deployment is in canonical, each is in its own route group', () => {
-  const groups = { openrouter: 'openrouter-free-public', 'opencode-free': 'opencode-free-public' }
+  const groups = { openrouter: 'openrouter-free-public' }
   for (const deployment of DEPLOYMENTS) {
     const route = deployment.model_info?.route
     if (!(route in groups)) {
@@ -95,8 +93,7 @@ test('the config includes the generated deployments', () => {
 
 test('every credential has a name, values and the required credential_info', () => {
   assert.deepEqual(CREDENTIALS, [
-    'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'opencode-go', 'openrouter', 'opencode-free', 'local', 'google',
-    'anthropic',
+    'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'opencode-go', 'openrouter', 'local', 'google', 'anthropic',
   ])
   assert.equal((CREDENTIAL_BLOCK.match(/^ {4}credential_info: \{\}$/gm) ?? []).length, CREDENTIALS.length)
   assert.deepEqual(Object.keys(CREDENTIAL_VALUES), CREDENTIALS)
@@ -112,7 +109,7 @@ test('the Mistral accounts carry a key and a base, Google and Anthropic a key on
   })
   assert.deepEqual(CREDENTIAL_VALUES.google, { api_key: 'os.environ/GEMINI_API_KEY' })
   assert.deepEqual(CREDENTIAL_VALUES.anthropic, { api_key: 'os.environ/ANTHROPIC_API_KEY' })
-  for (const route of ['vibe-study', 'opencode-go', 'openrouter', 'opencode-free', 'local']) {
+  for (const route of ['vibe-study', 'opencode-go', 'openrouter', 'local']) {
     assert.ok(CREDENTIAL_VALUES[route].api_key && CREDENTIAL_VALUES[route].api_base, route)
   }
 })
@@ -231,7 +228,6 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     google: 120,
     anthropic: 300,
     openrouter: 120,
-    'opencode-free': 120,
   })
   for (const [route, seconds] of Object.entries(rules.cooldowns)) {
     assert.ok(Number.isInteger(seconds) && seconds > 0, route)
@@ -254,7 +250,7 @@ test('the image carries the routing rules and the generated deployments', () => 
 
 test('the provider keys the config names are Vault keys the Project grants', () => {
   for (const key of ['vibe_api_key', 'vibe_study_api_key', 'vibe_api_general_key', 'vibe_study_api_general_key',
-    'opencode_go_api_key', 'openrouter_api_key', 'opencode_free_api_key', 'google_api_key', 'anthropic_api_key']) {
+    'opencode_go_api_key', 'openrouter_api_key', 'google_api_key', 'anthropic_api_key']) {
     assert.match(PROXY_SECRETS, new RegExp(`\\b${key}\\b`))
   }
   // The pull-request token is the catalogue Process's alone.

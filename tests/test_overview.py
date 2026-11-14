@@ -201,7 +201,7 @@ class Render(unittest.TestCase):
         for phrase in ("Whichever provider serves a model first wins", "vibe 2:1 vibe-study",
                        "vibe-api 2:1 vibe-study-api", "Anthropic key for Claude",
                        "OpenCode Go serves only a model none of those serve",
-                       "public work only too", "`openrouter-free-public`", "`opencode-free-public`"):
+                       "public work only too", "`openrouter-free-public`"):
             self.assertIn(phrase, text)
         self.assertNotIn("Free OpenRouter models come first", text)
 

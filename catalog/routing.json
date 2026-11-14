@@ -31,8 +31,7 @@
     "opencode-go": 900,
     "google": 120,
     "anthropic": 300,
-    "openrouter": 120,
-    "opencode-free": 120
+    "openrouter": 120
   },
   "policies": {
     "anthropic": {"BadRequestErrorAllowedFails": 2}

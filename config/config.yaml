@@ -19,11 +19,12 @@
 #   opencode-go/*                 the OpenCode Go provider (OpenAI-compatible)
 #   local/*                       the OpenAI-compatible model server on the GPU workstation, free
 #
-# The free-tier routes, openrouter and opencode-free (OpenCode Zen's free models), have no
-# wildcard: a wildcard would reach their paid models. Only the generated deployments reach them,
-# free ids only, each in its own "<route>/<canonical>" group with its own access group
-# (openrouter-free-public, opencode-free-public) and never in `canonical`: a free-tier provider
-# may train on the prompts, so they are public work only.
+# The free-tier openrouter route has no wildcard: only the generated deployments reach it, free ids
+# only, each in its own "openrouter/<canonical>" group with the openrouter-free-public access group
+# and never in `canonical`: a free-tier provider may train on the prompts, so it is public work only.
+#
+# No Zen (opencode.ai/zen/v1) route: only the Go base is configured. OpenCode's free models answer
+# 403 to every client but OpenCode itself, so a free Zen route would serve nothing.
 include: [models.generated.yaml]
 
 credential_list:
@@ -44,10 +45,6 @@ credential_list:
     credential_info: {}
   - credential_name: openrouter
     credential_values: { api_key: os.environ/OPENROUTER_API_KEY, api_base: os.environ/OPENROUTER_API_BASE }
-    credential_info: {}
-  # OpenCode Zen (pay as you go) for its free models only; the account holds no credit.
-  - credential_name: opencode-free
-    credential_values: { api_key: os.environ/OPENCODE_FREE_API_KEY, api_base: os.environ/OPENCODE_FREE_API_BASE }
     credential_info: {}
   - credential_name: local
     credential_values: { api_key: os.environ/LOCAL_LLM_API_KEY, api_base: os.environ/LOCAL_LLM_API_BASE }
@@ -80,8 +77,7 @@ model_list:
     litellm_params: { model: openai/*, litellm_credential_name: local }
   # No openrouter/* wildcard: OpenRouter is free only, and a suffix wildcard such as
   # `openrouter/*:free` is not verified against the pinned release, so the sync's generated
-  # deployments are the only way to reach an OpenRouter model. No opencode-free/* wildcard
-  # either: Zen lists paid models beside the free ones.
+  # deployments are the only way to reach an OpenRouter model.
 
 litellm_settings:
   telemetry: false

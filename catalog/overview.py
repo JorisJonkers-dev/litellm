@@ -20,7 +20,7 @@ Standard library only: it runs in the LiteLLM image beside the sync, and in CI.
 ORDER = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The routes whose deployments are a free tier that may train on the prompts, and the provider
 # each one is. A group holding one is a public group, and its row says so.
-PUBLIC_ROUTES = {"google": "Google", "openrouter": "OpenRouter", "opencode-free": "OpenCode Zen"}
+PUBLIC_ROUTES = {"google": "Google", "openrouter": "OpenRouter"}
 
 
 def public_group(provider):
@@ -50,10 +50,10 @@ ROUTING = (
     "model it offers, then the general Mistral API keys (vibe-api 2:1 vibe-study-api). OpenCode Go "
     "serves only a model none of those serve. Google's free tier is never in a normal group: Gemini "
     "is served from a `public/<model>` group that only keys with the `google-free-public` access "
-    "group see, because Google may train on those prompts. The free OpenRouter and OpenCode Zen "
-    "models are public work only too: each is served from its own `<route>/<model>` group, alone, "
-    "that only keys with that route's access group (`openrouter-free-public`, "
-    "`opencode-free-public`) see, and no free model is in a normal group. Claude is only ever on the "
+    "group see, because Google may train on those prompts. The free OpenRouter models are public "
+    "work only too: each is served from its own `openrouter/<model>` group, alone, that only keys "
+    "with the `openrouter-free-public` access group see, and no free model is in a normal group. "
+    "Claude is only ever on the "
     "Anthropic key."
 )
 
@@ -226,9 +226,8 @@ def groups_section(catalogue):
         "One row per canonical group: the deployments that serve it, in the order the router tries "
         "them (lower first, `xN` is the weight inside a level). A `public/<model>` group is the "
         "Google free tier plus the same deployments the normal group has, and only keys with the "
-        "`google-free-public` access group see it. An `openrouter/<model>` or `opencode-free/<model>` "
-        "group is that route's free model alone, and only keys with `openrouter-free-public` or "
-        "`opencode-free-public` see it.",
+        "`google-free-public` access group see it. An `openrouter/<model>` group is that free "
+        "OpenRouter model alone, and only keys with `openrouter-free-public` see it.",
         "",
     ]
     if not found:
