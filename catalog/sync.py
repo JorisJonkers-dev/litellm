@@ -78,6 +78,8 @@ ROUTES = [
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
 DEFAULT_ROUTE_LIMITS = {"openrouter": 30}
+# Why a paid model on a free-only route has no probe.
+PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -90,7 +92,17 @@ PROBE_RETRY_CEILING = 256
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
 PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter", "google": "gemini", "anthropic": "anthropic"}
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
-FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] == "openrouter")
+FREE_KINDS = ("openrouter",)
+FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
+# A free-only route is public work only: a free-tier provider may train on the prompts, so its
+# deployments are never in `canonical` (the group every key holds). Each one gets its own
+# "<route>/<canonical>" group and its own access group, so a key reaches it only by holding that
+# group, and that key reaches nothing paid. One group per route, not one shared free group: a
+# shared group would let every free key reach every free provider, and LiteLLM grants access per
+# model name, so two routes in one name would leak each other's deployments. This is code, not a rule in routing.json, so no rules
+# edit can put a free deployment back in `canonical`.
+FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public"}
+assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -98,6 +110,8 @@ MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcr
 PUBLIC_COOLDOWN = 120
 # The access group a public deployment carries; a key without it never sees a public/* model.
 PUBLIC_ACCESS_GROUP = "google-free-public"
+# The access group every other deployment carries, and every key holds.
+CANONICAL_ACCESS_GROUP = "canonical"
 # The generated deployments: a file in the litellm repository, refreshed by a pull request.
 MODELS_PATH = "config/models.generated.yaml"
 MODELS_BRANCH = "bot/model-catalog"
@@ -389,14 +403,16 @@ def primary_mode(routes):
     return sorted(counts, key=lambda mode: (-counts[mode], mode != "chat", mode))[0]
 
 
-def group_name(name, mode, primary, public=False):
+def group_name(name, mode, primary, public=False, free_route=None):
     """The LiteLLM model_name of one deployment: the canonical name, and the mode when it differs.
 
     A group never mixes modes: a model whose mode differs from its name-mates gets its own group,
-    "<canonical>:<mode>", so an embedding request cannot land on a chat deployment.
+    "<canonical>:<mode>", so an embedding request cannot land on a chat deployment. A free-only
+    route's group is "<route>/<canonical>", a public one "public/<canonical>".
     """
     suffix = "" if mode == primary else ":" + MODES.get(mode, mode)
-    return ("public/" if public else "") + name + suffix
+    prefix = f"{free_route}/" if free_route else ("public/" if public else "")
+    return prefix + name + suffix
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None):
@@ -405,17 +421,22 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     params = litellm_params(entry, upstream_id)
     params.update({"order": order, "weight": weight})
     if entry["kind"] == "openrouter":
-        # Free ids only, and the provider may neither train on nor fall back with the prompt.
+        # Free ids only, and the provider is asked neither to train on nor to fall back with the
+        # prompt. The route is still public work only: a free tier is not trusted with private work.
         params["extra_body"] = {"provider": {"data_collection": "deny", "allow_fallbacks": False}}
     if budget:
         params.update(budget)
     if cooldown:
         params["cooldown_time"] = cooldown
+    if route in FREE_ACCESS_GROUPS:
+        groups = [FREE_ACCESS_GROUPS[route]]
+    else:
+        groups = [PUBLIC_ACCESS_GROUP] if public else [CANONICAL_ACCESS_GROUP]
     info = {
         "id": ("public/" if public else "") + f"{route}/{upstream_id}",
         "route": route,
         "canonical": canonical,
-        "access_groups": [PUBLIC_ACCESS_GROUP] if public else ["canonical"],
+        "access_groups": groups,
     }
     if chosen["modality"] in MODES:
         info["mode"] = MODES[chosen["modality"]]
@@ -441,6 +462,10 @@ def plan_groups(catalogue, rules):
     A public route (a free tier whose prompts may be used for training) never appears in a normal
     group: it gets a "public/<canonical>" group of its own, first, with the normal deployments
     behind it, and only a key carrying the public access group sees it.
+
+    A free-only route (OpenRouter) is public work only too, and free only: it is in
+    no normal group and no public/ group, only in its own "<route>/<canonical>" group with its own
+    access group (FREE_ACCESS_GROUPS), so the key that holds that group reaches nothing paid.
     """
     rules = rules or {}
     tiers = rules.get("tiers") or []
@@ -452,7 +477,6 @@ def plan_groups(catalogue, rules):
     unranked = (len(tiers) + 1, 1)
     backup_only = rules.get("backup_only") or {}
     exclusive = rules.get("exclusive") or []
-    free_first = set(rules.get("free_first_unless_served_by") or [])
     api_only = set(rules.get("api_only_routes") or [])
     budgets = rules.get("budgets") or {}
     cooldowns = rules.get("cooldowns") or {}
@@ -491,22 +515,19 @@ def plan_groups(catalogue, rules):
         if not serving:
             continue
         primary = primary_mode({route: routes[route] for route in serving})
-        normal = serving - public_routes
+        free = serving & FREE_ONLY
+        normal = serving - public_routes - FREE_ONLY
         public = serving & public_routes
-        # Only a free-only route's deployment is a free deployment; a local one is a normal tier.
-        free = set() if only else {route for route in normal if by_route[route]["kind"] == "openrouter" and routes[route]["free"]}
+        for route in sorted(free):
+            # Its own group, alone: public work only, and nothing paid behind it.
+            specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
+                                    routes[route], 1, 1, by_route[route], cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
-        levels = sorted({rank.get(route, unranked)[0] for route in normal - free})
-        # Free deployments come first unless a plan route serves the model, then after the last tier.
-        free_before = bool(free) and not (serving & free_first)
-        order_of = {level: index + 1 + (1 if free_before else 0) for index, level in enumerate(levels)}
-        free_order = 1 if free_before else len(levels) + 1
+        levels = sorted({rank.get(route, unranked)[0] for route in normal})
+        order_of = {level: index + 1 for index, level in enumerate(levels)}
         planned = []
         for route in sorted(normal):
-            if route in free:
-                order, weight = free_order, 1
-            else:
-                order, weight = order_of[rank.get(route, unranked)[0]], rank.get(route, unranked)[1]
+            order, weight = order_of[rank.get(route, unranked)[0]], rank.get(route, unranked)[1]
             planned.append((route, order, weight))
         for route, order, weight in planned:
             specs.append(deployment(group_name(name, routes[route]["modality"], primary), name, route, routes[route],
@@ -560,7 +581,7 @@ def record_groups(deployments):
     for spec in deployments:
         entry = groups.setdefault(spec["name"], {
             "modality": spec["modality"],
-            "public": spec["model_info"]["access_groups"] == [PUBLIC_ACCESS_GROUP],
+            "public": spec["model_info"]["access_groups"] != [CANONICAL_ACCESS_GROUP],
             "deployments": [],
         })
         entry["deployments"].append({
@@ -650,8 +671,8 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             if item["chat"] is False:
                 meta.update(status="not-chat", reason="")
                 meta.setdefault("probed_at", stamp)
-            elif route == "openrouter" and not item["free"]:
-                meta.update(status="unprobed", reason="paid OpenRouter models are not probed")
+            elif route in FREE_ONLY and not item["free"]:
+                meta.update(status="unprobed", reason=PAID_REASON.get(route, "paid models on a free-only route are not probed"))
                 meta.pop("probed_at", None)
             else:
                 why = due(old, now, max_age)

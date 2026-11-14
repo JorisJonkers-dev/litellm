@@ -18,11 +18,17 @@ Standard library only: it runs in the LiteLLM image beside the sync, and in CI.
 # The sync's statuses in its own order, so every counts line reads the same way. A status the
 # sync adds later still renders, after these, alphabetically.
 ORDER = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
-# The routes whose deployments are a free tier that may train on the prompts. A group holding one
-# is a public group, and its row says so.
-PUBLIC_ROUTES = ("google",)
-PUBLIC_GROUP = "free tier, Google may train on prompts, public work only"
-PUBLIC_ROW = "free tier — Google may train on prompts"
+# The routes whose deployments are a free tier that may train on the prompts, and the provider
+# each one is. A group holding one is a public group, and its row says so.
+PUBLIC_ROUTES = {"google": "Google", "openrouter": "OpenRouter"}
+
+
+def public_group(provider):
+    return f"free tier, {provider} may train on prompts, public work only"
+
+
+def public_row(provider):
+    return f"free tier — {provider} may train on prompts"
 
 HOW = (
     "The sync lists every provider's models hourly (minute 17) and probes a model with one tiny "
@@ -44,8 +50,10 @@ ROUTING = (
     "model it offers, then the general Mistral API keys (vibe-api 2:1 vibe-study-api). OpenCode Go "
     "serves only a model none of those serve. Google's free tier is never in a normal group: Gemini "
     "is served from a `public/<model>` group that only keys with the `google-free-public` access "
-    "group see, because Google may train on those prompts. Free OpenRouter models come first when no "
-    "plan route serves the model and after the last tier when one does. Claude is only ever on the "
+    "group see, because Google may train on those prompts. The free OpenRouter models are public "
+    "work only too: each is served from its own `openrouter/<model>` group, alone, that only keys "
+    "with the `openrouter-free-public` access group see, and no free model is in a normal group. "
+    "Claude is only ever on the "
     "Anthropic key."
 )
 
@@ -180,25 +188,33 @@ def deployments(entry):
     """`1: vibe x2, vibe-study x1 > 2: vibe-api x2`: the group in the order the router tries it."""
     return " > ".join(
         f"{order}: " + ", ".join(
-            f"{cell(route)} x{weight}" + (f" ({PUBLIC_ROW})" if route in PUBLIC_ROUTES else "")
+            f"{cell(route)} x{weight}" + (f" ({public_row(PUBLIC_ROUTES[route])})" if route in PUBLIC_ROUTES else "")
             for route, weight in routes
         )
         for order, routes in grouped(entry)
     )
 
 
+def public_providers(entry):
+    """The providers in a group that may train on the prompts, in route order."""
+    routes = {route for _, level in grouped(entry or {}) for route, _ in level}
+    return [PUBLIC_ROUTES[route] for route in sorted(routes) if route in PUBLIC_ROUTES]
+
+
 def is_public(entry):
     """A group is public when it holds a deployment on a route that may train on the prompts."""
     if (entry or {}).get("public"):
         return True
-    return any(route in PUBLIC_ROUTES for _, level in grouped(entry or {}) for route, _ in level)
+    return bool(public_providers(entry))
 
 
 def group_row(name, entry):
     """One canonical group: what it is, where it is served in order, and whether it is public."""
     entry = entry or {}
-    return [cell(name), cell(entry.get("modality") or ""), deployments(entry),
-            PUBLIC_GROUP if is_public(entry) else ""]
+    note = ""
+    if is_public(entry):
+        note = public_group(" and ".join(public_providers(entry)) or "the provider")
+    return [cell(name), cell(entry.get("modality") or ""), deployments(entry), note]
 
 
 def groups_section(catalogue):
@@ -210,7 +226,8 @@ def groups_section(catalogue):
         "One row per canonical group: the deployments that serve it, in the order the router tries "
         "them (lower first, `xN` is the weight inside a level). A `public/<model>` group is the "
         "Google free tier plus the same deployments the normal group has, and only keys with the "
-        "`google-free-public` access group see it.",
+        "`google-free-public` access group see it. An `openrouter/<model>` group is that free "
+        "OpenRouter model alone, and only keys with `openrouter-free-public` see it.",
         "",
     ]
     if not found:

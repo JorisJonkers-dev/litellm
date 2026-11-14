@@ -201,8 +201,17 @@ class Render(unittest.TestCase):
         for phrase in ("Whichever provider serves a model first wins", "vibe 2:1 vibe-study",
                        "vibe-api 2:1 vibe-study-api", "Anthropic key for Claude",
                        "OpenCode Go serves only a model none of those serve",
-                       "Free OpenRouter models come first"):
+                       "public work only too", "`openrouter-free-public`"):
             self.assertIn(phrase, text)
+        self.assertNotIn("Free OpenRouter models come first", text)
+
+    def test_a_free_route_group_is_labelled_with_its_provider(self):
+        catalogue = {"updated_at": "t", "providers": {}, "groups": {"openrouter/glm-4.6": {
+            "modality": "chat", "public": True,
+            "deployments": [{"route": "openrouter", "upstream_id": "z-ai/glm-4.6:free", "order": 1, "weight": 1}]}}}
+        text = overview.render(catalogue)
+        self.assertIn("free tier, OpenRouter may train on prompts, public work only", text)
+        self.assertIn("1: openrouter x1 (free tier — OpenRouter may train on prompts)", text)
 
     def test_possible_duplicates_are_listed_for_the_owner(self):
         text = overview.render(CATALOGUE)

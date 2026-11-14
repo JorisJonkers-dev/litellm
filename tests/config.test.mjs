@@ -66,6 +66,27 @@ test('no Zen route, no catch-all wildcard and no paid OpenRouter wildcard', () =
   assert.doesNotMatch(CONFIG, /model_name: openrouter\//)
 })
 
+test('no free-route deployment is in canonical, each is in its own route group', () => {
+  const groups = { openrouter: 'openrouter-free-public' }
+  for (const deployment of DEPLOYMENTS) {
+    const route = deployment.model_info?.route
+    if (!(route in groups)) {
+      assert.ok(!Object.values(groups).some((group) => deployment.model_info.access_groups.includes(group)), deployment.model_info.id)
+      continue
+    }
+    assert.deepEqual(deployment.model_info.access_groups, [groups[route]], deployment.model_info.id)
+    assert.ok(deployment.model_name.startsWith(`${route}/`), deployment.model_name)
+    assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
+  }
+  // A model name never mixes access groups: LiteLLM grants a key a name, not a deployment.
+  const byName = {}
+  for (const deployment of DEPLOYMENTS) {
+    byName[deployment.model_name] ??= new Set()
+    for (const group of deployment.model_info.access_groups) byName[deployment.model_name].add(group)
+  }
+  for (const [name, found] of Object.entries(byName)) assert.equal(found.size, 1, name)
+})
+
 test('the config includes the generated deployments', () => {
   assert.match(CONFIG, /^include: \[models\.generated\.yaml\]$/m)
 })
@@ -179,7 +200,8 @@ test('the routing rules are the decided policy', () => {
   ])
   assert.deepEqual(rules.backup_only, { 'opencode-go': ['vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'anthropic'] })
   assert.deepEqual(rules.exclusive, [{ match: '^claude', routes: ['anthropic'] }])
-  assert.deepEqual(rules.free_first_unless_served_by, ['vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'anthropic'])
+  // Free deployments are never in a canonical group, so there is no free-first rule.
+  assert.equal(rules.free_first_unless_served_by, undefined)
   assert.deepEqual(rules.api_only_routes, ['vibe-api', 'vibe-study-api'])
   assert.deepEqual(rules.public_routes, ['google'])
   assert.equal(rules.limits, undefined)
@@ -198,7 +220,14 @@ test('every routed account has a safety-net budget and a cooldown', () => {
   // Google is a free tier: a budget would only take it out of the pick.
   assert.equal(rules.budgets.google, undefined)
   assert.deepEqual(rules.cooldowns, {
-    vibe: 3600, 'vibe-study': 3600, 'vibe-api': 3600, 'vibe-study-api': 3600, 'opencode-go': 900, google: 120, anthropic: 300,
+    vibe: 3600,
+    'vibe-study': 3600,
+    'vibe-api': 3600,
+    'vibe-study-api': 3600,
+    'opencode-go': 900,
+    google: 120,
+    anthropic: 300,
+    openrouter: 120,
   })
   for (const [route, seconds] of Object.entries(rules.cooldowns)) {
     assert.ok(Number.isInteger(seconds) && seconds > 0, route)
