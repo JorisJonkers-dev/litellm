@@ -162,6 +162,16 @@ test('the router falls through a cooled-down or spent deployment, per deployment
   assert.doesNotMatch(ROUTER, /allowed_fails|cooldown_time/)
 })
 
+test('the local route calls the GPU workstation gate with the key only this project holds', () => {
+  for (const file of ['litellm', 'litellm-catalog']) {
+    const env = readFileSync(`${ROOT}/deploy/env/${file}/base.env`, 'utf8').replace(/^\s*#.*$/gm, '')
+    assert.match(env, /^LOCAL_LLM_API_BASE=http:\/\/100\.112\.121\.102:11435\/v1$/m, file)
+    assert.match(env, /^LOCAL_LLM_API_KEY=\$\{secret:secret\/data\/platform\/litellm#local_llm_api_key\}$/m, file)
+  }
+  // Both Processes read the key, so both grants name it.
+  assert.equal((PROJECT.match(/keys: \[[^\]]*\blocal_llm_api_key\b/g) ?? []).length, 2)
+})
+
 test('no model is stored in the proxy database', () => {
   assert.doesNotMatch(CONFIG, /store_model_in_db/)
 })

@@ -62,9 +62,11 @@ applications:
           to: internet
           reason: >-
             The proxy calls the Mistral API (Vibe, Vibe-study and the two general keys), the OpenCode Go
-            API, OpenRouter, Google and Anthropic. The local/* route (the GPU workstation's model server) is not reachable
-            by this declaration: the model has no edge to a host outside the cluster, and
-            internet egress excludes every private and tailnet range (agent-kit follow-up).
+            API, OpenRouter, Google and Anthropic. The local/* route calls the GPU workstation's keyed gate on its
+            tailnet address (100.112.121.102:11435), which this declaration does not cover: internet egress
+            excludes every private and tailnet range, and the model has no edge to a host outside the
+            cluster. That works only while the estate's policies stay render-only; promoting them needs
+            that edge first.
 
         secrets:
           # Placeholder names: the owner writes the values with estate bootstrap/secrets.sh.
@@ -72,9 +74,10 @@ applications:
           # master_key and salt_key are generated there; salt_key must never change once
           # virtual keys exist, because it encrypts the upstream keys stored in the database.
           # oidc_client_secret is the admin UI's client secret at auth-api, minted there with its copy
-          # in secret/auth-api (auth.clients.litellm.secret).
+          # in secret/auth-api (auth.clients.litellm.secret). local_llm_api_key is the GPU
+          # workstation gate's key, the same value as /var/lib/secrets/llm-local-gate.key there.
           - path: secret/data/platform/litellm
-            keys: [master_key, salt_key, oidc_client_secret, vibe_api_key, vibe_study_api_key, vibe_api_general_key, vibe_study_api_general_key, opencode_go_api_key, openrouter_api_key, google_api_key, anthropic_api_key]
+            keys: [master_key, salt_key, oidc_client_secret, vibe_api_key, vibe_study_api_key, vibe_api_general_key, vibe_study_api_general_key, opencode_go_api_key, openrouter_api_key, google_api_key, anthropic_api_key, local_llm_api_key]
             access: read
             delivery: env
             rotation: { tolerates: restart }
@@ -110,13 +113,16 @@ applications:
           to: internet
           reason: >-
             Lists and probes models at the Mistral, OpenCode Go, OpenRouter, Google and Anthropic APIs,
-            publishes the catalogue to GitHub and opens the routing pull request there.
+            publishes the catalogue to GitHub and opens the routing pull request there. It lists the GPU
+            workstation's models at its keyed gate too, which this declaration does not cover (see the
+            proxy's egress above).
         secrets:
           # The same Vault path as the proxy: the provider keys list and probe each provider's
           # models, catalog_publish_token writes the catalogue repository, and catalog_pr_token
-          # opens the pull request with the generated routing in this repository.
+          # opens the pull request with the generated routing in this repository. local_llm_api_key
+          # lists and probes the GPU workstation's models through its keyed gate.
           - path: secret/data/platform/litellm
-            keys: [vibe_api_key, vibe_study_api_key, vibe_api_general_key, vibe_study_api_general_key, opencode_go_api_key, openrouter_api_key, google_api_key, anthropic_api_key, catalog_publish_token, catalog_pr_token]
+            keys: [vibe_api_key, vibe_study_api_key, vibe_api_general_key, vibe_study_api_general_key, opencode_go_api_key, openrouter_api_key, google_api_key, anthropic_api_key, catalog_publish_token, catalog_pr_token, local_llm_api_key]
             access: read
             delivery: env
             rotation: { tolerates: restart }
