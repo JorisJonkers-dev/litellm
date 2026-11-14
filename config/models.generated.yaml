@@ -3,29 +3,6 @@
 {
   "model_list": [
     {
-      "model_name": "apodex-1.1-mini",
-      "litellm_params": {
-        "model": "openrouter/apodex/apodex-1.1-mini:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/apodex/apodex-1.1-mini:free",
-        "route": "openrouter",
-        "canonical": "apodex-1.1-mini",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
       "model_name": "beam-1.0-501b-a23b",
       "litellm_params": {
         "model": "openai/beam-free",
@@ -1152,29 +1129,6 @@
       }
     },
     {
-      "model_name": "lfm-2.5-2.6b",
-      "litellm_params": {
-        "model": "openrouter/liquid/lfm-2.5-2.6b:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/liquid/lfm-2.5-2.6b:free",
-        "route": "openrouter",
-        "canonical": "lfm-2.5-2.6b",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
       "model_name": "lfm-3-1.7b",
       "litellm_params": {
         "model": "openrouter/liquid/lfm-3-1.7b:free",
@@ -1192,6 +1146,29 @@
         "id": "openrouter/liquid/lfm-3-1.7b:free",
         "route": "openrouter",
         "canonical": "lfm-3-1.7b",
+        "access_groups": [
+          "canonical"
+        ]
+      }
+    },
+    {
+      "model_name": "ling-3.2-flash",
+      "litellm_params": {
+        "model": "openrouter/inclusionai/ling-3.2-flash:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "model_info": {
+        "id": "openrouter/inclusionai/ling-3.2-flash:free",
+        "route": "openrouter",
+        "canonical": "ling-3.2-flash",
         "access_groups": [
           "canonical"
         ]
@@ -1221,6 +1198,29 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "lyria-3-pro-preview",
+      "litellm_params": {
+        "model": "openrouter/google/lyria-3-pro-preview",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "model_info": {
+        "id": "openrouter/google/lyria-3-pro-preview",
+        "route": "openrouter",
+        "canonical": "lyria-3-pro-preview",
+        "access_groups": [
+          "canonical"
+        ]
       }
     },
     {
@@ -3232,6 +3232,48 @@
         "id": "public/google/gemini-3.6-flash",
         "route": "google",
         "canonical": "gemini-3.6-flash",
+        "access_groups": [
+          "google-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "public/gemini-3.7-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.7-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "public/google/gemini-3.7-flash",
+        "route": "google",
+        "canonical": "gemini-3.7-flash",
+        "access_groups": [
+          "google-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "public/gemini-3.8-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.8-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "public/google/gemini-3.8-flash",
+        "route": "google",
+        "canonical": "gemini-3.8-flash",
         "access_groups": [
           "google-free-public"
         ],
