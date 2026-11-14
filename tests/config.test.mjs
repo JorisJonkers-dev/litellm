@@ -154,6 +154,19 @@ test('the serving deployment is visible per request, and no label names a person
   }
 })
 
+test('budgets are exported for keys and for the route teams that hold them', () => {
+  const groups = Object.fromEntries(
+    [...CONFIG.matchAll(/- group: (\S+)\n\s+metrics: \[([^\]]*)\]\n\s+include_labels: \[([^\]]*)\]/g)]
+      .map((match) => [match[1], { metrics: match[2].split(',').map((m) => m.trim()), labels: match[3].split(',').map((l) => l.trim()) }]),
+  )
+  assert.deepEqual(groups.budgets?.labels, ['api_key_alias'])
+  assert.ok(groups.budgets.metrics.includes('litellm_api_key_budget_remaining_hours_metric'))
+  assert.deepEqual(groups['team-budgets']?.labels, ['team_alias'])
+  for (const metric of ['litellm_remaining_team_budget_metric', 'litellm_team_max_budget_metric', 'litellm_team_budget_remaining_hours_metric']) {
+    assert.ok(groups['team-budgets'].metrics.includes(metric), metric)
+  }
+})
+
 test('the router falls through a cooled-down or spent deployment, per deployment', () => {
   assert.match(CONFIG, /^router_settings:$/m)
   assert.match(ROUTER, /optional_pre_call_checks: \[router_budget_limiting\]/)
