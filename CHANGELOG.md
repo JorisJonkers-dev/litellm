@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.4.0...v1.5.0) (2026-11-14)
+
+
+### Features
+
+* **telemetry:** export the route teams' budgets, and a probe that proves a budget refuses ([#35](https://github.com/JorisJonkers-dev/litellm/issues/35)) ([0658b98](https://github.com/JorisJonkers-dev/litellm/commit/0658b980f05edb992c4188e6813232e17b78a13e))
+
 ## [1.4.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.3.1...v1.4.0) (2026-11-14)
 
 
