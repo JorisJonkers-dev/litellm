@@ -7,6 +7,11 @@
 
 * **local:** route local/* to the GPU workstation's keyed gate ([#37](https://github.com/JorisJonkers-dev/litellm/issues/37)) ([40d903d](https://github.com/JorisJonkers-dev/litellm/commit/40d903dde06ac4cf2a3b1d34314b0dc57de9d844))
 
+
+### Bug Fixes
+
+* **ci:** cancel superseded runs and skip label events ([#28](https://github.com/JorisJonkers-dev/litellm/issues/28)) ([b3a2d80](https://github.com/JorisJonkers-dev/litellm/commit/b3a2d8092a136d5aeabe6e0fa3786c77ae4ff165))
+
 ## [1.5.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.4.0...v1.5.0) (2026-11-14)
 
 
