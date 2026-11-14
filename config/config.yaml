@@ -109,8 +109,14 @@ litellm_settings:
       metrics: [litellm_proxy_failed_requests_metric]
       include_labels: [api_key_alias, requested_model, exception_status, model_id, api_provider]
     - group: budgets
-      metrics: [litellm_remaining_api_key_budget_metric, litellm_api_key_max_budget_metric]
+      metrics: [litellm_remaining_api_key_budget_metric, litellm_api_key_max_budget_metric, litellm_api_key_budget_remaining_hours_metric]
       include_labels: [api_key_alias]
+    # Setup mints each agent key into its route's team, and the team holds the budget (the keys
+    # have none of their own), so the budget alerts read these. Labelled by the team's alias
+    # (the route's name) only, never its id.
+    - group: team-budgets
+      metrics: [litellm_remaining_team_budget_metric, litellm_team_max_budget_metric, litellm_team_budget_remaining_hours_metric]
+      include_labels: [team_alias]
 
 router_settings:
   # A canonical model's deployments are tried by their `order`, lowest first. A 402 or 429 quota

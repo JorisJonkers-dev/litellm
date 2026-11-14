@@ -436,6 +436,40 @@
         "overrides": []
       },
       "description": "A key without max_budget (the local route) reports no cap."
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Budget remaining per route team",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "targets": [
+        {
+          "expr": "max by(team_alias)(litellm_remaining_team_budget_metric)",
+          "legendFormat": "{{team_alias}} remaining",
+          "refId": "A"
+        },
+        {
+          "expr": "max by(team_alias)(litellm_team_max_budget_metric)",
+          "legendFormat": "{{team_alias}} cap",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "description": "Each agent key belongs to its route's team, which holds the budget; the team resets every budget_duration."
     }
   ]
 }
