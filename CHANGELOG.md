@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.3.1...v1.4.0) (2026-11-14)
+
+
+### Features
+
+* **routing:** keep the free OpenRouter route public-only ([#33](https://github.com/JorisJonkers-dev/litellm/issues/33)) ([2161f83](https://github.com/JorisJonkers-dev/litellm/commit/2161f83a83aaf45e82bbde76ac3920a9069087ef))
+
 ## [1.3.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.3.0...v1.3.1) (2026-11-13)
 
 
