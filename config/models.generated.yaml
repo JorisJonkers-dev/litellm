@@ -3,29 +3,6 @@
 {
   "model_list": [
     {
-      "model_name": "apodex-1.1-mini",
-      "litellm_params": {
-        "model": "openrouter/apodex/apodex-1.1-mini:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/apodex/apodex-1.1-mini:free",
-        "route": "openrouter",
-        "canonical": "apodex-1.1-mini",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
       "model_name": "beam-1.0-501b-a23b",
       "litellm_params": {
         "model": "openai/beam-free",
@@ -590,144 +567,6 @@
       }
     },
     {
-      "model_name": "dots-3-note-preview",
-      "litellm_params": {
-        "model": "openrouter/dots-studio/dots-3-note-preview:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/dots-studio/dots-3-note-preview:free",
-        "route": "openrouter",
-        "canonical": "dots-3-note-preview",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "ernie-5.5-flash-preview",
-      "litellm_params": {
-        "model": "openrouter/baidu/ernie-5.5-flash-preview:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/baidu/ernie-5.5-flash-preview:free",
-        "route": "openrouter",
-        "canonical": "ernie-5.5-flash-preview",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "flint-v1.0",
-      "litellm_params": {
-        "model": "openrouter/recursive/flint-v1.0:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/recursive/flint-v1.0:free",
-        "route": "openrouter",
-        "canonical": "flint-v1.0",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "free",
-      "litellm_params": {
-        "model": "openrouter/openrouter/free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/openrouter/free",
-        "route": "openrouter",
-        "canonical": "free",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "gemma-4-26b-a4b-it",
-      "litellm_params": {
-        "model": "openrouter/google/gemma-4-26b-a4b-it:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/google/gemma-4-26b-a4b-it:free",
-        "route": "openrouter",
-        "canonical": "gemma-4-26b-a4b-it",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "gemma-4-31b-it",
-      "litellm_params": {
-        "model": "openrouter/google/gemma-4-31b-it:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/google/gemma-4-31b-it:free",
-        "route": "openrouter",
-        "canonical": "gemma-4-31b-it",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
       "model_name": "glm-5",
       "litellm_params": {
         "model": "mistral/zai-glm-5",
@@ -1149,52 +988,6 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
-      }
-    },
-    {
-      "model_name": "lfm-2.5-2.6b",
-      "litellm_params": {
-        "model": "openrouter/liquid/lfm-2.5-2.6b:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/liquid/lfm-2.5-2.6b:free",
-        "route": "openrouter",
-        "canonical": "lfm-2.5-2.6b",
-        "access_groups": [
-          "canonical"
-        ]
-      }
-    },
-    {
-      "model_name": "lfm-3-1.7b",
-      "litellm_params": {
-        "model": "openrouter/liquid/lfm-3-1.7b:free",
-        "litellm_credential_name": "openrouter",
-        "order": 1,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
-        }
-      },
-      "model_info": {
-        "id": "openrouter/liquid/lfm-3-1.7b:free",
-        "route": "openrouter",
-        "canonical": "lfm-3-1.7b",
-        "access_groups": [
-          "canonical"
-        ]
       }
     },
     {
@@ -2956,7 +2749,250 @@
       }
     },
     {
-      "model_name": "nemotron-3-nano-omni-30b-a3b-reasoning",
+      "model_name": "openrouter/dots-3-note-preview",
+      "litellm_params": {
+        "model": "openrouter/dots-studio/dots-3-note-preview:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/dots-studio/dots-3-note-preview:free",
+        "route": "openrouter",
+        "canonical": "dots-3-note-preview",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/ernie-5.5-flash-preview",
+      "litellm_params": {
+        "model": "openrouter/baidu/ernie-5.5-flash-preview:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/baidu/ernie-5.5-flash-preview:free",
+        "route": "openrouter",
+        "canonical": "ernie-5.5-flash-preview",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/flint-v1.0",
+      "litellm_params": {
+        "model": "openrouter/recursive/flint-v1.0:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/recursive/flint-v1.0:free",
+        "route": "openrouter",
+        "canonical": "flint-v1.0",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/free",
+      "litellm_params": {
+        "model": "openrouter/openrouter/free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/openrouter/free",
+        "route": "openrouter",
+        "canonical": "free",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/gemma-4-26b-a4b-it",
+      "litellm_params": {
+        "model": "openrouter/google/gemma-4-26b-a4b-it:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/google/gemma-4-26b-a4b-it:free",
+        "route": "openrouter",
+        "canonical": "gemma-4-26b-a4b-it",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/gemma-4-31b-it",
+      "litellm_params": {
+        "model": "openrouter/google/gemma-4-31b-it:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/google/gemma-4-31b-it:free",
+        "route": "openrouter",
+        "canonical": "gemma-4-31b-it",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/lfm-3-1.7b",
+      "litellm_params": {
+        "model": "openrouter/liquid/lfm-3-1.7b:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/liquid/lfm-3-1.7b:free",
+        "route": "openrouter",
+        "canonical": "lfm-3-1.7b",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/ling-3.2-flash",
+      "litellm_params": {
+        "model": "openrouter/inclusionai/ling-3.2-flash:free",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/inclusionai/ling-3.2-flash:free",
+        "route": "openrouter",
+        "canonical": "ling-3.2-flash",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/lyria-3-pro-preview",
+      "litellm_params": {
+        "model": "openrouter/google/lyria-3-pro-preview",
+        "litellm_credential_name": "openrouter",
+        "order": 1,
+        "weight": 1,
+        "extra_body": {
+          "provider": {
+            "data_collection": "deny",
+            "allow_fallbacks": false
+          }
+        },
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "openrouter/google/lyria-3-pro-preview",
+        "route": "openrouter",
+        "canonical": "lyria-3-pro-preview",
+        "access_groups": [
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "openrouter/nemotron-3-nano-omni-30b-a3b-reasoning",
       "litellm_params": {
         "model": "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "litellm_credential_name": "openrouter",
@@ -2967,19 +3003,23 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "route": "openrouter",
         "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
-      "model_name": "nemotron-3-ultra-550b-a55b",
+      "model_name": "openrouter/nemotron-3-ultra-550b-a55b",
       "litellm_params": {
         "model": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
         "litellm_credential_name": "openrouter",
@@ -2990,19 +3030,23 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
         "route": "openrouter",
         "canonical": "nemotron-3-ultra-550b-a55b",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
-      "model_name": "nemotron-3.5-lightning",
+      "model_name": "openrouter/nemotron-3.5-lightning",
       "litellm_params": {
         "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
         "litellm_credential_name": "openrouter",
@@ -3013,19 +3057,23 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/nvidia/nemotron-3.5-lightning:free",
         "route": "openrouter",
         "canonical": "nemotron-3.5-lightning",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
-      "model_name": "nemotron-3.5-super-vl",
+      "model_name": "openrouter/nemotron-3.5-super-vl",
       "litellm_params": {
         "model": "openrouter/nvidia/nemotron-3.5-super-vl:free",
         "litellm_credential_name": "openrouter",
@@ -3036,19 +3084,23 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/nvidia/nemotron-3.5-super-vl:free",
         "route": "openrouter",
         "canonical": "nemotron-3.5-super-vl",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
-      "model_name": "north-mini-code",
+      "model_name": "openrouter/north-mini-code",
       "litellm_params": {
         "model": "openrouter/cohere/north-mini-code:free",
         "litellm_credential_name": "openrouter",
@@ -3059,19 +3111,23 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/cohere/north-mini-code:free",
         "route": "openrouter",
         "canonical": "north-mini-code",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
-      "model_name": "particle-1",
+      "model_name": "openrouter/particle-1",
       "litellm_params": {
         "model": "openrouter/particle-ai/particle-1:free",
         "litellm_credential_name": "openrouter",
@@ -3082,15 +3138,19 @@
             "data_collection": "deny",
             "allow_fallbacks": false
           }
-        }
+        },
+        "cooldown_time": 120
       },
       "model_info": {
         "id": "openrouter/particle-ai/particle-1:free",
         "route": "openrouter",
         "canonical": "particle-1",
         "access_groups": [
-          "canonical"
-        ]
+          "openrouter-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -3241,6 +3301,48 @@
       }
     },
     {
+      "model_name": "public/gemini-3.7-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.7-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "public/google/gemini-3.7-flash",
+        "route": "google",
+        "canonical": "gemini-3.7-flash",
+        "access_groups": [
+          "google-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "public/gemini-3.8-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.8-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "public/google/gemini-3.8-flash",
+        "route": "google",
+        "canonical": "gemini-3.8-flash",
+        "access_groups": [
+          "google-free-public"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "public/gemini-4-hydrogen",
       "litellm_params": {
         "model": "gemini/gemini-4-hydrogen",
@@ -3318,30 +3420,10 @@
         "canonical": "gemma-4-26b-a4b-it",
         "access_groups": [
           "google-free-public"
-        ]
-      }
-    },
-    {
-      "model_name": "public/gemma-4-26b-a4b-it",
-      "litellm_params": {
-        "model": "openrouter/google/gemma-4-26b-a4b-it:free",
-        "litellm_credential_name": "openrouter",
-        "order": 2,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
         }
-      },
-      "model_info": {
-        "id": "public/openrouter/google/gemma-4-26b-a4b-it:free",
-        "route": "openrouter",
-        "canonical": "gemma-4-26b-a4b-it",
-        "access_groups": [
-          "google-free-public"
-        ]
       }
     },
     {
@@ -3359,30 +3441,10 @@
         "canonical": "gemma-4-31b-it",
         "access_groups": [
           "google-free-public"
-        ]
-      }
-    },
-    {
-      "model_name": "public/gemma-4-31b-it",
-      "litellm_params": {
-        "model": "openrouter/google/gemma-4-31b-it:free",
-        "litellm_credential_name": "openrouter",
-        "order": 2,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "deny",
-            "allow_fallbacks": false
-          }
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
         }
-      },
-      "model_info": {
-        "id": "public/openrouter/google/gemma-4-31b-it:free",
-        "route": "openrouter",
-        "canonical": "gemma-4-31b-it",
-        "access_groups": [
-          "google-free-public"
-        ]
       }
     },
     {

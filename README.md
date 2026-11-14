@@ -15,7 +15,8 @@ LiteLLM for the JorisJonkers-dev estate: `ghcr.io/jorisjonkers-dev/litellm`, the
 | `vibe-api` | Mistral, general API key | `vibe_api_general_key` | EUR 25.50 a month |
 | `vibe-study-api` | Mistral, general API key | `vibe_study_api_general_key` | EUR 12.75 a month |
 | `opencode-go` | OpenCode Go (OpenAI-compatible) | `opencode_go_api_key` | pay per token |
-| `openrouter` | OpenRouter, free ids only | `openrouter_api_key` | free |
+| `openrouter` | OpenRouter, free ids only, public work only | `openrouter_api_key` | free |
+| `opencode-free` | OpenCode Zen (`https://opencode.ai/inference/openai/v1`), free models only, public work only | `opencode_free_api_key` | free (no credit on the account) |
 | `local` | OpenAI-compatible server on the GPU workstation | none | free |
 | `google` | Google AI Studio, free tier | `google_api_key` | free tier |
 | `anthropic` | Anthropic | `anthropic_api_key` | pay per token |
@@ -24,7 +25,7 @@ The four Mistral accounts are listed and probed separately because their model s
 
 **Credentials.** `credential_list` holds one entry per account: `credential_name` (the route), `credential_values` (`api_key` and, except for Google and Anthropic, `api_base`) and the required `credential_info: {}`. Every value is an environment name (`os.environ/<NAME>`), never a value. A deployment names its entry with `litellm_params.litellm_credential_name`. LiteLLM sends **no credentials at all** when that name does not resolve, so `tests/config.test.mjs` fails on a dangling name in either config file: that check is the guard against a silently unauthenticated deployment. Google and Anthropic are addressed by LiteLLM itself, so their credentials carry the key only.
 
-**Wildcards.** The catch-all wildcards are `vibe/*`, `vibe-study/*`, `vibe-api/*`, `vibe-study-api/*` (all `mistral/*`), `opencode-go/*` and `local/*` (both `openai/*`). There is no `openrouter/*` wildcard: OpenRouter is free only, and a suffix wildcard such as `openrouter/*:free` is not verified against the pinned release, so the generated deployments are the only way to reach an OpenRouter model. There is no Zen (`opencode.ai/zen/v1`) route.
+**Wildcards.** The catch-all wildcards are `vibe/*`, `vibe-study/*`, `vibe-api/*`, `vibe-study-api/*` (all `mistral/*`), `opencode-go/*` and `local/*` (both `openai/*`). There is no `openrouter/*` wildcard: OpenRouter is free only, and a suffix wildcard such as `openrouter/*:free` is not verified against the pinned release, so the generated deployments are the only way to reach an OpenRouter model. There is no `opencode-free/*` wildcard either: Zen lists its paid models beside the free ones.
 
 ## Telemetry
 
@@ -47,13 +48,15 @@ Metadata only: model, key alias, tokens, cost, latency, status. `turn_off_messag
 - **Anthropic's 400.** Anthropic answers an exhausted limit with HTTP 400, a `BadRequest`. There is deliberately no `BadRequest` policy: cooling on every 400 would cool Claude on any malformed request. The 400 passes through to the caller with Anthropic's own text.
 - **Google is a public free tier.** The AI Studio key is a free-tier key whose prompts Google may train on, so it is only for public work. Gemini deployments on `google` exist **only** in separate groups named `public/<canonical>`, with `model_info.access_groups: ["google-free-public"]`; the normal `<canonical>` group never contains `google`. A `public/<canonical>` group is the Google deployment at order 1 (no `max_budget`, `cooldown_time` 120) plus the same non-Google deployments the normal group has, renumbered after it. A virtual key without the `google-free-public` access group never sees `public/*`.
 - **OpenRouter is free only.** Only ids whose metadata says free are ever deployed, with `extra_body {"provider": {"data_collection": "deny", "allow_fallbacks": false}}`. There is no paid OpenRouter fallback.
+- **OpenCode Zen is free only.** The `opencode-free` route lists `https://opencode.ai/inference/openai/v1/models`, where a model's price is `cost.text.input.price` and `cost.text.output.price` per million tokens: a model with both at 0 is free, and only a free model served on chat-completions is deployed (`openai/<id>`, with the `x-opencode-session` header). A paid Zen model is listed `unprobed` and never deployed. OpenCode's docs say its free models are meant for OpenCode itself and other clients may be refused; the probe decides, and a refused model is listed `blocked`, never deployed.
+- **The free routes are public work only.** A free-tier provider may train on the prompts (OpenCode's docs say so for several of its free models), so `openrouter` and `opencode-free` deployments are in **no** `canonical` group and in no `public/*` group. Each one is alone in a `<route>/<canonical>` group (`openrouter/glm-4.6`, `opencode-free/big-pickle`) with its own access group, `openrouter-free-public` or `opencode-free-public`, `cooldown_time` 120 and no budget. A key holding only that group reaches that route's free models and nothing paid. One access group per route, not one shared free group: LiteLLM grants a key a model name, not a deployment, so two routes in one group would hand each route's key the other's provider. `tests/config.test.mjs` fails on a free deployment outside its own group, and on any model name whose deployments carry two access groups.
 - **OpenCode Go** lists extra fields: an item may carry `canonical_id` such as `zhipuai/glm-5.3`, which is stored as `metadata.canonical_id` and used for that route's canonical name (vendor segment dropped) before the alias table. Its base is `https://opencode.ai/inference/go/openai/v1`.
 - **No rate limits.** No `rpm` or `tpm` is set on any deployment: a burst is served by the tier's weighted share, and a 429 cools the deployment down to the next tier.
 - **The overview.** The same run publishes `README.md` beside `model-catalog.json` in the private `JorisJonkers-dev/litellm-model-catalog`: a summary per route (listed, usable, blocked, other), the canonical groups with their deployments in order, the usable models per route (free flag, context length, last probed, group) and the unavailable ones with the provider's reason, committed only when the content changes. The `local` route lists nothing while the GPU workstation is unreachable from the cluster; the overview says so.
 
 Published: ids, classification, reason text, free flag, context length, group and probe times; never a key, a prompt or a response body. The format of `model-catalog.json` follows the Hermes model-catalog schema that `JorisJonkers-dev/openrouter-model-catalog` generates (`version`, `providers.<route>.models[]` with `id`, `description: "free"` and `metadata`). `python3 catalog/sync.py` writes `model-catalog.json` and `model-overview.md` locally instead when `CATALOG_REPO` and `CATALOG_TOKEN` are not set.
 
-Probe cost bound: each probe is about 8 input and at most 16 output tokens (doubled only for a provider that demands a higher minimum), once per model per day, at most 250 a run and 30 free OpenRouter models a run; free and local models cost nothing.
+Probe cost bound: each probe is about 8 input and at most 16 output tokens (doubled only for a provider that demands a higher minimum), once per model per day, at most 250 a run, 30 free OpenRouter models and 20 free OpenCode Zen models a run; free and local models cost nothing.
 
 ## Canonical models and routing
 
@@ -67,7 +70,7 @@ Agents ask for one canonical name per model (`mistral-large`, `devstral`, `gemin
 | 4 | `vibe-api` : `vibe-study-api` | 2 : 1 | the general Mistral API keys: fallback once the plan credit or quota is out, and the only home of API-only models (audio, OCR, embeddings) |
 | 5 | `opencode-go` | 1 | only models none of the above serve (never a model Vibe, the general Mistral keys or Anthropic serve) |
 
-Free OpenRouter deployments come first when no plan route serves the model and after the last tier when one does; only routes of kind `openrouter` count as free, `local` is a normal tier. Orders are renumbered per group, so a model served only by OpenCode Go has order 1. `backup_only` keeps OpenCode Go out of a group any of the plan routes serves, and `exclusive` keeps `^claude` on `anthropic` alone.
+The free routes (`openrouter`, `opencode-free`) are not in these groups at all: each has its own `<route>/<canonical>` groups (above). `local` is a normal tier. Orders are renumbered per group, so a model served only by OpenCode Go has order 1. `backup_only` keeps OpenCode Go out of a group any of the plan routes serves, and `exclusive` keeps `^claude` on `anthropic` alone.
 
 **Budgets are a safety net, per deployment.** `catalog/routing.json` sets `max_budget` with `budget_duration: 30d` per route: `vibe` 255, `vibe-study` 127, `vibe-api` 25, `vibe-study-api` 12, `anthropic` 90, `opencode-go` 15, and none for `google`. LiteLLM caps a **deployment**, not an account, so a model served by two accounts of one plan gets the cap twice: the numbers are a runaway guard, not the plan limit. The plan limit is enforced by the provider, and exhaustion is handled by the cooldown above, not by the budget.
 
@@ -79,7 +82,7 @@ Canonical names come from one explicit mapping: normalisation (lower-case, vendo
 
 ## Deployment
 
-`deploy/litellm.project.yml` is the deploy-kit Project Intent: Project `litellm` in `litellm-system` at `litellm.jorisjonkers.dev`, with its environment in `deploy/env/litellm/base.env` and its secrets at `secret/data/platform/litellm` (`master_key`, `salt_key`, `vibe_api_key`, `vibe_study_api_key`, `vibe_api_general_key`, `vibe_study_api_general_key`, `opencode_go_api_key`, `openrouter_api_key`, `google_api_key`, `anthropic_api_key`, `catalog_publish_token`, `catalog_pr_token`). The catalogue Process gets the provider keys and both tokens; the proxy gets the provider keys only. CI validates both with the deploy-kit release `tools/deploy-kit` pins:
+`deploy/litellm.project.yml` is the deploy-kit Project Intent: Project `litellm` in `litellm-system` at `litellm.jorisjonkers.dev`, with its environment in `deploy/env/litellm/base.env` and its secrets at `secret/data/platform/litellm` (`master_key`, `salt_key`, `vibe_api_key`, `vibe_study_api_key`, `vibe_api_general_key`, `vibe_study_api_general_key`, `opencode_go_api_key`, `openrouter_api_key`, `opencode_free_api_key`, `google_api_key`, `anthropic_api_key`, `catalog_publish_token`, `catalog_pr_token`). The catalogue Process gets the provider keys and both tokens; the proxy gets the provider keys only. CI validates both with the deploy-kit release `tools/deploy-kit` pins:
 
 ```bash
 cd tools/deploy-kit && NODE_AUTH_TOKEN="$(gh auth token)" npm ci --ignore-scripts

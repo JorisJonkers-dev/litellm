@@ -101,6 +101,7 @@ function runLitellm(name, extra = []) {
     '-e', 'VIBE_API_KEY=upstream-vibe', '-e', 'VIBE_STUDY_API_KEY=upstream-vibe-study',
     '-e', 'VIBE_API_GENERAL_KEY=upstream-vibe-api', '-e', 'VIBE_STUDY_API_GENERAL_KEY=upstream-vibe-study-api',
     '-e', 'OPENCODE_GO_API_KEY=upstream-opencode-go', '-e', 'OPENROUTER_API_KEY=upstream-openrouter',
+    '-e', 'OPENCODE_FREE_API_KEY=upstream-opencode-free', '-e', 'OPENCODE_FREE_API_BASE=https://opencode-free.example.test/v1',
     '-e', 'GEMINI_API_KEY=upstream-google', '-e', 'ANTHROPIC_API_KEY=upstream-anthropic', '-e', 'GOOGLE_API_BASE=https://google.example.test/v1', '-e', 'ANTHROPIC_API_BASE=https://anthropic.example.test/v1',
     '-e', 'LOCAL_LLM_API_KEY=none',
     '-e', `MISTRAL_API_BASE=${upstream('MISTRAL_API_BASE')}`, '-e', `OPENCODE_GO_API_BASE=${upstream('OPENCODE_GO_API_BASE')}`,
