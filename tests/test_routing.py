@@ -200,6 +200,34 @@ class Plan(unittest.TestCase):
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs], [("claude-sonnet-4-5", "anthropic", 1)])
 
+    def test_claude_is_gated_behind_the_anthropic_access_group_never_canonical(self):
+        cat = catalogue(("anthropic", "claude-sonnet-4-5-20250929", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs], [
+            ("claude-sonnet-4-5", "anthropic", ["anthropic"]),
+            ("glm-4.6", "vibe", ["canonical"]),
+        ])
+
+    def test_a_gated_route_leaves_a_model_another_route_serves(self):
+        rules = dict(RULES, exclusive=[])
+        cat = catalogue(("anthropic", "glm-4.6", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
+        specs = sync.plan_groups(cat, rules)
+        self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs],
+                         [("glm-4.6", "vibe", ["canonical"])])
+
+    def test_the_gated_access_groups_are_their_own(self):
+        self.assertEqual(sync.GATED_ACCESS_GROUPS, {"anthropic": "anthropic"})
+        groups = set(sync.GATED_ACCESS_GROUPS.values())
+        self.assertFalse(groups & {sync.CANONICAL_ACCESS_GROUP, sync.PUBLIC_ACCESS_GROUP})
+        self.assertFalse(groups & set(sync.FREE_ACCESS_GROUPS.values()))
+
+    def test_a_gated_group_is_recorded_with_its_access_group_and_not_as_public(self):
+        cat = catalogue(("anthropic", "claude-sonnet-4-5", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
+        groups = sync.record_groups(sync.plan_groups(cat, RULES))
+        self.assertEqual(groups["claude-sonnet-4-5"]["public"], False)
+        self.assertEqual(groups["claude-sonnet-4-5"]["access_groups"], ["anthropic"])
+        self.assertNotIn("access_groups", groups["glm-4.6"])
+
     def test_openrouter_carries_free_ids_only_with_the_privacy_extra_body(self):
         cat = catalogue(
             ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),

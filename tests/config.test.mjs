@@ -87,6 +87,19 @@ test('no free-route deployment is in canonical, each is in its own route group',
   for (const [name, found] of Object.entries(byName)) assert.equal(found.size, 1, name)
 })
 
+test('every anthropic deployment is gated behind the anthropic access group, never canonical', () => {
+  const anthropic = DEPLOYMENTS.filter((deployment) => deployment.model_info?.route === 'anthropic')
+  for (const deployment of anthropic) {
+    assert.deepEqual(deployment.model_info.access_groups, ['anthropic'], deployment.model_info.id)
+  }
+  for (const deployment of DEPLOYMENTS) {
+    if (deployment.model_info?.route !== 'anthropic') {
+      assert.ok(!deployment.model_info.access_groups.includes('anthropic'), deployment.model_info.id)
+    }
+  }
+  assert.doesNotMatch(CONFIG, /model_name: anthropic\//)
+})
+
 test('the config includes the generated deployments', () => {
   assert.match(CONFIG, /^include: \[models\.generated\.yaml\]$/m)
 })
