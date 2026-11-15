@@ -235,8 +235,42 @@ class Plan(unittest.TestCase):
         )
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["route"], s["upstream_id"]) for s in specs], [("openrouter", "z-ai/glm-4.6:free")])
+        # Public work only, so a free endpoint that trains on the prompt is allowed (owner, 2026-11-15):
+        # most free endpoints exist only with training on. No fallback to a paid provider.
         self.assertEqual(specs[0]["litellm_params"]["extra_body"],
-                         {"provider": {"data_collection": "deny", "allow_fallbacks": False}})
+                         {"provider": {"data_collection": "allow", "allow_fallbacks": False}})
+
+    def test_an_opencode_go_free_id_is_public_only_in_its_own_group(self):
+        cat = catalogue(
+            ("opencode-go", "beam-free", "usable", {"free": True, "canonical_id": "acme/beam-1.0"}),
+            ("opencode-go", "glm-4.6", "usable", {}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
+            ("glm-4.6", "opencode-go", 1, ["canonical"]),
+            ("opencode-go-free/beam-1.0", "opencode-go", 1, ["opencode-go-free-public"]),
+        ])
+        free = specs[1]
+        self.assertNotIn("max_budget", free["litellm_params"])
+        self.assertIn("cooldown_time", free["litellm_params"])
+        self.assertEqual(free["litellm_params"]["extra_headers"], {"x-opencode-session": "litellm-proxy"})
+
+    def test_an_opencode_go_free_id_never_joins_a_paid_group_of_the_same_model(self):
+        cat = catalogue(
+            ("opencode-go", "glm-4.6-free", "usable", {"free": True, "canonical_id": "z/glm-4.6"}),
+            ("vibe", "glm-4.6", "usable", {}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs], [
+            ("glm-4.6", "vibe", ["canonical"]),
+            ("opencode-go-free/glm-4.6", "opencode-go", ["opencode-go-free-public"]),
+        ])
+
+    def test_the_free_id_access_groups_are_their_own(self):
+        self.assertEqual(sync.FREE_ID_ROUTES, {"opencode-go": "opencode-go-free-public"})
+        groups = set(sync.FREE_ID_ROUTES.values())
+        self.assertFalse(groups & {sync.CANONICAL_ACCESS_GROUP, sync.PUBLIC_ACCESS_GROUP})
+        self.assertFalse(groups & set(sync.FREE_ACCESS_GROUPS.values()) | groups & set(sync.GATED_ACCESS_GROUPS.values()))
 
     def test_local_is_a_normal_tier_and_not_a_free_deployment(self):
         rules = dict(RULES, tiers=[[["local", 2]], [["vibe", 1]]])
