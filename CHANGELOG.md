@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.6.0...v1.6.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **catalog:** gate Claude deployments behind the anthropic access group ([#40](https://github.com/JorisJonkers-dev/litellm/issues/40)) ([a8a0735](https://github.com/JorisJonkers-dev/litellm/commit/a8a07351443e5e6b905c9dc6c811ec3b5c428e4a))
+
 ## [1.6.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.5.0...v1.6.0) (2026-11-14)
 
 
