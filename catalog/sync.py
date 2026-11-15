@@ -103,6 +103,12 @@ FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FRE
 # edit can put a free deployment back in `canonical`.
 FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public"}
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
+# A gated route is never in `canonical` either: a key reaches its deployments only by holding the
+# route's own access group, and no workstation key holds it (agent-kit withholds the same routes).
+# Claude is never used through the proxy by a key minted for general work; a dedicated key holding
+# the group is the only way in. A model another route serves leaves the gated route out, so a name
+# never mixes access groups. This is code, not a rule in routing.json, for the same reason as above.
+GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -430,6 +436,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params["cooldown_time"] = cooldown
     if route in FREE_ACCESS_GROUPS:
         groups = [FREE_ACCESS_GROUPS[route]]
+    elif route in GATED_ACCESS_GROUPS:
+        groups = [GATED_ACCESS_GROUPS[route]]
     else:
         groups = [PUBLIC_ACCESS_GROUP] if public else [CANONICAL_ACCESS_GROUP]
     info = {
@@ -512,6 +520,10 @@ def plan_groups(catalogue, rules):
                 only |= set(rule.get("routes") or [])
         if only:
             serving &= only
+        # A gated route serves a model only when nothing else does.
+        gated = serving & set(GATED_ACCESS_GROUPS)
+        if gated and serving - gated:
+            serving -= gated
         if not serving:
             continue
         primary = primary_mode({route: routes[route] for route in serving})
@@ -579,11 +591,15 @@ def record_groups(deployments):
     """
     groups = {}
     for spec in deployments:
+        access = spec["model_info"]["access_groups"]
+        gated = [group for group in access if group in GATED_ACCESS_GROUPS.values()]
         entry = groups.setdefault(spec["name"], {
             "modality": spec["modality"],
-            "public": spec["model_info"]["access_groups"] != [CANONICAL_ACCESS_GROUP],
+            "public": access != [CANONICAL_ACCESS_GROUP] and not gated,
             "deployments": [],
         })
+        if gated:
+            entry["access_groups"] = gated
         entry["deployments"].append({
             "route": spec["route"],
             "upstream_id": spec["upstream_id"],
