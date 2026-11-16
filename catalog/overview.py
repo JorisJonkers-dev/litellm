@@ -53,6 +53,8 @@ ROUTING = (
     "group see, because Google may train on those prompts. The free OpenRouter models are public "
     "work only too: each is served from its own `openrouter/<model>` group, alone, that only keys "
     "with the `openrouter-free-public` access group see, and no free model is in a normal group. "
+    "The `free` access group holds every free model alone (each OpenRouter free model, and each "
+    "Google free-tier model as `google-free/<model>`), with no paid deployment behind it. "
     "Claude is only ever on the "
     "Anthropic key."
 )

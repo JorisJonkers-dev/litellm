@@ -248,7 +248,7 @@ class Plan(unittest.TestCase):
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "opencode-go", 1, ["canonical"]),
-            ("opencode-go-free/beam-1.0", "opencode-go", 1, ["opencode-go-free-public"]),
+            ("opencode-go-free/beam-1.0", "opencode-go", 1, ["opencode-go-free-public", "free"]),
         ])
         free = specs[1]
         self.assertNotIn("max_budget", free["litellm_params"])
@@ -263,7 +263,7 @@ class Plan(unittest.TestCase):
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "vibe", ["canonical"]),
-            ("opencode-go-free/glm-4.6", "opencode-go", ["opencode-go-free-public"]),
+            ("opencode-go-free/glm-4.6", "opencode-go", ["opencode-go-free-public", "free"]),
         ])
 
     def test_the_free_id_access_groups_are_their_own(self):
@@ -288,7 +288,8 @@ class Plan(unittest.TestCase):
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "opencode-go", 1, ["canonical"]),
-            ("openrouter/glm-4.6", "openrouter", 1, ["openrouter-free-public"]),
+            ("google-free/glm-4.6", "google", 1, ["free"]),
+            ("openrouter/glm-4.6", "openrouter", 1, ["openrouter-free-public", "free"]),
             # The Google public group keeps its paid fallbacks; the free routes are not among them.
             ("public/glm-4.6", "google", 1, ["google-free-public"]),
             ("public/glm-4.6", "opencode-go", 2, ["google-free-public"]),
@@ -303,7 +304,7 @@ class Plan(unittest.TestCase):
         # No deployment of a free route is in canonical or in another route's group.
         for spec in specs:
             if spec["route"] in sync.FREE_ONLY:
-                self.assertEqual(spec["model_info"]["access_groups"], [sync.FREE_ACCESS_GROUPS[spec["route"]]])
+                self.assertEqual(spec["model_info"]["access_groups"], [sync.FREE_ACCESS_GROUPS[spec["route"]], "free"])
                 self.assertTrue(spec["name"].startswith(spec["route"] + "/"))
 
     def test_each_free_route_has_its_own_access_group(self):
@@ -326,6 +327,7 @@ class Plan(unittest.TestCase):
         specs = sync.plan_groups(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("gemini-2.5-pro", "vibe", 1, ["canonical"]),
+            ("google-free/gemini-2.5-pro", "google", 1, ["free"]),
             ("public/gemini-2.5-pro", "google", 1, ["google-free-public"]),
             ("public/gemini-2.5-pro", "vibe", 2, ["google-free-public"]),
         ])
@@ -338,8 +340,33 @@ class Plan(unittest.TestCase):
     def test_a_model_only_google_serves_has_only_the_public_group(self):
         cat = catalogue(("google", "gemini-2.5-pro", "usable", {}))
         specs = sync.plan_groups(cat, RULES)
-        self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs], [("public/gemini-2.5-pro", "google", 1)])
-        self.assertEqual(specs[0]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
+        self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs],
+                         [("google-free/gemini-2.5-pro", "google", 1), ("public/gemini-2.5-pro", "google", 1)])
+        self.assertEqual(specs[1]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
+
+    def test_the_free_group_holds_every_free_model_alone_with_no_paid_fallback(self):
+        cat = catalogue(
+            ("google", "gemini-2.5-pro", "usable", {}),
+            ("google", "gemini-embedding", "not-chat", {"modality": "embedding"}),
+            ("vibe", "gemini-2.5-pro", "usable", {}),
+            ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
+            ("openrouter", "z-ai/glm-5:free", "blocked", {"free": True}),
+        )
+        specs = sync.plan_groups(cat, RULES)
+        free = [s for s in specs if sync.FREE_ACCESS_GROUP in s["model_info"]["access_groups"]]
+        self.assertEqual([(s["name"], s["route"]) for s in free],
+                         [("google-free/gemini-2.5-pro", "google"), ("openrouter/glm-4.6", "openrouter")])
+        for spec in free:
+            # Alone in its group, so a refusal is a failure; never a paid route, never canonical.
+            self.assertEqual(sum(1 for other in specs if other["name"] == spec["name"]), 1)
+            self.assertNotIn("canonical", spec["model_info"]["access_groups"])
+            self.assertNotIn("max_budget", spec["litellm_params"])
+        self.assertEqual(len({s["model_info"]["id"] for s in specs}), len(specs))
+        groups = sync.record_groups(specs)
+        self.assertTrue(groups["google-free/gemini-2.5-pro"]["public"])
+        self.assertEqual(groups["google-free/gemini-2.5-pro"]["access_groups"], ["free"])
+        self.assertEqual(groups["openrouter/glm-4.6"]["access_groups"], ["openrouter-free-public", "free"])
+        self.assertNotIn("access_groups", groups["public/gemini-2.5-pro"])
 
     def test_a_single_deployment_group_with_a_cooldown_cools_down(self):
         cat = catalogue(("vibe", "devstral", "usable", {}))

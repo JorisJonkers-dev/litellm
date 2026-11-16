@@ -861,6 +861,300 @@
       }
     },
     {
+      "model_name": "google-free/gemini-3-flash-preview",
+      "litellm_params": {
+        "model": "gemini/gemini-3-flash-preview",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3-flash-preview",
+        "route": "google",
+        "canonical": "gemini-3-flash-preview",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.1-flash-lite",
+      "litellm_params": {
+        "model": "gemini/gemini-3.1-flash-lite",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.1-flash-lite",
+        "route": "google",
+        "canonical": "gemini-3.1-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.1-flash-lite-preview",
+      "litellm_params": {
+        "model": "gemini/gemini-3.1-flash-lite-preview",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.1-flash-lite-preview",
+        "route": "google",
+        "canonical": "gemini-3.1-flash-lite-preview",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.5-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.5-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.5-flash",
+        "route": "google",
+        "canonical": "gemini-3.5-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.5-flash-lite",
+      "litellm_params": {
+        "model": "gemini/gemini-3.5-flash-lite",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.5-flash-lite",
+        "route": "google",
+        "canonical": "gemini-3.5-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.5-transcribe",
+      "litellm_params": {
+        "model": "gemini/gemini-3.5-transcribe",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.5-transcribe",
+        "route": "google",
+        "canonical": "gemini-3.5-transcribe",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.6-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.6-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.6-flash",
+        "route": "google",
+        "canonical": "gemini-3.6-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.7-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.7-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.7-flash",
+        "route": "google",
+        "canonical": "gemini-3.7-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-3.8-flash",
+      "litellm_params": {
+        "model": "gemini/gemini-3.8-flash",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-3.8-flash",
+        "route": "google",
+        "canonical": "gemini-3.8-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-4-hydrogen",
+      "litellm_params": {
+        "model": "gemini/gemini-4-hydrogen",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-4-hydrogen",
+        "route": "google",
+        "canonical": "gemini-4-hydrogen",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-flash-lite",
+      "litellm_params": {
+        "model": "gemini/gemini-flash-lite-latest",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-flash-lite-latest",
+        "route": "google",
+        "canonical": "gemini-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemini-robotics-er-2-preview",
+      "litellm_params": {
+        "model": "gemini/gemini-robotics-er-2-preview",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemini-robotics-er-2-preview",
+        "route": "google",
+        "canonical": "gemini-robotics-er-2-preview",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemma-4-26b-a4b-it",
+      "litellm_params": {
+        "model": "gemini/gemma-4-26b-a4b-it",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemma-4-26b-a4b-it",
+        "route": "google",
+        "canonical": "gemma-4-26b-a4b-it",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "google-free/gemma-4-31b-it",
+      "litellm_params": {
+        "model": "gemini/gemma-4-31b-it",
+        "litellm_credential_name": "google",
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/google/gemma-4-31b-it",
+        "route": "google",
+        "canonical": "gemma-4-31b-it",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "gpt-6-luna",
       "litellm_params": {
         "model": "openai/gpt-6-luna",
@@ -2739,7 +3033,8 @@
         "route": "opencode-go",
         "canonical": "beam-1.0-501b-a23b",
         "access_groups": [
-          "opencode-go-free-public"
+          "opencode-go-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2766,7 +3061,8 @@
         "route": "openrouter",
         "canonical": "dots-3-note-preview",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2793,7 +3089,8 @@
         "route": "openrouter",
         "canonical": "ernie-5.5-flash-preview",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2820,7 +3117,8 @@
         "route": "openrouter",
         "canonical": "flint-v1.0",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2847,7 +3145,8 @@
         "route": "openrouter",
         "canonical": "free",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2874,7 +3173,8 @@
         "route": "openrouter",
         "canonical": "gemma-4-26b-a4b-it",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2901,7 +3201,8 @@
         "route": "openrouter",
         "canonical": "gemma-4-31b-it",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2928,7 +3229,8 @@
         "route": "openrouter",
         "canonical": "lfm-3-1.7b",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2955,7 +3257,8 @@
         "route": "openrouter",
         "canonical": "ling-3.2-flash",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -2982,7 +3285,8 @@
         "route": "openrouter",
         "canonical": "lyria-3-pro-preview",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3009,7 +3313,8 @@
         "route": "openrouter",
         "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3036,7 +3341,8 @@
         "route": "openrouter",
         "canonical": "nemotron-3-ultra-550b-a55b",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3063,7 +3369,8 @@
         "route": "openrouter",
         "canonical": "nemotron-3.5-lightning",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3090,7 +3397,8 @@
         "route": "openrouter",
         "canonical": "nemotron-3.5-super-vl",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3117,7 +3425,8 @@
         "route": "openrouter",
         "canonical": "north-mini-code",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -3144,7 +3453,8 @@
         "route": "openrouter",
         "canonical": "particle-1",
         "access_groups": [
-          "openrouter-free-public"
+          "openrouter-free-public",
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
