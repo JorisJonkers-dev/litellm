@@ -330,6 +330,9 @@ class Plan(unittest.TestCase):
         self.assertEqual(len({s["model_info"]["id"] for s in specs}), len(specs))
         groups = sync.record_groups(specs)
         self.assertTrue(groups["google-free/gemini-2.5-pro"]["public"])
+        self.assertEqual(groups["google-free/gemini-2.5-pro"]["access_groups"], ["free"])
+        self.assertEqual(groups["openrouter/glm-4.6"]["access_groups"], ["openrouter-free-public", "free"])
+        self.assertNotIn("access_groups", groups["public/gemini-2.5-pro"])
 
     def test_a_single_deployment_group_with_a_cooldown_cools_down(self):
         cat = catalogue(("vibe", "devstral", "usable", {}))

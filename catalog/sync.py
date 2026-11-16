@@ -615,6 +615,9 @@ def record_groups(deployments):
         })
         if gated:
             entry["access_groups"] = gated
+        elif FREE_ACCESS_GROUP in access:
+            # A free group names its own access groups, so a reader reaches it by the exact group.
+            entry["access_groups"] = list(access)
         entry["deployments"].append({
             "route": spec["route"],
             "upstream_id": spec["upstream_id"],
