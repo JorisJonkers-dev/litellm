@@ -1,7 +1,9 @@
 {
-  "tiers": [[["local", 1]], [["google", 1], ["anthropic", 1]], [["vibe", 2], ["vibe-study", 1]], [["vibe-api", 2], ["vibe-study-api", 1]], [["opencode-go", 1]]],
+  "tiers": [[["local", 1]], [["google", 1], ["anthropic", 1]], [["vibe", 2], ["vibe-study", 1]], [["opencode-go", 1]], [["vibe-api", 2], ["vibe-study-api", 1]]],
   "backup_only": {
-    "opencode-go": ["vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic"]
+    "opencode-go": ["vibe", "vibe-study", "anthropic"],
+    "vibe-api": ["local", "google", "anthropic", "vibe", "vibe-study", "opencode-go"],
+    "vibe-study-api": ["local", "google", "anthropic", "vibe", "vibe-study", "opencode-go"]
   },
   "exclusive": [{"match": "^claude", "routes": ["anthropic"]}],
   "aliases": {

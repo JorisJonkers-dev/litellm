@@ -44,10 +44,14 @@ RULES = {
         [["local", 1]],
         [["google", 1], ["anthropic", 1]],
         [["vibe", 2], ["vibe-study", 1]],
-        [["vibe-api", 2], ["vibe-study-api", 1]],
         [["opencode-go", 1]],
+        [["vibe-api", 2], ["vibe-study-api", 1]],
     ],
-    "backup_only": {"opencode-go": ["vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic"]},
+    "backup_only": {
+        "opencode-go": ["vibe", "vibe-study", "anthropic"],
+        "vibe-api": ["local", "google", "anthropic", "vibe", "vibe-study", "opencode-go"],
+        "vibe-study-api": ["local", "google", "anthropic", "vibe", "vibe-study", "opencode-go"],
+    },
     "exclusive": [{"match": "^claude", "routes": ["anthropic"]}],
     "aliases": {"claude-sonnet-4-5-20250929": "claude-sonnet-4-5"},
     "api_only_routes": ["vibe-api", "vibe-study-api"],
@@ -140,10 +144,10 @@ class Plan(unittest.TestCase):
             ("openrouter", "mistralai/mistral-large:free", "usable", {"free": True}),
         )
         specs = sync.plan_groups(cat, RULES)
-        # vibe is tier 3 and vibe-api tier 4, renumbered from 1; opencode-go is a backup because
-        # vibe serves the model; the free deployment is in its own group, never in the canonical one.
+        # vibe serves the model, so opencode-go and the general API key are backups and not in the
+        # group; the free deployment is in its own group, never in the canonical one.
         self.assertEqual([(s["name"], s["route"], s["order"], s["weight"]) for s in specs], [
-            ("mistral-large", "vibe", 1, 2), ("mistral-large", "vibe-api", 2, 2),
+            ("mistral-large", "vibe", 1, 2),
             ("openrouter/mistral-large", "openrouter", 1, 1),
         ])
 
@@ -156,7 +160,16 @@ class Plan(unittest.TestCase):
             ("opencode-go", "glm-5.3", "usable", {}),
         )
         self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
-                         [("vibe", 1, 2), ("vibe-study", 1, 1), ("vibe-api", 2, 2), ("vibe-study-api", 2, 1)])
+                         [("vibe", 1, 2), ("vibe-study", 1, 1)])
+
+    def test_the_general_api_keys_serve_only_what_no_other_route_serves(self):
+        # The general Mistral API keys are for the models only they carry (audio, OCR, embeddings and the
+        # rest of the broad list): a model OpenCode Go or a plan serves never falls back onto them.
+        go = catalogue(("opencode-go", "glm-5.3", "usable", {}), ("vibe-api", "glm-5.3", "usable", {}))
+        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(go, RULES)], [("opencode-go", 1)])
+        only = catalogue(("vibe-api", "magistral-medium", "usable", {}), ("vibe-study-api", "magistral-medium", "usable", {}))
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(only, RULES)],
+                         [("vibe-api", 1, 2), ("vibe-study-api", 1, 1)])
 
     def test_a_model_only_opencode_go_serves_is_order_one(self):
         cat = catalogue(("opencode-go", "glm-5.3", "usable", {}))

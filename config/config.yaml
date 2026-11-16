@@ -15,7 +15,8 @@
 # (docs/LITELLM.md in agent-kit) restricted to its route and capped with max_budget.
 #
 #   vibe/*, vibe-study/*          the two Vibe plans (Mistral)
-#   vibe-api/*, vibe-study-api/*  the two general Mistral API keys: more models, per token
+#   vibe-api/*, vibe-study-api/*  the two general Mistral API keys: more models, per token; the last
+#                                 resort, deployed only for models no other route serves
 #   opencode-go/*                 the OpenCode Go provider (OpenAI-compatible)
 #   local/*                       the OpenAI-compatible model server on the GPU workstation, free
 #
