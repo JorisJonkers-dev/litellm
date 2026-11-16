@@ -66,10 +66,10 @@ Agents ask for one canonical name per model (`mistral-large`, `devstral`, `gemin
 | 1 | `local` | 1 | models the GPU host serves, when it is reachable |
 | 2 | `google`, `anthropic` | 1 | Gemini (only in a `public/*` group); Claude (only here, never any other route or a free deployment) |
 | 3 | `vibe` : `vibe-study` | 2 : 1 | every model the Vibe plan serves (Mistral, and GLM or DeepSeek when the probe shows the plan serves them) |
-| 4 | `vibe-api` : `vibe-study-api` | 2 : 1 | the general Mistral API keys: fallback once the plan credit or quota is out, and the only home of API-only models (audio, OCR, embeddings) |
-| 5 | `opencode-go` | 1 | only models none of the above serve (never a model Vibe, the general Mistral keys or Anthropic serve) |
+| 4 | `opencode-go` | 1 | models neither Vibe plan nor Anthropic serves |
+| 5 | `vibe-api` : `vibe-study-api` | 2 : 1 | the general Mistral API keys: the last resort, only for models no other route serves (the API-only ones: audio, OCR, embeddings and the rest of the broad list) |
 
-The free `openrouter` route is not in these groups at all: it has its own `openrouter/<canonical>` groups (above). `local` is a normal tier. Orders are renumbered per group, so a model served only by OpenCode Go has order 1. `backup_only` keeps OpenCode Go out of a group any of the plan routes serves, and `exclusive` keeps `^claude` on `anthropic` alone.
+The free `openrouter` route is not in these groups at all: it has its own `openrouter/<canonical>` groups (above). `local` is a normal tier. Orders are renumbered per group, so a model served only by OpenCode Go has order 1. `backup_only` keeps OpenCode Go out of a group a Vibe plan or Anthropic serves, and keeps the general Mistral API keys out of any group another route serves in the same mode: their budget is small and kept for the models only they carry, so a chat model never falls back onto them when the plans run dry (it fails instead, or a caller names `vibe-api/<id>` on purpose). `exclusive` keeps `^claude` on `anthropic` alone.
 
 **Budgets are a safety net, per deployment.** `catalog/routing.json` sets `max_budget` with `budget_duration: 30d` per route: `vibe` 255, `vibe-study` 127, `vibe-api` 25, `vibe-study-api` 12, `anthropic` 90, `opencode-go` 15, and none for `google`. LiteLLM caps a **deployment**, not an account, so a model served by two accounts of one plan gets the cap twice: the numbers are a runaway guard, not the plan limit. The plan limit is enforced by the provider, and exhaustion is handled by the cooldown above, not by the budget.
 

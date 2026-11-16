@@ -264,10 +264,16 @@ test('the routing rules are the decided policy', () => {
     [['local', 1]],
     [['google', 1], ['anthropic', 1]],
     [['vibe', 2], ['vibe-study', 1]],
-    [['vibe-api', 2], ['vibe-study-api', 1]],
     [['opencode-go', 1]],
+    [['vibe-api', 2], ['vibe-study-api', 1]],
   ])
-  assert.deepEqual(rules.backup_only, { 'opencode-go': ['vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'anthropic'] })
+  // The general Mistral API keys are the last resort: a model any other route serves never reaches them.
+  const others = ['local', 'google', 'anthropic', 'vibe', 'vibe-study', 'opencode-go']
+  assert.deepEqual(rules.backup_only, {
+    'opencode-go': ['vibe', 'vibe-study', 'anthropic'],
+    'vibe-api': others,
+    'vibe-study-api': others,
+  })
   assert.deepEqual(rules.exclusive, [{ match: '^claude', routes: ['anthropic'] }])
   // Free deployments are never in a canonical group, so there is no free-first rule.
   assert.equal(rules.free_first_unless_served_by, undefined)

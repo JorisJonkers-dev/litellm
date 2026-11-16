@@ -533,9 +533,12 @@ def plan_groups(catalogue, rules):
         serving = set(routes)
         # A free id is in a public group of its own, so no paid route makes it a backup.
         own_group = {route for route in serving if route in FREE_ID_ROUTES and routes[route].get("free")}
-        # A backup route is in the group only when nothing better serves the model.
+        # A backup route is in the group only when nothing better serves the model in the same mode: an
+        # embedding only a general API key carries stays when a plan serves a chat model of that name.
         for route in sorted(serving - own_group):
-            if route in backup_only and serving & set(backup_only[route]):
+            better = {other for other in serving & set(backup_only.get(route, []))
+                      if routes[other]["modality"] == routes[route]["modality"]}
+            if better:
                 serving.discard(route)
         # An exclusive model is only on its own routes, and never free.
         only = set()
