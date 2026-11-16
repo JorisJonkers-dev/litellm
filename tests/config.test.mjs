@@ -66,15 +66,23 @@ test('no Zen route, no catch-all wildcard and no paid OpenRouter wildcard', () =
   assert.doesNotMatch(CONFIG, /model_name: openrouter\//)
 })
 
-test('no free-route deployment is in canonical, each is in its own route group', () => {
-  const groups = { openrouter: 'openrouter-free-public' }
+test('no free-route deployment is in canonical, each is in its own route group and the free group', () => {
+  const groups = { openrouter: ['openrouter-free-public', 'free'] }
   for (const deployment of DEPLOYMENTS) {
     const route = deployment.model_info?.route
-    if (!(route in groups)) {
-      assert.ok(!Object.values(groups).some((group) => deployment.model_info.access_groups.includes(group)), deployment.model_info.id)
+    const found = deployment.model_info.access_groups
+    if (deployment.model_name.startsWith('google-free/')) {
+      // The Google free tier alone: no paid deployment behind it, so a refusal fails.
+      assert.deepEqual(found, ['free'], deployment.model_info.id)
+      assert.equal(route, 'google', deployment.model_info.id)
+      assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
       continue
     }
-    assert.deepEqual(deployment.model_info.access_groups, [groups[route]], deployment.model_info.id)
+    if (!(route in groups)) {
+      assert.ok(!found.includes('free') && !found.includes('openrouter-free-public'), deployment.model_info.id)
+      continue
+    }
+    assert.deepEqual(found, groups[route], deployment.model_info.id)
     assert.ok(deployment.model_name.startsWith(`${route}/`), deployment.model_name)
     assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
   }
@@ -82,9 +90,15 @@ test('no free-route deployment is in canonical, each is in its own route group',
   const byName = {}
   for (const deployment of DEPLOYMENTS) {
     byName[deployment.model_name] ??= new Set()
-    for (const group of deployment.model_info.access_groups) byName[deployment.model_name].add(group)
+    byName[deployment.model_name].add(JSON.stringify(deployment.model_info.access_groups))
   }
   for (const [name, found] of Object.entries(byName)) assert.equal(found.size, 1, name)
+  // Every deployment in the free group is alone in its name: nothing paid to fall over to.
+  const count = {}
+  for (const deployment of DEPLOYMENTS) count[deployment.model_name] = (count[deployment.model_name] ?? 0) + 1
+  for (const deployment of DEPLOYMENTS) {
+    if (deployment.model_info.access_groups.includes('free')) assert.equal(count[deployment.model_name], 1, deployment.model_name)
+  }
 })
 
 test('every anthropic deployment is gated behind the anthropic access group, never canonical', () => {

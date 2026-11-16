@@ -116,6 +116,12 @@ MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcr
 PUBLIC_COOLDOWN = 120
 # The access group a public deployment carries; a key without it never sees a public/* model.
 PUBLIC_ACCESS_GROUP = "google-free-public"
+# The access group of every free-only deployment of every provider, for the one key that reaches
+# "all free models" (agent-kit#848): each OpenRouter free model (beside its own group) and each
+# Google free-tier model, alone in a "google-free/<canonical>" group with no paid deployment behind
+# it. A request the free tier refuses fails; it never falls over to a paid deployment.
+FREE_ACCESS_GROUP = "free"
+GOOGLE_FREE_ROUTE = "google-free"
 # The access group every other deployment carries, and every key holds.
 CANONICAL_ACCESS_GROUP = "canonical"
 # The generated deployments: a file in the litellm repository, refreshed by a pull request.
@@ -421,7 +427,8 @@ def group_name(name, mode, primary, public=False, free_route=None):
     return prefix + name + suffix
 
 
-def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None):
+def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
+               free_only=False):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -434,14 +441,16 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params.update(budget)
     if cooldown:
         params["cooldown_time"] = cooldown
-    if route in FREE_ACCESS_GROUPS:
-        groups = [FREE_ACCESS_GROUPS[route]]
+    if free_only:
+        groups = [FREE_ACCESS_GROUP]
+    elif route in FREE_ACCESS_GROUPS:
+        groups = [FREE_ACCESS_GROUPS[route], FREE_ACCESS_GROUP]
     elif route in GATED_ACCESS_GROUPS:
         groups = [GATED_ACCESS_GROUPS[route]]
     else:
         groups = [PUBLIC_ACCESS_GROUP] if public else [CANONICAL_ACCESS_GROUP]
     info = {
-        "id": ("public/" if public else "") + f"{route}/{upstream_id}",
+        "id": ("free/" if free_only else "public/" if public else "") + f"{route}/{upstream_id}",
         "route": route,
         "canonical": canonical,
         "access_groups": groups,
@@ -544,6 +553,12 @@ def plan_groups(catalogue, rules):
         for route, order, weight in planned:
             specs.append(deployment(group_name(name, routes[route]["modality"], primary), name, route, routes[route],
                                     order, weight, by_route[route], budget=budgets.get(route), cooldown=cooldowns.get(route)))
+        for route in sorted(public):
+            # The free tier alone, in the free access group: public work only, and no paid
+            # deployment behind it, so a refusal fails instead of billing. Chat models only.
+            if routes[route]["modality"] == "chat":
+                specs.append(deployment(group_name(name, "chat", "chat", free_route=GOOGLE_FREE_ROUTE), name, route,
+                                        routes[route], 1, 1, by_route[route], cooldown=PUBLIC_COOLDOWN, free_only=True))
         if public:
             # The free tier is public work only: its own group, first, with the normal deployments
             # behind it, and no budget of its own.
