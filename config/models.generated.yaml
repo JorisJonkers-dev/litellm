@@ -3,32 +3,6 @@
 {
   "model_list": [
     {
-      "model_name": "beam-1.0-501b-a23b",
-      "litellm_params": {
-        "model": "openai/beam-free",
-        "litellm_credential_name": "opencode-go",
-        "extra_headers": {
-          "x-opencode-session": "litellm-proxy"
-        },
-        "order": 1,
-        "weight": 1,
-        "max_budget": 15,
-        "budget_duration": "30d",
-        "cooldown_time": 900
-      },
-      "model_info": {
-        "id": "opencode-go/beam-free",
-        "route": "opencode-go",
-        "canonical": "beam-1.0-501b-a23b",
-        "access_groups": [
-          "canonical"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "claude-fable-5",
       "litellm_params": {
         "model": "anthropic/claude-fable-5",
@@ -3043,6 +3017,31 @@
       }
     },
     {
+      "model_name": "opencode-go-free/beam-1.0-501b-a23b",
+      "litellm_params": {
+        "model": "openai/beam-free",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go/beam-free",
+        "route": "opencode-go",
+        "canonical": "beam-1.0-501b-a23b",
+        "access_groups": [
+          "opencode-go-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "openrouter/dots-3-note-preview",
       "litellm_params": {
         "model": "openrouter/dots-studio/dots-3-note-preview:free",
@@ -3051,7 +3050,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3079,7 +3078,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3107,7 +3106,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3135,7 +3134,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3163,7 +3162,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3191,7 +3190,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3219,7 +3218,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3247,7 +3246,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3275,7 +3274,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3303,7 +3302,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3331,7 +3330,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3359,7 +3358,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3387,7 +3386,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3415,7 +3414,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },
@@ -3443,7 +3442,7 @@
         "weight": 1,
         "extra_body": {
           "provider": {
-            "data_collection": "deny",
+            "data_collection": "allow",
             "allow_fallbacks": false
           }
         },

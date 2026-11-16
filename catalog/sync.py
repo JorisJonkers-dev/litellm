@@ -109,6 +109,12 @@ assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # the group is the only way in. A model another route serves leaves the gated route out, so a name
 # never mixes access groups. This is code, not a rule in routing.json, for the same reason as above.
 GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
+# A paid route that also serves free ids (OpenCode Go's "-free" models): a free id may train on the
+# prompt, so it is public work only, like a free-only route. It is never in `canonical` nor in a
+# paid group of the same model: it gets its own "<route>-free/<canonical>" group and the route's
+# own free access group, alone, with no budget. The "<route>-free" prefix keeps the name clear of
+# the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
+FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -274,6 +280,8 @@ def list_models(entry, env, http):
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
+        elif entry["route"] in FREE_ID_ROUTES:
+            out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
             out["free"] = True
         if out["modality"] != "chat":
@@ -436,7 +444,10 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     if entry["kind"] == "openrouter":
         # Free ids only, and the provider is asked neither to train on nor to fall back with the
         # prompt. The route is still public work only: a free tier is not trusted with private work.
-        params["extra_body"] = {"provider": {"data_collection": "deny", "allow_fallbacks": False}}
+        # The route is public work only, so a free endpoint that trains on the prompt is allowed
+        # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
+        # is never a fallback.
+        params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
     if budget:
         params.update(budget)
     if cooldown:
@@ -445,6 +456,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         groups = [FREE_ACCESS_GROUP]
     elif route in FREE_ACCESS_GROUPS:
         groups = [FREE_ACCESS_GROUPS[route], FREE_ACCESS_GROUP]
+    elif route in FREE_ID_ROUTES and chosen.get("free"):
+        groups = [FREE_ID_ROUTES[route], FREE_ACCESS_GROUP]
     elif route in GATED_ACCESS_GROUPS:
         groups = [GATED_ACCESS_GROUPS[route]]
     else:
@@ -518,8 +531,10 @@ def plan_groups(catalogue, rules):
     specs = []
     for name, routes in sorted(groups.items()):
         serving = set(routes)
+        # A free id is in a public group of its own, so no paid route makes it a backup.
+        own_group = {route for route in serving if route in FREE_ID_ROUTES and routes[route].get("free")}
         # A backup route is in the group only when nothing better serves the model.
-        for route in sorted(serving):
+        for route in sorted(serving - own_group):
             if route in backup_only and serving & set(backup_only[route]):
                 serving.discard(route)
         # An exclusive model is only on its own routes, and never free.
@@ -537,12 +552,18 @@ def plan_groups(catalogue, rules):
             continue
         primary = primary_mode({route: routes[route] for route in serving})
         free = serving & FREE_ONLY
-        normal = serving - public_routes - FREE_ONLY
+        free_ids = serving & own_group
+        normal = serving - public_routes - FREE_ONLY - free_ids
         public = serving & public_routes
         for route in sorted(free):
             # Its own group, alone: public work only, and nothing paid behind it.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+        for route in sorted(free_ids):
+            # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
+            group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
+            specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
         levels = sorted({rank.get(route, unranked)[0] for route in normal})
         order_of = {level: index + 1 for index, level in enumerate(levels)}

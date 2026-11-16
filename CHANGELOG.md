@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.6.1...v1.7.0) (2026-11-15)
+
+
+### Features
+
+* **catalog:** make the free OpenRouter and OpenCode Go models usable, public work only ([#43](https://github.com/JorisJonkers-dev/litellm/issues/43)) ([f5c8a06](https://github.com/JorisJonkers-dev/litellm/commit/f5c8a068041cdc63a66ff943edf7bb7123145a29))
+
 ## [1.6.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.6.0...v1.6.1) (2026-11-15)
 
 

@@ -78,6 +78,7 @@ test('no free-route deployment is in canonical, each is in its own route group a
       assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
       continue
     }
+    if (deployment.model_name.startsWith('opencode-go-free/')) continue // its own test below
     if (!(route in groups)) {
       assert.ok(!found.includes('free') && !found.includes('openrouter-free-public'), deployment.model_info.id)
       continue
@@ -112,6 +113,24 @@ test('every anthropic deployment is gated behind the anthropic access group, nev
     }
   }
   assert.doesNotMatch(CONFIG, /model_name: anthropic\//)
+})
+
+test('every opencode-go free id is public only, in its own opencode-go-free group', () => {
+  for (const deployment of DEPLOYMENTS) {
+    const free = deployment.model_info?.route === 'opencode-go' && deployment.litellm_params.model.endsWith('-free')
+    assert.equal(deployment.model_info.access_groups.includes('opencode-go-free-public'), free, deployment.model_info.id)
+    if (free) {
+      assert.deepEqual(deployment.model_info.access_groups, ['opencode-go-free-public', 'free'], deployment.model_info.id)
+      assert.ok(deployment.model_name.startsWith('opencode-go-free/'), deployment.model_name)
+      assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
+    }
+  }
+})
+
+test('no openrouter deployment denies free-model training: the route is public work only', () => {
+  for (const deployment of DEPLOYMENTS.filter((d) => d.model_info?.route === 'openrouter')) {
+    assert.deepEqual(deployment.litellm_params.extra_body, { provider: { data_collection: 'allow', allow_fallbacks: false } })
+  }
 })
 
 test('the config includes the generated deployments', () => {

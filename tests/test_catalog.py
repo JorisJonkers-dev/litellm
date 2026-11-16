@@ -107,6 +107,14 @@ class Listing(unittest.TestCase):
     def entry(self, route):
         return next(e for e in sync.ROUTES if e["route"] == route)
 
+    def test_an_opencode_go_id_ending_in_free_is_free(self):
+        class Go:
+            calls = []
+            def __call__(self, method, url, headers, body):
+                return 200, {"data": [{"id": "beam-free"}, {"id": "glm-5.3"}, {"id": "freezer"}]}
+        found = {m["id"]: m["free"] for m in sync.list_models(self.entry("opencode-go"), ENV, Go())}
+        self.assertEqual(found, {"beam-free": True, "glm-5.3": False, "freezer": False})
+
     def test_each_kind(self):
         http = Http()
         mistral = {m["id"]: m for m in sync.list_models(self.entry("vibe"), ENV, http)}
