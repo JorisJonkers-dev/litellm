@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.7.0...v1.8.0) (2026-11-17)
+
+
+### Features
+
+* **catalog:** a free access group of every free model, with no paid fallback ([#47](https://github.com/JorisJonkers-dev/litellm/issues/47)) ([8348953](https://github.com/JorisJonkers-dev/litellm/commit/834895383d1cc3e07d832dea09fb91600a81e2d7))
+* **catalog:** the general Mistral API keys serve only models no other route serves ([#49](https://github.com/JorisJonkers-dev/litellm/issues/49)) ([97b90ba](https://github.com/JorisJonkers-dev/litellm/commit/97b90bac61ec0781fcc22f14ed415edc7cbf919b))
+* **opencode-go:** route OpenCode Go through LiteLLM's own opencode_go provider ([#53](https://github.com/JorisJonkers-dev/litellm/issues/53)) ([42a6c43](https://github.com/JorisJonkers-dev/litellm/commit/42a6c431d984cd739224c5a2388fea0b4f2da8f4))
+
+
+### Bug Fixes
+
+* **deploy:** raise the proxy's memory to 2Gi; 1Gi was OOMKilled ([#54](https://github.com/JorisJonkers-dev/litellm/issues/54)) ([295e817](https://github.com/JorisJonkers-dev/litellm/commit/295e817e6d56131e1ff6a0e75d2c48aaddc0da1b))
+
 ## [1.7.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.6.1...v1.7.0) (2026-11-15)
 
 
