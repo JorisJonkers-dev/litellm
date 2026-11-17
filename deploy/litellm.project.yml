@@ -83,7 +83,9 @@ applications:
             rotation: { tolerates: restart }
 
         placement:
-          memory: 1Gi # LiteLLM with Prisma idles near 600Mi; confirm against the first week
+          # 1Gi was OOMKilled six times in 22 hours (2026-11-17), and a fresh pod already holds
+          # about 830Mi. 2Gi leaves room for request bursts; the node has the headroom.
+          memory: 2Gi
           cpu: 250m
 
         # The image's user keeps Prisma's engine cache and a scratch directory under these.
