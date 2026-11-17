@@ -1157,7 +1157,7 @@
     {
       "model_name": "gpt-6-luna",
       "litellm_params": {
-        "model": "openai/gpt-6-luna",
+        "model": "opencode_go/gpt-6-luna",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1183,7 +1183,7 @@
     {
       "model_name": "hy3",
       "litellm_params": {
-        "model": "openai/hy3",
+        "model": "opencode_go/hy3",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1209,7 +1209,7 @@
     {
       "model_name": "hy4-preview",
       "litellm_params": {
-        "model": "openai/hy4-preview",
+        "model": "opencode_go/hy4-preview",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1235,7 +1235,7 @@
     {
       "model_name": "kimi-k2.7-code",
       "litellm_params": {
-        "model": "openai/kimi-k2.7-code",
+        "model": "opencode_go/kimi-k2.7-code",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1261,7 +1261,7 @@
     {
       "model_name": "longcat-2.0",
       "litellm_params": {
-        "model": "openai/longcat-2.0",
+        "model": "opencode_go/longcat-2.0",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1447,7 +1447,7 @@
     {
       "model_name": "mimo-v2.6-flash",
       "litellm_params": {
-        "model": "openai/mimo-v2.6-flash",
+        "model": "opencode_go/mimo-v2.6-flash",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1473,7 +1473,7 @@
     {
       "model_name": "mimo-v2.6-pro",
       "litellm_params": {
-        "model": "openai/mimo-v2.6-pro",
+        "model": "opencode_go/mimo-v2.6-pro",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -1499,7 +1499,7 @@
     {
       "model_name": "minimax-m3.1-flash",
       "litellm_params": {
-        "model": "openai/minimax-m3.1-flash",
+        "model": "opencode_go/minimax-m3.1-flash",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -3019,7 +3019,7 @@
     {
       "model_name": "opencode-go-free/beam-1.0-501b-a23b",
       "litellm_params": {
-        "model": "openai/beam-free",
+        "model": "opencode_go/beam-free",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -3758,7 +3758,7 @@
     {
       "model_name": "qwen3.8-flash",
       "litellm_params": {
-        "model": "openai/qwen3.8-flash",
+        "model": "opencode_go/qwen3.8-flash",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"
@@ -3784,7 +3784,7 @@
     {
       "model_name": "step-5-preview",
       "litellm_params": {
-        "model": "openai/step-5-preview",
+        "model": "opencode_go/step-5-preview",
         "litellm_credential_name": "opencode-go",
         "extra_headers": {
           "x-opencode-session": "litellm-proxy"

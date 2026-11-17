@@ -164,6 +164,19 @@ class Listing(unittest.TestCase):
         self.assertEqual(found["glm-5.3-flash"]["canonical_id"], "zhipuai/glm-5.3")
         self.assertNotIn("canonical_id", found["plain"])
 
+    def test_opencode_go_records_the_family_and_base_each_model_is_served_on(self):
+        lists = dict(LISTS, **{"https://oc/v1/models": {"data": [
+            {"id": "glm-5.3-flash", "api": {"chat-completions": {"base_url": "https://oc/openai/v1"}}},
+            {"id": "gpt-6-luna", "api": {"responses": {"base_url": "https://oc/openai/v1"}}},
+            {"id": "claude-haiku-5-5", "api": {"messages": {"base_url": "https://oc/anthropic/v1"}}},
+            {"id": "plain"},
+        ]}})
+        found = {m["id"]: m for m in sync.list_models(self.entry("opencode-go"), ENV, Http(lists=lists))}
+        self.assertEqual((found["glm-5.3-flash"]["api"], found["glm-5.3-flash"]["api_base"]), ("chat-completions", "https://oc/openai/v1"))
+        self.assertEqual(found["gpt-6-luna"]["api"], "responses")
+        self.assertEqual((found["claude-haiku-5-5"]["api"], found["claude-haiku-5-5"]["api_base"]), ("messages", "https://oc/anthropic/v1"))
+        self.assertNotIn("api", found["plain"])
+
 
 class Rules(unittest.TestCase):
     def test_load_rules_reads_a_file_and_the_env_override(self):
@@ -224,6 +237,35 @@ class Build(unittest.TestCase):
         # the provider is asked, never a proxy: every call goes to a provider base
         bases = ("https://m/v1", "https://oc/v1", "https://or/v1", "http://local/v1")
         self.assertEqual([c[1] for c in http.calls if not c[1].startswith(bases)], [])
+
+    def test_an_opencode_go_model_is_probed_in_its_own_family_at_its_listed_base(self):
+        lists = dict(LISTS, **{"https://oc/v1/models": {"data": [
+            {"id": "glm-5.3-flash", "api": {"chat-completions": {"base_url": "https://oc/openai/v1"}}},
+            {"id": "gpt-6-luna", "api": {"responses": {"base_url": "https://oc/openai/v1"}}},
+            {"id": "claude-haiku-5-5", "api": {"messages": {"base_url": "https://oc/anthropic/v1"}}},
+            {"id": "gemini-4-argon", "api": {"generate-content": {"base_url": "https://oc/google/v1beta"}}},
+        ]}})
+        http = Http(lists=lists)
+        cat, _ = self.run_build(http)
+        posts = {c[1]: c for c in http.calls if c[0] == "POST" and c[1].startswith("https://oc/")}
+        self.assertEqual(sorted(posts), [
+            "https://oc/anthropic/v1/messages", "https://oc/google/v1beta/models/gemini-4-argon:generateContent",
+            "https://oc/openai/v1/chat/completions", "https://oc/openai/v1/responses",
+        ])
+        for _, url, headers, _ in posts.values():
+            self.assertEqual(headers["Authorization"], "Bearer k-oc", url)
+            self.assertEqual(headers["x-opencode-session"], "litellm-catalog-probe", url)
+        self.assertEqual(posts["https://oc/openai/v1/responses"][3]["max_output_tokens"], 16)
+        self.assertEqual(posts["https://oc/anthropic/v1/messages"][2]["anthropic-version"], sync.ANTHROPIC_VERSION)
+        self.assertEqual(posts["https://oc/anthropic/v1/messages"][3]["max_tokens"], 16)
+        meta = {m["id"]: m["metadata"] for m in cat["providers"]["opencode-go"]["models"]}
+        self.assertEqual(meta["opencode-go/claude-haiku-5-5"]["api"], "messages")
+        self.assertEqual(meta["opencode-go/claude-haiku-5-5"]["status"], "usable")
+
+    def test_an_opencode_go_deployment_uses_litellms_own_provider(self):
+        params = sync.litellm_params(next(e for e in sync.ROUTES if e["route"] == "opencode-go"), "glm-5.3-flash")
+        self.assertEqual(params["model"], "opencode_go/glm-5.3-flash")
+        self.assertEqual(params["litellm_credential_name"], "opencode-go")
 
     def test_a_probe_retries_once_at_the_providers_minimum(self):
         url = "https://oc/v1/chat/completions"

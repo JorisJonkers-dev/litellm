@@ -49,7 +49,8 @@ test('each wildcard hands the id to one provider through its own credential', ()
     'vibe-study/*': 'mistral/*',
     'vibe-api/*': 'mistral/*',
     'vibe-study-api/*': 'mistral/*',
-    'opencode-go/*': 'openai/*',
+    // LiteLLM's own OpenCode Go provider: it picks the API family per model and prices the request.
+    'opencode-go/*': 'opencode_go/*',
     'local/*': 'openai/*',
   }
   for (const wildcard of WILDCARDS) {
@@ -145,7 +146,7 @@ test('every credential has a name, values and the required credential_info', () 
   assert.deepEqual(Object.keys(CREDENTIAL_VALUES), CREDENTIALS)
 })
 
-test('the Mistral accounts carry a key and a base, Google and Anthropic a key only', () => {
+test('the Mistral accounts carry a key and a base, Google, Anthropic and OpenCode Go a key only', () => {
   assert.deepEqual(CREDENTIAL_VALUES.vibe, { api_key: 'os.environ/VIBE_API_KEY', api_base: 'os.environ/MISTRAL_API_BASE' })
   assert.deepEqual(CREDENTIAL_VALUES['vibe-api'], {
     api_key: 'os.environ/VIBE_API_GENERAL_KEY', api_base: 'os.environ/MISTRAL_API_BASE',
@@ -155,7 +156,9 @@ test('the Mistral accounts carry a key and a base, Google and Anthropic a key on
   })
   assert.deepEqual(CREDENTIAL_VALUES.google, { api_key: 'os.environ/GEMINI_API_KEY' })
   assert.deepEqual(CREDENTIAL_VALUES.anthropic, { api_key: 'os.environ/ANTHROPIC_API_KEY' })
-  for (const route of ['vibe-study', 'opencode-go', 'openrouter', 'local']) {
+  // A base would send every Go model to one API family; opencode_go picks the base per model.
+  assert.deepEqual(CREDENTIAL_VALUES['opencode-go'], { api_key: 'os.environ/OPENCODE_GO_API_KEY' })
+  for (const route of ['vibe-study', 'openrouter', 'local']) {
     assert.ok(CREDENTIAL_VALUES[route].api_key && CREDENTIAL_VALUES[route].api_base, route)
   }
 })
