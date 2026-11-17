@@ -1,7 +1,7 @@
 # A v*.*.* tag (pushed by release.yml with the App token) builds and pushes the
-# multi-arch image, reads it back by digest and runs the image tests on it, then
-# publishes the Intent Fragment the estate composes:
-#   publish-image -> verify-image -> resolve-image-lock -> fragment
+# multi-arch images (the proxy and its Valkey), reads the proxy back by digest and runs the image
+# tests on both, then publishes the Intent Fragment the estate composes:
+#   publish-image + publish-valkey -> verify-image -> resolve-image-lock -> fragment
 name: Publish
 
 on:
@@ -28,8 +28,20 @@ jobs:
       contents: read
       packages: write
 
+  publish-valkey:
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
+    with:
+      image-name: litellm-valkey
+      version: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      context: valkey
+      dockerfile: valkey/Dockerfile
+      platforms: linux/amd64,linux/arm64
+    permissions:
+      contents: read
+      packages: write
+
   verify-image:
-    needs: [publish-image]
+    needs: [publish-image, publish-valkey]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -67,11 +79,13 @@ jobs:
           echo "ref=${IMAGE}@${digest}" >> "$GITHUB_OUTPUT"
           echo "Published ${IMAGE}:${TAG} as ${digest} (${platforms})" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: The published image passes the image tests
+      - name: The published images pass the image tests
         env:
           IMAGE: ${{ steps.digest.outputs.ref }}
+          VALKEY_IMAGE: ghcr.io/jorisjonkers-dev/litellm-valkey:${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           docker pull "$IMAGE"
+          docker pull "$VALKEY_IMAGE"
           npm run test:image
 
   # The images lock: the pushed digest, under the alias the project file names, with the user the
@@ -101,7 +115,9 @@ jobs:
         uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
         with:
           name: litellm
-          images: litellm
+          images: |
+            litellm
+            litellm-valkey
           tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
   fragment:

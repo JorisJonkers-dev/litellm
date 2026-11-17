@@ -419,12 +419,12 @@
       },
       "targets": [
         {
-          "expr": "litellm_remaining_api_key_budget_metric{api_key_alias=~\"$key\"}",
+          "expr": "max by(api_key_alias)(litellm_remaining_api_key_budget_metric{api_key_alias=~\"$key\"})",
           "legendFormat": "{{api_key_alias}} remaining",
           "refId": "A"
         },
         {
-          "expr": "litellm_api_key_max_budget_metric{api_key_alias=~\"$key\"}",
+          "expr": "max by(api_key_alias)(litellm_api_key_max_budget_metric{api_key_alias=~\"$key\"})",
           "legendFormat": "{{api_key_alias}} cap",
           "refId": "B"
         }

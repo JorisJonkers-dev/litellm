@@ -1,7 +1,8 @@
 // The published image is LiteLLM with the estate's routes built in. These tests build the image,
 // start it the way deploy/litellm.project.yml runs it (read-only root, only its writable paths
-// writable, no database) with every upstream pointed at a stub on this host, and talk to it over
-// HTTP. IMAGE skips the build and tests an image that already exists.
+// writable, its memory limit, no database, beside the project's own Valkey) with every upstream
+// pointed at a stub on this host, and talk to it over HTTP. IMAGE and VALKEY_IMAGE skip the builds
+// and test images that already exist.
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -14,6 +15,11 @@ const IMAGE = process.env.IMAGE || 'litellm-image-test:local'
 const NAME = `litellm-image-test-${process.pid}`
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 const WRITABLE = PROJECT.match(/writablePaths: \[([^\]]*)\]/)[1].split(',').map((path) => path.trim())
+// The proxy's memory limit, the first placement in the project file.
+const MEMORY = `${PROJECT.match(/placement:\n\s+memory: (\d+)Gi/)[1]}g`
+const VALKEY_IMAGE = process.env.VALKEY_IMAGE || 'litellm-valkey-test:local'
+const VALKEY = `${NAME}-valkey`
+const VALKEY_PASSWORD = 'image-test-valkey-password'
 const MASTER = 'sk-image-test-master'
 const SSO_AUTHORIZE = 'https://auth.example.test/api/oauth2/authorize'
 const PROMPT = 'PROMPT-TEXT-MUST-NOT-BE-LOGGED'
@@ -32,6 +38,7 @@ const spans = [] // request bodies the OTLP receiver got
 let base
 let metrics
 let otlpPort
+let valkeyHost // the Valkey container's address on the default bridge
 
 function docker(...args) {
   return execFileSync('docker', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -77,6 +84,11 @@ async function waitForLive(url, timeoutMs) {
   throw new Error(`LiteLLM was not live within ${timeoutMs} ms:\n${docker('logs', NAME)}`)
 }
 
+// valkey-cli inside the Valkey container, authenticated unless `auth` is false.
+function valkey(auth, ...args) {
+  return docker('exec', VALKEY, 'valkey-cli', ...(auth ? ['-a', VALKEY_PASSWORD, '--no-auth-warning'] : []), ...args)
+}
+
 function hostPort(port) {
   return `http://127.0.0.1:${docker('port', NAME, `${port}/tcp`).split('\n')[0].split(':').pop()}`
 }
@@ -95,7 +107,7 @@ function runLitellm(name, extra = []) {
   const upstream = (envName) => `http://host.docker.internal:${stubs[envName].port}/v1`
   docker(
     'run', '-d', '--name', name, '--add-host', 'host.docker.internal:host-gateway',
-    '-p', '127.0.0.1::4000', '-p', '127.0.0.1::4001', '--read-only',
+    '-p', '127.0.0.1::4000', '-p', '127.0.0.1::4001', '--read-only', '--memory', MEMORY,
     ...WRITABLE.flatMap((path) => ['--tmpfs', path]),
     '-e', `LITELLM_MASTER_KEY=${MASTER}`, '-e', 'LITELLM_SALT_KEY=sk-image-test-salt',
     '-e', 'VIBE_API_KEY=upstream-vibe', '-e', 'VIBE_STUDY_API_KEY=upstream-vibe-study',
@@ -116,6 +128,8 @@ function runLitellm(name, extra = []) {
     '-e', 'GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE=internal_user_viewer',
     // The public-host settings of deploy/env/litellm/base.env.
     '-e', 'AUTO_REDIRECT_UI_LOGIN_TO_SSO=true', '-e', 'NO_DOCS=true', '-e', 'NO_REDOC=true', '-e', 'NO_OPENAPI=true',
+    // The coordination store, as the litellm-valkey dependency hands it over.
+    '-e', `REDIS_HOST=${valkeyHost}`, '-e', 'REDIS_PORT=6379', '-e', `REDIS_PASSWORD=${VALKEY_PASSWORD}`,
     ...extra,
     IMAGE,
   )
@@ -135,6 +149,11 @@ before(async () => {
   otlpPort = otlp.port
   stubs.otlp = otlp
   if (!process.env.IMAGE) docker('build', '-t', IMAGE, '.')
+  if (!process.env.VALKEY_IMAGE) docker('build', '-t', VALKEY_IMAGE, 'valkey')
+  // As the litellm-valkey Process runs: read-only root, /tmp writable, its memory limit.
+  docker('run', '-d', '--name', VALKEY, '--read-only', '--tmpfs', '/tmp', '--memory', '256m',
+    '-e', `VALKEY_PASSWORD=${VALKEY_PASSWORD}`, VALKEY_IMAGE)
+  valkeyHost = docker('inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', VALKEY)
   runLitellm(NAME)
   base = hostPort(4000)
   metrics = hostPort(4001)
@@ -142,10 +161,12 @@ before(async () => {
 })
 
 after(() => {
-  try {
-    docker('rm', '-f', NAME)
-  } catch {
-    // already gone
+  for (const name of [NAME, VALKEY]) {
+    try {
+      docker('rm', '-f', name)
+    } catch {
+      // already gone
+    }
   }
   for (const stub of Object.values(stubs)) stub.server.close()
 })
@@ -290,6 +311,8 @@ test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state
     assert.ok(url.searchParams.get('state'))
     const second = new URL((await start()).headers.get('location'))
     assert.notEqual(second.searchParams.get('state'), url.searchParams.get('state'))
+    // The verifier is in the shared Valkey, so the callback may land on either replica.
+    assert.equal(valkey(true, 'EXISTS', `pkce_verifier:${url.searchParams.get('state')}`), '1')
     // No password login either: neither the master key nor a guessed password signs in.
     for (const password of [MASTER, 'admin', 'password']) {
       const res = await fetch(`${sso}/login`, {
@@ -308,6 +331,69 @@ test('the admin UI signs in through auth-api (pinned callback, PKCE, fresh state
       } catch {
         // already gone
       }
+    }
+  }
+})
+
+test('Valkey refuses a client without the password, and keeps nothing on disk', () => {
+  assert.match(valkey(false, 'PING'), /NOAUTH/)
+  assert.equal(valkey(true, 'PING'), 'PONG')
+  const persistence = valkey(true, 'INFO', 'persistence')
+  assert.match(persistence, /^aof_enabled:0\r?$/m)
+  const memory = valkey(true, 'INFO', 'memory')
+  assert.match(memory, /^maxmemory:134217728\r?$/m)
+  assert.match(memory, /^maxmemory_policy:allkeys-lru\r?$/m)
+})
+
+test('Valkey does not start without a password', () => {
+  const run = spawnSync('docker', ['run', '--rm', '--read-only', '--tmpfs', '/tmp', VALKEY_IMAGE], { encoding: 'utf8' })
+  assert.notEqual(run.status, 0)
+  assert.match(run.stderr, /VALKEY_PASSWORD is not set/)
+})
+
+test('Valkey does not start with a password that would break its config line', () => {
+  const run = spawnSync('docker', ['run', '--rm', '--read-only', '--tmpfs', '/tmp', '-e', 'VALKEY_PASSWORD=abc"\nreplicaof evil 6379', VALKEY_IMAGE], { encoding: 'utf8' })
+  assert.notEqual(run.status, 0)
+  assert.match(run.stderr, /a character a config line cannot carry/)
+})
+
+test('a hung Valkey does not refuse a request: the proxy answers from its own memory', { timeout: 120_000 }, async () => {
+  // Paused, not stopped: every call to it hangs until its timeout, the harder of the two outages.
+  docker('pause', VALKEY)
+  try {
+    for (const id of ['outage-one', 'outage-two', 'outage-three']) {
+      const answer = await chat(`vibe/${id}`)
+      assert.equal(answer.choices[0].message.content, ANSWER, id)
+    }
+  } finally {
+    docker('unpause', VALKEY)
+  }
+  assert.equal((await fetch(`${base}/health/liveliness`)).status, 200)
+})
+
+test('the proxy starts and answers while Valkey is unreachable', { timeout: 300_000 }, async () => {
+  // A second proxy whose Valkey address refuses every connection, as during a Valkey restart.
+  const name = `${NAME}-novalkey`
+  try {
+    runLitellm(name, ['-e', 'REDIS_HOST=127.0.0.1', '-e', 'REDIS_PORT=1'])
+    const url = `http://127.0.0.1:${docker('port', name, '4000/tcp').split('\n')[0].split(':').pop()}`
+    for (const deadline = Date.now() + 240_000; ; await new Promise((resolve) => setTimeout(resolve, 2000))) {
+      const live = await fetch(`${url}/health/liveliness`).then((r) => r.status === 200, () => false)
+      if (live) break
+      assert.ok(Date.now() < deadline, `the proxy without Valkey was not live:\n${spawnSync('docker', ['logs', name], { encoding: 'utf8' }).stderr.slice(-4000)}`)
+    }
+    const res = await fetch(`${url}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'x-litellm-api-key': `Bearer ${MASTER}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'vibe/no-valkey', messages: [{ role: 'user', content: PROMPT }] }),
+    })
+    assert.equal(res.status, 200, await res.clone().text())
+    assert.equal((await res.json()).choices[0].message.content, ANSWER)
+  } finally {
+    try {
+      docker('rm', '-f', name)
+    } catch {
+      // already gone
     }
   }
 })

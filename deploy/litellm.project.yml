@@ -57,6 +57,9 @@ applications:
           - application: platform-postgres
             surface: postgres
             credentials: { delivery: env, rotation: { tolerates: restart } }
+          # The coordination store the replicas share (config.yaml, general_settings.coordination_redis).
+          # The proxy keeps serving while it is down, on per-replica state.
+          - { application: litellm-valkey, surface: redis }
 
         egress:
           to: internet
@@ -81,10 +84,30 @@ applications:
             access: read
             delivery: env
             rotation: { tolerates: restart }
+          # The Valkey password; the litellm-valkey Process's grant makes it.
+          - path: secret/data/litellm-system/valkey
+            keys: [password]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
 
+        # 1Gi was OOMKilled (exit 137) on 2026-11-17 at 07:37 UTC after 14.6 hours. The restarted
+        # container used 772Mi a minute after start and 968Mi after 22 minutes: with the generated
+        # deployments, Prisma and the admin UI's usage pages, the working set sits at the old limit.
+        # The request is the limit, so this is what each replica reserves.
         placement:
-          memory: 1Gi # LiteLLM with Prisma idles near 600Mi; confirm against the first week
+          memory: 2Gi
           cpu: 250m
+
+        # Two replicas on two nodes, so one OOM kill, node loss or eviction does not take the proxy
+        # down. The shared Valkey is what makes the second replica correct: cooldowns, usage, spend
+        # counters and SSO sign-ins are seen by both.
+        replicas:
+          count: 2
+          reason: >-
+            The proxy is the one way the estate's callers reach their models; one replica made every
+            OOM kill an outage.
+          across: node
 
         # The image's user keeps Prisma's engine cache and a scratch directory under these.
         writablePaths: [/tmp, /app/.cache]
@@ -95,6 +118,45 @@ applications:
 
         startupBudget: 300s # Prisma migrates the schema before the proxy serves
         cutover: continuous
+
+  # The proxy's coordination store: cooldowns, usage and spend counters, and SSO PKCE verifiers,
+  # shared by the proxy's replicas. Its own instance, not platform-valkey: it holds a password,
+  # its memory is capped with eviction, and the proxy's load never reaches auth-api's sessions.
+  # Memory only: everything in it is rebuilt by the proxy, and spend is never buffered in it.
+  - id: litellm-valkey
+    processes:
+      - name: litellm-valkey
+        lifecycle: application
+        image: litellm-valkey # valkey/valkey 8.1.6 with valkey/valkey.conf, as uid 999
+        runtime: none
+
+        provides:
+          redis: 6379
+
+        secrets:
+          - path: secret/data/litellm-system/valkey
+            keys:
+              - name: password
+                generate: {}
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+
+        # valkey.conf caps the data at 160mb and evicts the least recently used keys past it.
+        placement:
+          memory: 256Mi
+          cpu: 50m
+
+        writablePaths: [/tmp]
+
+        probes:
+          readiness: { tcp: 6379 }
+          liveness: { tcp: 6379 }
+
+        startupBudget: 30s
+
+        # One copy, so the replicas never split their state across two stores.
+        cutover: interrupted
 
   # The catalogue sync. Daily-fresh and cheap: it lists each route's models from its provider,
   # probes only the models that are new, errored or older than a day with one 1-token request at

@@ -131,6 +131,23 @@ router_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
+  # The project's own Valkey (the litellm-valkey Application), shared by every replica: the
+  # router's cooldowns and per-deployment usage, the router_budget_limiting counters, the spend
+  # counters the budget checks read, and the SSO PKCE verifiers, so a sign-in that starts on one
+  # replica completes on another. This block is the coordination store only: no response cache
+  # (litellm_settings.cache stays unset, so no response body is ever stored), and no
+  # use_redis_transaction_buffer, so spend is still written to Postgres by each replica and
+  # nothing waits in Valkey to be written. LiteLLM wraps every call in a circuit breaker and falls
+  # back to its in-memory caches, so a Valkey outage degrades coordination and never refuses a
+  # request; the short timeouts bound what one hung call costs before the breaker opens. During
+  # an outage each replica counts spend in its own memory again, as the single replica did, so a
+  # budget is enforced per replica until Postgres has both replicas' spend.
+  coordination_redis:
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    password: os.environ/REDIS_PASSWORD
+    socket_timeout: 1.0
+    socket_connect_timeout: 1.0
   # The virtual key is a standard `Authorization: Bearer sk-...`. The x-litellm-api-key header is
   # always accepted too (LiteLLM hard-codes it, and it wins over Authorization), which keeps
   # callers that still send it, with an edge token as the bearer, working.

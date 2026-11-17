@@ -90,14 +90,23 @@ npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../depl
 
 `salt_key` encrypts the upstream keys stored in the database. Never change it once virtual keys exist.
 
+### Replicas and the coordination store
+
+The proxy runs as two replicas on two nodes, each with a 2Gi limit (1Gi was OOMKilled on 2026-11-17). They share the project's own Valkey, the `litellm-valkey` Application built from `valkey/` (`ghcr.io/jorisjonkers-dev/litellm-valkey`), through `general_settings.coordination_redis`: the router's cooldowns and per-deployment usage, the provider budget counters, the spend counters the budget checks read, and the SSO PKCE verifiers, so a sign-in that starts on one replica completes on the other.
+
+- **Memory only.** No snapshot, no append-only file, no volume. `maxmemory 128mb` with `allkeys-lru` inside a 256Mi limit, so a full store evicts instead of refusing writes.
+- **Nothing it holds is lost data.** There is no response cache, so no model answer is stored, and no `use_redis_transaction_buffer`, so each replica writes its spend to Postgres itself and none waits in Valkey.
+- **An outage degrades, never refuses.** LiteLLM wraps each Valkey call in a circuit breaker and falls back to its per-replica memory; the one-second timeouts bound what a hung Valkey costs. The image test pauses Valkey and checks requests still answer.
+- **A password.** the Vault policy job writes `secret/data/litellm-system/valkey#password`; `valkey-start` passes it to Valkey on standard input, never as an argument.
+
 ## Tests
 
 ```bash
 npm test                                          # config checks, then builds the image and starts it
-IMAGE=ghcr.io/jorisjonkers-dev/litellm@sha256:<digest> npm test   # tests an existing image
+IMAGE=ghcr.io/jorisjonkers-dev/litellm@sha256:<digest> VALKEY_IMAGE=ghcr.io/jorisjonkers-dev/litellm-valkey:<tag> npm test   # tests existing images
 ```
 
-The image tests need Docker. They start the proxy read-only with only the project file's `writablePaths` writable, and point every upstream at a stub: they check wildcard routing and per-route credentials, the models list, the metrics and that no message text is logged. `npm run test:catalog` runs the catalogue sync's tests without Docker.
+The image tests need Docker. They start the proxy read-only with only the project file's `writablePaths` writable, under its memory limit and beside the Valkey image, and point every upstream at a stub: they check wildcard routing and per-route credentials, the models list, the metrics and that no message text is logged. `npm run test:catalog` runs the catalogue sync's tests without Docker.
 
 ## Releases
 

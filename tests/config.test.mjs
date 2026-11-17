@@ -243,12 +243,14 @@ test('every env name the config reads is set by the proxy env file', () => {
 test('the catalogue env carries every provider key and base the config names, and no master key', () => {
   const catalog = readFileSync(`${ROOT}/deploy/env/litellm-catalog/base.env`, 'utf8')
   for (const [, name] of CONFIG.matchAll(/os\.environ\/([A-Z_]+)/g)) {
-    if (name === 'LITELLM_MASTER_KEY') continue
+    // The master key and the coordination store are the proxy's alone.
+    if (name === 'LITELLM_MASTER_KEY' || name.startsWith('REDIS_')) continue
     assert.match(catalog, new RegExp(`^${name}=`, 'm'), name)
   }
   // The sync lists and probes at the providers and opens a pull request; it never calls the proxy.
   assert.doesNotMatch(catalog, /^LITELLM_MASTER_KEY=/m)
   assert.doesNotMatch(catalog, /^LITELLM_(?:HOST|PORT)=/m)
+  assert.doesNotMatch(catalog, /^REDIS_/m)
   for (const name of ['MODELS_REPO', 'MODELS_PATH', 'MODELS_BRANCH', 'MODELS_TOKEN']) {
     assert.match(catalog, new RegExp(`^${name}=`, 'm'), name)
   }
@@ -415,4 +417,66 @@ test('the UI redirects to the SSO sign-in and the API docs are off', () => {
   assert.match(env, /^NO_REDOC=true$/m)
   assert.match(env, /^NO_OPENAPI=true$/m)
   assert.match(CONFIG, /disable_env_credential_login: true/)
+})
+
+// The project file's Applications, each from its `- id:` to the next.
+const APPLICATIONS = Object.fromEntries(
+  PROJECT.split(/^ {2}- id: /m).slice(1).map((block) => [block.slice(0, block.indexOf('\n')).trim(), block]),
+)
+const VALKEY_CONF = readFileSync(`${ROOT}/valkey/valkey.conf`, 'utf8').replace(/^\s*#.*$/gm, '')
+const GENERAL = CONFIG.slice(CONFIG.indexOf('general_settings:'))
+
+test('the replicas coordinate through the project Valkey, named by environment only', () => {
+  const block = GENERAL.slice(GENERAL.indexOf('coordination_redis:'))
+  assert.match(block, /^ {4}host: os\.environ\/REDIS_HOST$/m)
+  assert.match(block, /^ {4}port: os\.environ\/REDIS_PORT$/m)
+  assert.match(block, /^ {4}password: os\.environ\/REDIS_PASSWORD$/m)
+})
+
+test('Valkey holds no response body and no spend waiting to be written', () => {
+  // A response cache would store model answers; the transaction buffer would hold spend that a
+  // Valkey restart loses. Neither is on.
+  assert.doesNotMatch(CONFIG, /^\s*cache: true/m)
+  assert.doesNotMatch(CONFIG, /cache_params|use_redis_transaction_buffer/)
+})
+
+test('the proxy reaches Valkey through its dependency, with the generated password', () => {
+  const env = readFileSync(`${ROOT}/deploy/env/litellm/base.env`, 'utf8')
+  assert.match(env, /^REDIS_HOST=\$\{dependency:litellm-valkey\.host\}$/m)
+  assert.match(env, /^REDIS_PORT=\$\{dependency:litellm-valkey\.port\}$/m)
+  assert.match(env, /^REDIS_PASSWORD=\$\{secret:secret\/data\/litellm-system\/valkey#password\}$/m)
+  assert.match(APPLICATIONS.litellm, /- \{ application: litellm-valkey, surface: redis \}/)
+})
+
+test('the Valkey password is generated once, by the Valkey Process, and read by the proxy', () => {
+  assert.equal((PROJECT.match(/generate:/g) ?? []).length, 1)
+  assert.match(APPLICATIONS['litellm-valkey'], /path: secret\/data\/litellm-system\/valkey\n\s+keys:\n\s+- name: password\n\s+generate: \{\}/)
+  assert.match(APPLICATIONS.litellm, /path: secret\/data\/litellm-system\/valkey\n\s+keys: \[password\]/)
+  const env = readFileSync(`${ROOT}/deploy/env/litellm-valkey/base.env`, 'utf8')
+  assert.match(env, /^VALKEY_PASSWORD=\$\{secret:secret\/data\/litellm-system\/valkey#password\}$/m)
+  // The catalogue sync never talks to Valkey.
+  assert.doesNotMatch(APPLICATIONS['litellm-catalog'], /valkey/)
+})
+
+test('Valkey is memory only, and its data cap fits inside its memory limit', () => {
+  assert.match(VALKEY_CONF, /^save ""$/m)
+  assert.match(VALKEY_CONF, /^appendonly no$/m)
+  assert.doesNotMatch(APPLICATIONS['litellm-valkey'], /volumes:/)
+  const cap = Number(VALKEY_CONF.match(/^maxmemory (\d+)mb$/m)[1])
+  const limit = Number(APPLICATIONS['litellm-valkey'].match(/memory: (\d+)Mi/)[1])
+  // Headroom for Valkey's own overhead and client buffers above the data.
+  assert.ok(cap <= limit * 0.7, `maxmemory ${cap}mb in a ${limit}Mi limit`)
+  assert.match(VALKEY_CONF, /^maxmemory-policy allkeys-lru$/m)
+})
+
+test('the proxy runs as two replicas on two nodes, each with room above its measured working set', () => {
+  assert.match(APPLICATIONS.litellm, /replicas:\n\s+count: 2\n[\s\S]*?across: node/)
+  // 968Mi was measured 22 minutes after a start; 1Gi was OOMKilled.
+  assert.match(APPLICATIONS.litellm, /placement:\n\s+memory: 2Gi/)
+})
+
+test('the Valkey image pins its base by tag and digest, and runs as its own numeric user', () => {
+  const dockerfile = readFileSync(`${ROOT}/valkey/Dockerfile`, 'utf8')
+  assert.match(dockerfile, /^FROM docker\.io\/valkey\/valkey:\d+\.\d+\.\d+-alpine@sha256:[0-9a-f]{64}$/m)
+  assert.match(dockerfile, /^USER 999:1000$/m)
 })

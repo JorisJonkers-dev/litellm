@@ -1,0 +1,20 @@
+#!/bin/sh
+# Starts Valkey with the password from the environment. The password goes in on standard input,
+# appended to the config file, so it is never an argument any process listing shows, and never a
+# file on disk.
+set -eu
+if [ -z "${VALKEY_PASSWORD:-}" ]; then
+  echo "valkey-start: VALKEY_PASSWORD is not set; refusing to start without a password" >&2
+  exit 1
+fi
+# The value becomes one quoted config line, so a quote, a backslash or a line break would end it
+# early or add a directive. The generated password is hex.
+case "$VALKEY_PASSWORD" in
+  *[!A-Za-z0-9._~+/=-]*)
+    echo "valkey-start: VALKEY_PASSWORD holds a character a config line cannot carry; refusing to start" >&2
+    exit 1
+    ;;
+esac
+exec valkey-server /etc/valkey/valkey.conf - <<CONFIG
+requirepass "${VALKEY_PASSWORD}"
+CONFIG

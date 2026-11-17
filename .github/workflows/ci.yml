@@ -38,7 +38,9 @@ jobs:
 
       - name: Lint Dockerfile
         if: ${{ !cancelled() }}
-        run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+        run: |
+          docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+          docker run --rm -i hadolint/hadolint:v2.12.0 < valkey/Dockerfile
 
       - name: Routes, secrets, telemetry settings and dashboard are as declared
         if: ${{ !cancelled() }}
