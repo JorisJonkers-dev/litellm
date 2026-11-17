@@ -67,7 +67,10 @@ ROUTES = [
     {"route": "vibe-study", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_STUDY_API_KEY", "kind": "mistral"},
     {"route": "vibe-api", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_API_GENERAL_KEY", "kind": "mistral"},
     {"route": "vibe-study-api", "base_env": "MISTRAL_API_BASE", "key_env": "VIBE_STUDY_API_GENERAL_KEY", "kind": "mistral"},
-    {"route": "opencode-go", "base_env": "OPENCODE_GO_API_BASE", "key_env": "OPENCODE_GO_API_KEY", "kind": "openai"},
+    # OpenCode Go is listed at its own base (https://opencode.ai/inference/go/v1), whose /models names
+    # every Go model with the API family and base each one is served on. The proxy itself has no base:
+    # LiteLLM's opencode_go provider picks the family per model.
+    {"route": "opencode-go", "base_env": "OPENCODE_GO_API_BASE", "key_env": "OPENCODE_GO_API_KEY", "kind": "opencode-go"},
     {"route": "openrouter", "base_env": "OPENROUTER_API_BASE", "key_env": "OPENROUTER_API_KEY", "kind": "openrouter"},
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
     {"route": "google", "base_env": "GOOGLE_API_BASE", "key_env": "GEMINI_API_KEY", "kind": "google"},
@@ -90,7 +93,10 @@ PROBE_MINIMUM = re.compile(r">= (\d+)")
 # The retry honours the provider's floor, but never a number that would make a probe expensive.
 PROBE_RETRY_CEILING = 256
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
-PREFIXES = {"mistral": "mistral", "openai": "openai", "openrouter": "openrouter", "google": "gemini", "anthropic": "anthropic"}
+PREFIXES = {"mistral": "mistral", "openai": "openai", "opencode-go": "opencode_go", "openrouter": "openrouter",
+            "google": "gemini", "anthropic": "anthropic"}
+# The API families OpenCode Go names per model ("api" in its /models), in the order one is chosen.
+GO_FAMILIES = ("chat-completions", "responses", "messages", "generate-content")
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
 FREE_KINDS = ("openrouter",)
 FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
@@ -271,6 +277,15 @@ def list_models(entry, env, http):
         # OpenCode Go names the model it serves ("zhipuai/glm-5.3") beside its own id.
         if item.get("canonical_id"):
             out["canonical_id"] = str(item["canonical_id"])
+        if kind == "opencode-go":
+            # The family and base the model is served on, which the probe has to use: a Messages or
+            # Responses model does not answer at /chat/completions.
+            api = item.get("api") if isinstance(item.get("api"), dict) else {}
+            family = next((name for name in GO_FAMILIES if isinstance(api.get(name), dict)), None)
+            if family:
+                out["api"] = family
+                if api[family].get("base_url"):
+                    out["api_base"] = str(api[family]["base_url"])
         if kind == "mistral":
             caps = item.get("capabilities") or {}
             out["chat"] = bool(caps.get("completion_chat")) if "completion_chat" in caps else None
@@ -290,17 +305,40 @@ def list_models(entry, env, http):
     return list(found.values())
 
 
-def probe(entry, upstream_id, env, http):
+def go_request(base, upstream_id, key, family):
+    """The probe request for one OpenCode Go model, in the API family Go serves it on."""
+    headers = {"Content-Type": "application/json", "x-opencode-session": "litellm-catalog-probe"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    if family == "responses":
+        return f"{base}/responses", headers, {"model": upstream_id, "input": "ping", "max_output_tokens": PROBE_MAX_TOKENS}
+    if family == "messages":
+        headers["anthropic-version"] = ANTHROPIC_VERSION
+        body = {"model": upstream_id, "max_tokens": PROBE_MAX_TOKENS, "messages": [{"role": "user", "content": "ping"}]}
+        return f"{base}/messages", headers, body
+    if family == "generate-content":
+        body = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}], "generationConfig": {"maxOutputTokens": PROBE_MAX_TOKENS}}
+        return f"{base}/models/{upstream_id}:generateContent", headers, body
+    return f"{base}/chat/completions", headers, {"model": upstream_id, "messages": [{"role": "user", "content": "ping"}],
+                                                "max_tokens": PROBE_MAX_TOKENS}
+
+
+def probe(entry, upstream_id, env, http, meta=None):
     """One minimal request at the provider itself, with the route's own key.
 
     Not through the proxy: a model the proxy has not deployed yet has no route to go through.
+    An OpenCode Go model is probed in the family and at the base its listing named (`meta`).
     """
+    meta = meta or {}
     base = (env.get(entry["base_env"]) or "").rstrip("/")
     if not base:
         return "error", f"{entry['base_env']} is not set"
     key = env.get(entry["key_env"]) or ""
     headers = {"Content-Type": "application/json"}
-    if entry["kind"] == "anthropic":
+    if entry["kind"] == "opencode-go":
+        # OpenCode answers 400 MissingSessionID without a session header, so go_request sends one.
+        url, headers, body = go_request((meta.get("api_base") or base).rstrip("/"), upstream_id, key, meta.get("api"))
+    elif entry["kind"] == "anthropic":
         # Anthropic's messages endpoint takes the key in its own header, and a version header.
         headers["anthropic-version"] = ANTHROPIC_VERSION
         if key:
@@ -310,14 +348,11 @@ def probe(entry, upstream_id, env, http):
     else:
         if key:
             headers["Authorization"] = f"Bearer {key}"
-        if entry["route"] == "opencode-go":
-            # OpenCode answers 400 MissingSessionID without a session header.
-            headers["x-opencode-session"] = "litellm-catalog-probe"
         url = f"{base}/chat/completions"
         body = {"model": upstream_id, "messages": [{"role": "user", "content": "ping"}], "max_tokens": PROBE_MAX_TOKENS}
     status, answer = http("POST", url, headers, body)
     text = answer if isinstance(answer, str) else json.dumps(answer)
-    if status == 400:
+    if status == 400 and "max_tokens" in body:
         # A provider that refuses the small max_tokens names its floor: retry once at that floor.
         match = PROBE_MINIMUM.search(error_message(text))
         if match and PROBE_MAX_TOKENS < int(match[1]) <= PROBE_RETRY_CEILING:
@@ -715,8 +750,9 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            if item.get("canonical_id"):
-                meta["canonical_id"] = item["canonical_id"]
+            for field in ("canonical_id", "api", "api_base"):
+                if item.get(field):
+                    meta[field] = item[field]
             if old:
                 for k in ("status", "reason", "probed_at", "failing_probes", "was_usable"):
                     if k in (old.get("metadata") or {}):
@@ -753,7 +789,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     for _, route, model in sorted(queue, key=lambda q: (q[0], q[2]["metadata"].get("probed_at", ""))):
         if stats["probed"] >= max_probes or spent.get(route, 0) >= limits.get(route, max_probes):
             continue
-        status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http)
+        status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
         meta = model["metadata"]
         meta.update(status=status, reason=reason, probed_at=stamp)
         # Two consecutive blocked or unknown probes are what drops a model.
