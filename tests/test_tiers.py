@@ -135,9 +135,23 @@ class Rendering(unittest.TestCase):
         self.assertFalse(names & set(TIERS))
 
     def test_the_tier_block_is_spliced_and_a_missing_marker_is_an_error(self):
-        self.assertEqual(sync.splice_tier_block(CONFIG.replace("model_group_alias:", "model_group_alias:", 1), RULES), CONFIG)
+        # Re-rendering replaces the marked block and leaves everything before and after it unchanged.
+        start, end = CONFIG.index(sync.TIERS_BEGIN), CONFIG.index(sync.TIERS_END) + len(sync.TIERS_END)
+        before, after = CONFIG[:start], CONFIG[end:]
+        stale = before + sync.TIERS_BEGIN + "\n  model_group_alias: {stale: stale}\n" + sync.TIERS_END + after
+        fresh = sync.splice_tier_block(stale, RULES)
+        self.assertNotIn("stale", fresh)
+        self.assertTrue(fresh.startswith(before))
+        self.assertTrue(fresh.endswith(after))
+        self.assertEqual(fresh[len(before):len(fresh) - len(after)], sync.render_tier_block(RULES))
         with self.assertRaises(RuntimeError):
             sync.splice_tier_block("router_settings: {}", RULES)
+
+    def test_a_planned_group_named_like_a_tier_fails_the_plan(self):
+        from test_routing import catalogue
+        sync.assert_no_tier_shadow(plan(*free_models()), RULES)
+        with self.assertRaisesRegex(RuntimeError, "named like a tier: tier-vibe"):
+            sync.plan_groups(catalogue(("vibe", "tier-vibe", "usable", {})), RULES)
 
     def test_missing_free_steps_are_listed_for_the_run(self):
         specs = plan(*free_models(), rules=FREE_RULES)

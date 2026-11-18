@@ -780,6 +780,7 @@ def plan_groups(catalogue, rules):
             spec["model_info"]["allowed_fails_policy"] = {**spec["model_info"].get("allowed_fails_policy", {}), **extra}
     assert_free_groups(specs)
     assert_tier_copies(specs, rules)
+    assert_no_tier_shadow(specs, rules)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
 
 
@@ -904,7 +905,7 @@ def validate_tiers(rules):
     Each step's declared cost class must be the class its name's prefix gives; no step may cost more than
     its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
     paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
-    a tier is no model_name of the catalogue; and each tier's key_models cover every step, because a
+    a tier name is no planned model group (assert_no_tier_shadow(), against the real plan); and each tier's key_models cover every step, because a
     key reaches a name only by holding it or its access group ("free", "vibe-tier", "opencode-go-tier")
     and a fallback the key does not hold is skipped.
     """
@@ -932,6 +933,16 @@ def validate_tiers(rules):
             if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
                        for key in keys):
                 raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
+
+
+def assert_no_tier_shadow(specs, rules):
+    """Fail the sync when a planned model group is named like a tier.
+
+    model_group_alias would shadow the group, and a key granted that name would be rerouted down the tier's chain.
+    """
+    clash = sorted({spec["name"] for spec in specs} & set((rules or {}).get("tier_groups") or {}))
+    if clash:
+        raise RuntimeError("a model group is named like a tier: " + ", ".join(clash))
 
 
 def tier_router_settings(rules):
