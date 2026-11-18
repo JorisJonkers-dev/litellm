@@ -788,6 +788,9 @@ class FreeRoutesWave2(unittest.TestCase):
         daily = {"bazaarlink": 60, "airforce": 1000, "plugsky": 500}
         for route, cap in daily.items():
             self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
+        # No cap is published for Electron Hub and Poe's points are unknown: keep the worst case to 48 and 24 a day.
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["electronhub"] * 24, 48)
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["poe"] * 24, 24)
         # Cohere's cap is 1,000 calls a month: one probe per run is 720 a month, so it probes nothing.
         self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["cohere"], 0)
         self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["airforce"], 1)  # 1 request a minute

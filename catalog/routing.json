@@ -121,7 +121,7 @@
     },
     "tier-strong-open": {
       "ceiling": "go",
-      "key_models": ["tier-strong-open", "vibe-tier", "opencode-go-tier"],
+      "key_models": ["tier-strong-open", "vibe-tier", "opencode-go-tier", "strong-open-tier"],
       "steps": [
         {"model": "opencode-go-tier/qwen4-max", "cost": "go"},
         {"model": "vibe-tier/zai-glm-5-3", "cost": "vibe"},

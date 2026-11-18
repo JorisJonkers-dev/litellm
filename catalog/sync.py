@@ -148,17 +148,17 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 #   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
 #   Second wave (same arithmetic, limit x 24 at most half the cap):
 #   bazaarlink   1 x 24 =  24    of 60 weighted units a day      airforce    1 x 24 = 24   of 1,000 a day (1 a minute: one serial probe)
-#   electronhub  4 x 24 =  96    (cap not published)             unorouter   2 x 24 = 48   (queue-throttled, about 1 a minute per model; per IP)
+#   electronhub  2 x 24 =  48    (no cap published: at most 48 a day, and a healthy id is probed once a day) unorouter   2 x 24 = 48   (queue-throttled, about 1 a minute per model; per IP)
 #   plugsky      4 x 24 =  96    of 500 a day                    sealion     2 x 24 = 48   (10 a minute)
 #   novita       2 x 24 =  48    (a few $0 ids)                  vercel      4 x 24 = 96   (zero-priced ids only; the free credit is not spent by a $0 id)
-#   poe          1 x 24 =  24    (daily points, amount not known) together, typhoon, neosantara, longcat, gonka: 1 x 24 = 24 (one id each, or a small allowance)
+#   poe          1 x 24 =  24    (500 RPM; daily points not known, but its free list is empty, so no id is probed) together, typhoon, neosantara, longcat, gonka: 1 x 24 = 24 (one id each, or a small allowance)
 #   watsonx      1 x 24 =  24 probes of about 24 tokens: 0.6K of 300K tokens a month
 #   cohere       0: its cap is 1,000 calls a MONTH, so one probe per run is 720 a month at worst (a failing probe retries every run),
 #                over half. It probes nothing until the owner raises this knowingly; a healthy id is 30 a month.
 DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
                         "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2,
                         "bazaarlink": 1, "cohere": 0, "plugsky": 4, "poe": 1, "watsonx": 1, "together": 1, "typhoon": 1,
-                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 4, "unorouter": 2,
+                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 2, "unorouter": 2,
                         "airforce": 1, "vercel": 4, "novita": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
@@ -361,9 +361,23 @@ def is_free_price(pricing):
 def zero_price(*prices):
     """Whether every price is present and zero: a missing price is not free."""
     try:
-        return all(price is not None and float(price) == 0 for price in prices)
+        # A bool is not a price (float(False) == 0.0), and an empty string is not a zero.
+        return all(price is not None and not isinstance(price, bool) and float(price) == 0 for price in prices)
     except (TypeError, ValueError):
         return False
+
+
+def priced_above_zero(item):
+    """Whether a listing reports ANY price field that is not an explicit zero.
+
+    Looks at every spelling of an input or output price (pricing.prompt/completion/input/output, input_price,
+    output_price), each on its own, so a listing that prices only one side, or one in an odd format, still
+    counts as priced. An item with no price field at all is not priced (the caller's list is then the signal).
+    """
+    pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+    values = [pricing[name] for name in ("prompt", "completion", "input", "output") if name in pricing]
+    values += [item[name] for name in ("input_price", "output_price") if name in item]
+    return any(not zero_price(value) for value in values)
 
 
 def listed_prices(item):
@@ -414,11 +428,15 @@ def modality(kind, item):
     return "embedding" if "embed" in model_id else "chat"
 
 
-def listing_items(body):
-    """The items of a model listing: {"data": [...]} (OpenAI-style) or a bare list (Together), else None."""
+BARE_LIST_KINDS = ("together",)
+
+
+def listing_items(body, kind=None):
+    """The items of a model listing: {"data": [...]} (OpenAI-style), or a bare list for the kinds that answer one
+    (Together only); anything else is None, which the caller reports as a route error, never as zero models."""
     if isinstance(body, dict) and isinstance(body.get("data"), list):
         return body["data"]
-    return body if isinstance(body, list) else None
+    return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
 
 
 def list_models(entry, env, http, rules=None):
@@ -445,7 +463,7 @@ def list_models(entry, env, http, rules=None):
         user_status, user_body = http("GET", f"{base}/models/user", headers, None)
         if user_status == 200 and isinstance(user_body, dict) and isinstance(user_body.get("data"), list):
             status, body = user_status, user_body
-    items = listing_items(body)
+    items = listing_items(body, kind)
     if status != 200 or items is None:
         raise RuntimeError(f"{entry['route']}: the model list answered {status}")
     found = {}
@@ -493,9 +511,12 @@ def list_models(entry, env, http, rules=None):
             out["free"] = item.get("tier") == "free"
         elif kind == "vercel":
             # Zero-priced ids only; a missing price is not free. The ids' free credit is not drawn by a $0 id.
-            price = listed_prices(item)
-            out["free"] = price is not None and not any(price)
+            # Explicit zero for BOTH pricing.input and pricing.output (a number or a numeric string); a missing,
+            # empty or unparsable price is not free. No fallback to other field spellings.
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = zero_price(pricing.get("input"), pricing.get("output"))
         elif kind == "novita":
+            # The spec names the flat per-million fields of the item; only those, both required to be zero.
             out["free"] = zero_price(item.get("input_token_price_per_m"), item.get("output_token_price_per_m"))
         elif kind == "nvidia":
             out["free"] = True
@@ -511,7 +532,9 @@ def list_models(entry, env, http, rules=None):
                 if price is not None:
                     out["price"] = {"input": price[0], "output": price[1]}
             else:
-                out["free"] = model_id in free_ids and not (price and any(price))
+                # Pay-per-token hosts name one approved free id (Together, Typhoon, Neosantara): a listing that
+                # prices it anywhere above zero, on either side, refuses it.
+                out["free"] = model_id in free_ids and not priced_above_zero(item)
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -618,7 +641,7 @@ def scan_candidates(entry, env, http, rules):
                 break
     else:
         status, body = http("GET", f"{base}/models", headers, None)
-        items = listing_items(body)
+        items = listing_items(body, kind)
         if status != 200 or items is None:
             raise RuntimeError(f"{route}: the model list answered {status}")
         for item in items:
@@ -1153,6 +1176,9 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 
 # The one tier whose chain may hold an opt_in_only model: it is the opt-in escalation tier.
 OPT_IN_TIER = "tier-strong-open"
+# The access group of the opt-in tier copies. They are NOT in the shared vibe-tier / opencode-go-tier groups, which
+# every other tier key holds: only the tier-strong-open key holds this one, so no other key can call an opt-in model.
+OPT_IN_ACCESS_GROUP = "strong-open-tier"
 
 
 def step_class(model):
@@ -1226,9 +1252,17 @@ def validate_tiers(rules):
                 raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
             if name != OPT_IN_TIER and canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
                 raise RuntimeError(f"tier {name}: {model} is opt-in only and may be in {OPT_IN_TIER} alone")
-            if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
-                       for key in keys):
+            opt_in_step = canonical_name(None, model.split("/", 1)[1], rules) in opt_in
+            if opt_in_step:
+                # An opt-in copy is in its own access group, not the shared one of its prefix.
+                reached = any(model == key or key == OPT_IN_ACCESS_GROUP for key in keys)
+            else:
+                reached = any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
+                              for key in keys)
+            if not reached:
                 raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
+        if name != OPT_IN_TIER and OPT_IN_ACCESS_GROUP in keys:
+            raise RuntimeError(f"tier {name}: key_models hold {OPT_IN_ACCESS_GROUP}, which only {OPT_IN_TIER} may")
 
 
 def assert_no_tier_shadow(specs, rules):
@@ -1299,7 +1333,8 @@ def tier_copies(specs, rules):
                     copy["name"] = step["model"]
                     copy["order"], copy["weight"] = 1, 1
                     copy["litellm_params"]["order"], copy["litellm_params"]["weight"] = 1, 1
-                    copy["model_info"]["access_groups"] = [prefix]
+                    opt_in = canonical_name(None, upstream_id, rules) in set(rules.get("opt_in_only") or [])
+                    copy["model_info"]["access_groups"] = [OPT_IN_ACCESS_GROUP if opt_in else prefix]
                     copy["model_info"].pop("allowed_fails_policy", None)
                     copies.append(copy)
                     break

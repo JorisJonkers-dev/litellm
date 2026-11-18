@@ -218,7 +218,9 @@ class Access(unittest.TestCase):
         rank = RULES["tier_cost_classes"].index
         for name, tier in RULES["tier_groups"].items():
             for step in sync.tier_chains(RULES)[name]:
-                self.assertTrue(step["model"] in tier["key_models"] or step["model"].split("/", 1)[0] in tier["key_models"]
+                opt_in = sync.canonical_name(None, step["model"].split("/", 1)[1], RULES) in RULES["opt_in_only"]
+                group = sync.OPT_IN_ACCESS_GROUP if opt_in else step["model"].split("/", 1)[0]
+                self.assertTrue(step["model"] in tier["key_models"] or group in tier["key_models"]
                                 or (step["cost"] == "free" and "free" in tier["key_models"]), (name, step))
             # A tier key holds access groups and tier names, never a route wildcard: a wildcard has no budget.
             self.assertFalse([k for k in tier["key_models"] if "*" in k or k in ("vibe", "opencode-go")], name)
@@ -226,6 +228,46 @@ class Access(unittest.TestCase):
             ceiling = rank(tier["ceiling"])
             self.assertTrue("opencode-go-tier" not in tier["key_models"] or ceiling >= rank("go"), name)
             self.assertTrue("vibe-tier" not in tier["key_models"] or ceiling >= rank("vibe"), name)
+
+    def test_opt_in_copies_are_in_their_own_group_only_the_strong_open_key_holds(self):
+        from test_routing import catalogue
+        specs = sync.plan_groups(catalogue(("vibe", "zai-glm-5-3", "usable", {}), ("vibe", "mistral-small-2603", "usable", {}),
+                                           ("opencode-go", "gpt-6-luna", "usable", {}), ("opencode-go", "mimo-v2.6-flash", "usable", {})), RULES)
+        copies = {s["name"]: s for s in specs if s["name"].split("/")[0] in sync.TIER_ROUTES}
+        opt_in = {"vibe-tier/zai-glm-5-3", "opencode-go-tier/gpt-6-luna"}
+        self.assertTrue(opt_in <= set(copies), sorted(copies))
+        for name in opt_in:
+            self.assertEqual(copies[name]["model_info"]["access_groups"], [sync.OPT_IN_ACCESS_GROUP], name)
+        self.assertEqual(copies["vibe-tier/mistral-small-2603"]["model_info"]["access_groups"], ["vibe-tier"])
+        # A key reaches a name by holding it or one of its access groups: no other tier's key reaches an opt-in copy.
+        tiers = RULES["tier_groups"]
+        for tier, definition in tiers.items():
+            reach = {n for n in opt_in if n in definition["key_models"] or sync.OPT_IN_ACCESS_GROUP in definition["key_models"]}
+            self.assertEqual(reach, opt_in if tier == "tier-strong-open" else set(), tier)
+        # The shared groups of the other keys are not the opt-in group, and no tier falls back into tier-strong-open.
+        for tier, definition in tiers.items():
+            if tier != "tier-strong-open":
+                self.assertFalse(any(step.get("tier") == "tier-strong-open" for step in definition["steps"]), tier)
+                self.assertNotIn("tier-strong-open", [s["model"] for s in sync.tier_chains(RULES)[tier]])
+
+    def test_validation_refuses_the_opt_in_group_in_another_key_and_requires_it_in_strong_open(self):
+        rules = json.loads(json.dumps(RULES))
+        rules["tier_groups"]["tier-vibe"]["key_models"].append(sync.OPT_IN_ACCESS_GROUP)
+        with self.assertRaisesRegex(RuntimeError, "only tier-strong-open may"):
+            sync.validate_tiers(rules)
+        rules = json.loads(json.dumps(RULES))
+        rules["tier_groups"]["tier-strong-open"]["key_models"].remove(sync.OPT_IN_ACCESS_GROUP)
+        with self.assertRaisesRegex(RuntimeError, "do not reach step"):
+            sync.validate_tiers(rules)
+
+    def test_the_glm_5_3_alias_spelling_is_refused_outside_strong_open(self):
+        # The step names the id Vibe serves (zai-glm-5-3); routing.json's alias maps it to glm-5.3, the opt_in_only name.
+        self.assertEqual(sync.canonical_name(None, "zai-glm-5-3", RULES), "glm-5.3")
+        for tier in ("tier-vibe", "tier-review"):
+            rules = json.loads(json.dumps(RULES))
+            rules["tier_groups"][tier]["steps"].append({"model": "vibe-tier/zai-glm-5-3", "cost": "vibe"})
+            with self.assertRaisesRegex(RuntimeError, "opt-in only", msg=tier):
+                sync.validate_tiers(rules)
 
 
 @unittest.skipIf(Router is None, "litellm is not importable here; it is in the image (run the suite there)")
