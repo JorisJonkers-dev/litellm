@@ -7,6 +7,8 @@
 #   requested_group  tier-free, or <route>/* for a free route (free/*, google-free/*, ...)
 #   api_key_alias    the key; free and openrouter keys (free@<host>, openrouter@<host>) hold
 #                    public-only groups with no paid deployment in them
+#   outcome          success, or failure for an attempt that errored: a failed try on a priced
+#                    deployment is still a leak attempt, so both count
 #   priced           "true" when the serving deployment has a price
 # The public key is left out on purpose: its public/<canonical> groups end in paid deployments by
 # design (agent-kit docs/LITELLM.md), so a paid answer there is the plan, not a leak.
@@ -14,14 +16,16 @@ groups:
   - name: litellm-tier
     rules:
       - alert: LiteLLMFreeTierPaidLeak
+        # increase() needs two samples, and a series the callback creates starts at 1, so a first leak
+        # (or the first after a restart) is caught by the second arm: present now, absent 10m ago.
         expr: |
-          sum by (requested_group, api_key_alias, api_provider, model_id) (
-            increase(litellm_tier_served_total{priced="true", requested_group=~"tier-free|free/\\*|google-free/\\*|openrouter/\\*|opencode-go-free/\\*"}[10m])
-          ) > 0
+          (sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (increase(litellm_tier_served_total{priced="true", requested_group=~"tier-free|free/\\*|google-free/\\*|openrouter/\\*|opencode-go-free/\\*"}[10m])) > 0)
           or
-          sum by (requested_group, api_key_alias, api_provider, model_id) (
-            increase(litellm_tier_served_total{priced="true", api_key_alias=~"(free|openrouter)@.*"}[10m])
-          ) > 0
+          (sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (litellm_tier_served_total{priced="true", requested_group=~"tier-free|free/\\*|google-free/\\*|openrouter/\\*|opencode-go-free/\\*"}) unless sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (litellm_tier_served_total{priced="true", requested_group=~"tier-free|free/\\*|google-free/\\*|openrouter/\\*|opencode-go-free/\\*"} offset 10m))
+          or
+          (sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (increase(litellm_tier_served_total{priced="true", api_key_alias=~"(free|openrouter)@.*"}[10m])) > 0)
+          or
+          (sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (litellm_tier_served_total{priced="true", api_key_alias=~"(free|openrouter)@.*"}) unless sum by (requested_group, api_key_alias, api_provider, model_id, outcome) (litellm_tier_served_total{priced="true", api_key_alias=~"(free|openrouter)@.*"} offset 10m))
         for: 0m
         labels: {severity: warning}
         annotations:

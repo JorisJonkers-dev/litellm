@@ -6,11 +6,12 @@ provider. Neither says whether the serving deployment is priced, whether a retry
 happened on the way, or groups the requested name into a bounded set a rule can match. This small
 callback adds those, and nothing else: metadata only, never a prompt or a response.
 
-Series, per successful request:
+Series, per served request and per failed attempt:
 
-  litellm_tier_served_total{requested_group, api_key_alias, api_provider, model_id, priced, fallback}
+  litellm_tier_served_total{requested_group, api_key_alias, api_provider, model_id, priced, fallback, outcome}
 
-  requested_group  `tier-*` and every bare-name request as such (`tier-free`, `canonical`); any
+  requested_group  the five estate tiers as such (`tier-free`, ...; any other `tier-` name is `tier-other`), a bare
+                   canonical name as `canonical`; any
                    `<route>/<id>` request collapses to `<route>/*`, so a wildcard route cannot mint
                    a series per model id a client sends. `free/<canonical>` becomes `free/*`.
   model_id         the serving deployment (the generated config's `model_info.id`)
@@ -19,6 +20,8 @@ Series, per successful request:
                    deployment decides (zero is free, even if the cost map prices the id); a
                    deployment that declares none is priced if the request was charged or the
                    cost map prices its model
+  outcome          "success", or "failure" for an attempt that errored: a free request that
+                   reached a priced deployment and failed there is still a leak attempt
   fallback         "true" when the router retried or fell back before this deployment answered
 
 The same facts go to the spend log under `metadata.spend_logs_metadata.tier_telemetry`.
@@ -32,7 +35,9 @@ from litellm.integrations.custom_logger import CustomLogger
 from prometheus_client import Counter
 
 METRIC = "litellm_tier_served"
-LABELS = ("requested_group", "api_key_alias", "api_provider", "model_id", "priced", "fallback")
+LABELS = ("requested_group", "api_key_alias", "api_provider", "model_id", "priced", "fallback", "outcome")
+# The tiers the estate names (agent-kit docs/LITELLM.md); any other `tier-` name is `tier-other`.
+TIERS = frozenset({"tier-free", "tier-vibe", "tier-go-cheap", "tier-strong-open", "tier-review"})
 
 
 def requested_group(requested: Any) -> str:
@@ -40,7 +45,7 @@ def requested_group(requested: Any) -> str:
     if not isinstance(requested, str) or not requested:
         return "unknown"
     if requested.startswith("tier-"):
-        return requested
+        return requested if requested in TIERS else "tier-other"
     if "/" in requested:
         return f"{requested.split('/', 1)[0]}/*"
     return "canonical"
@@ -84,7 +89,14 @@ def is_priced(kwargs: dict, metadata: dict, hidden: dict) -> bool:
 
 
 def _count(value: Any) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+    """A retry or fallback count; the router's headers carry it as an int or as a string."""
+    if isinstance(value, bool):
+        return 0
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return number if number > 0 else 0
 
 
 def describe(kwargs: dict, result: Any = None) -> dict:
@@ -130,9 +142,9 @@ class TierTelemetry(CustomLogger):
             pass
         return kwargs, result
 
-    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+    def _count_request(self, kwargs: dict, response: Any, outcome: str) -> None:
         try:
-            record = describe(kwargs, response_obj)
+            record = describe(kwargs, response if outcome == "success" else None)
             SERVED.labels(
                 requested_group=record["requested_group"],
                 api_key_alias=record["api_key_alias"],
@@ -140,9 +152,16 @@ class TierTelemetry(CustomLogger):
                 model_id=str(record["served_model_id"]),
                 priced=str(record["priced"]).lower(),
                 fallback=str(record["fallback"]).lower(),
+                outcome=outcome,
             ).inc()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # telemetry must never fail a request
             pass
+
+    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+        self._count_request(kwargs, response_obj, "success")
+
+    async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
+        self._count_request(kwargs, response_obj, "failure")
 
 
 tier_telemetry = TierTelemetry()

@@ -218,7 +218,7 @@ test('metrics are served on their own port per key alias and model, with no mess
   assert.match(text, /litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/)
   assert.match(text, /litellm_spend_metric_total/)
   // The tier telemetry callback loaded and exports requested tier against the serving deployment.
-  assert.match(text, /litellm_tier_served_total\{api_key_alias="[^"]*",api_provider="mistral",fallback="false",model_id="[0-9a-f]+",priced="(?:true|false)",requested_group="vibe\/\*"\}/)
+  assert.match(text, /litellm_tier_served_total\{api_key_alias="[^"]*",api_provider="mistral",fallback="false",model_id="[0-9a-f]+",outcome="success",priced="false",requested_group="vibe\/\*"\}/)
   assert.doesNotMatch(text, new RegExp(`${PROMPT}|${ANSWER}`))
   // Only the labels the config allows.
   assert.doesNotMatch(text, /user_email|client_ip|user_agent|end_user/)

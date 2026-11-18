@@ -71,7 +71,9 @@ class TierTelemetryTest(unittest.IsolatedAsyncioTestCase):
         r = router([deployment("tier-free", "free-down", 1, RATE_LIMIT), deployment("tier-free", "paid-up", 2, "ok", input_cost_per_token=0.001)])
         await self.ask(r, "tier-free", key="leak@test")
         self.assertEqual(one(requested_group="tier-free", api_key_alias="leak@test", model_id="paid-up", priced="true", fallback="true"), 1)
-        self.assertEqual([labels for labels, _ in series() if labels["model_id"] == "free-down"], [])
+        # The failed attempt on the free deployment is counted apart, as a failure.
+        failed = [labels for labels, _ in series() if labels["model_id"] == "free-down"]
+        self.assertTrue(failed and all(labels["outcome"] == "failure" for labels in failed), failed)
 
     async def test_a_cross_group_fallback_shows_requested_and_served_differing(self):
         r = router(
@@ -101,6 +103,31 @@ class TierTelemetryTest(unittest.IsolatedAsyncioTestCase):
         kept = _get_spend_logs_metadata(captured)
         self.assertEqual(kept["spend_logs_metadata"]["tier_telemetry"]["served_model_id"], "paid-two")
 
+    async def test_a_failed_attempt_on_a_priced_deployment_is_counted(self):
+        r = router([deployment("tier-free", "paid-down", 1, RATE_LIMIT, input_cost_per_token=0.001)])
+        with self.assertRaises(Exception):
+            await self.ask(r, "tier-free", key="failed@test")
+        seen = [v for labels, v in series() if labels["api_key_alias"] == "failed@test" and labels["model_id"] == "paid-down" and labels["priced"] == "true" and labels["outcome"] == "failure"]
+        self.assertTrue(seen and sum(seen) >= 1, seen)
+
+    def test_string_header_counts_mark_a_fallback(self):
+        kwargs = {"litellm_params": {"metadata": {"original_model_group": "tier-free", "model_group": "tier-free"}}, "model": "x"}
+        hidden = type("R", (), {"_hidden_params": {"additional_headers": {"x-litellm-attempted-fallbacks": "1"}}})()
+        self.assertTrue(tt.describe(kwargs, hidden)["fallback"])
+        hidden = type("R", (), {"_hidden_params": {"additional_headers": {"x-litellm-attempted-retries": "2"}}})()
+        self.assertTrue(tt.describe(kwargs, hidden)["fallback"])
+        hidden = type("R", (), {"_hidden_params": {"additional_headers": {"x-litellm-attempted-fallbacks": "0"}}})()
+        self.assertFalse(tt.describe(kwargs, hidden)["fallback"])
+
+    def test_the_cost_map_decides_only_when_nothing_is_declared_and_nothing_charged(self):
+        # No response_cost and no declared cost: only the cost map can say.
+        mapped = {"model": "mistral/mistral-small-latest", "custom_llm_provider": "mistral"}
+        self.assertTrue(tt.is_priced(mapped, {}, {"litellm_model_name": "mistral/mistral-small-latest"}))
+        unknown = {"model": "openai/not-in-any-map", "custom_llm_provider": "openai"}
+        self.assertFalse(tt.is_priced(unknown, {}, {"litellm_model_name": "openai/not-in-any-map"}))
+        zero = {"litellm_params": {"input_cost_per_token": 0}, **mapped}
+        self.assertFalse(tt.is_priced(zero, {}, {"litellm_model_name": "mistral/mistral-small-latest"}))
+
     async def test_a_deployment_priced_only_by_litellms_cost_map_counts_as_priced(self):
         # The generated deployments carry no price of their own: the price comes from LiteLLM's map.
         entry = deployment("tier-free", "mapped", 1, "ok")
@@ -116,6 +143,7 @@ class TierTelemetryTest(unittest.IsolatedAsyncioTestCase):
 
     def test_group_bounding(self):
         self.assertEqual(tt.requested_group("tier-vibe"), "tier-vibe")
+        self.assertEqual(tt.requested_group("tier-whatever-1"), "tier-other")
         self.assertEqual(tt.requested_group("free/qwen"), "free/*")
         self.assertEqual(tt.requested_group("vibe/anything-1"), "vibe/*")
         self.assertEqual(tt.requested_group("mistral-large"), "canonical")
