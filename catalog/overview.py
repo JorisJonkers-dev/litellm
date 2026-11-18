@@ -303,6 +303,57 @@ def section(route, provider, index):
     return lines
 
 
+def signal_cell(signals):
+    """The signals a listing gave, as one cell: prices, free flag, context, modality."""
+    parts = []
+    if signals.get("unlisted"):
+        parts.append("no longer listed")
+    for price in signals.get("prices") or []:
+        parts.append(f"{price.get('unit')}: {price.get('price')} {price.get('currency')}".strip())
+    if "input_price" in signals:
+        parts.append(f"price in/out: {signals['input_price']}/{signals.get('output_price')}")
+    if "free_flag" in signals:
+        parts.append(f"free flag: {'yes' if signals['free_flag'] else 'no'}")
+    if signals.get("context_length") is not None:
+        parts.append(f"context {context(signals['context_length']) or signals['context_length']}")
+    if signals.get("beta"):
+        parts.append("beta")
+    if signals.get("modality"):
+        parts.append(str(signals["modality"]))
+    return cell("; ".join(parts) or "no price or free signal")
+
+
+def candidates_section(candidates, heading="##"):
+    """Free-route candidates: every id a static-list route lists, approved or not, for the owner.
+
+    Approved ids are in `free_ids` and deployed once probed usable. A candidate is shown only: it is
+    deployed when its id is added to `free_ids` in `catalog/routing.json`.
+    """
+    lines = [
+        f"{heading} Free-route candidates",
+        "",
+        "Routes whose free ids the owner chooses (`free_ids` in `catalog/routing.json`). `approved` ids "
+        "are in that list; a `candidate` is listed by the provider but is **never deployed** until its id "
+        "is added. `suggested` means the listing itself gives a zero price or a free flag; with no signal "
+        "the answer is no, and the provider's plan terms decide.",
+        "",
+    ]
+    if not candidates:
+        return lines + ["No static-list route was scanned."]
+    for route in sorted(candidates):
+        items = candidates[route] or []
+        lines.append(f"**{cell(route)}**: " + (f"{len(items)} listed, {sum(1 for i in items if i.get('approved'))} approved" if items else "nothing listed (key absent or listing failed)"))
+        if items:
+            lines.append("")
+            lines += table(
+                ["Id", "State", "Signals", "Suggested"],
+                [[cell(i.get("id")), "approved" if i.get("approved") else "candidate", signal_cell(i.get("signals") or {}),
+                  "yes" if i.get("suggested") else "no"] for i in items],
+            )
+        lines.append("")
+    return lines[:-1]
+
+
 def render(catalogue):
     """The overview page for one catalogue. Only the `Last updated` line depends on the run."""
     catalogue = catalogue or {}
@@ -321,6 +372,7 @@ def render(catalogue):
     lines += groups_section(catalogue)
     lines += ["", "## Routing rules", "", ROUTING]
     lines += [""] + duplicates_section(catalogue)
+    lines += [""] + candidates_section(catalogue.get("free_candidates") or {})
     lines += ["", "## Summary", ""]
     lines += summary(providers)
     if not providers:

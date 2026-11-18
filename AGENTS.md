@@ -28,6 +28,15 @@ A free model is served by several free routes, and a 429 on one should land on t
 
 `tests/test_free_groups.py` covers the plan and the assertion. Its Router tests (a 429 cools only that copy, the next serves) load the plan into LiteLLM's own Router with the upstream mocked, and run only where `litellm` is importable, so run them in the image: `docker run --rm -v "$PWD":/repo --entrypoint python <image> -W ignore -m unittest discover -s /repo/tests -p 'test_free*.py'`.
 
+## Approving a free id
+
+Routes whose free ids are a static list (`groq`, `cloudflare`, `zai`, `axforge`, `inferbase`) deploy only ids in `free_ids` of `catalog/routing.json`. The owner can choose only from what the providers list with the real keys, which only the in-cluster sync holds, so the sync scans these routes every run and records every listed id with the signals the listing gives (price fields, free flags, context, modality) as `free_candidates` in the catalogue, marked `approved` (in `free_ids`) or `candidate`. A candidate is never deployed.
+
+- **Where to read them.** The "Free-route candidates" section of the models pull request (`bot/model-catalog`, body refreshed on each run) and of the published model overview. Per route: id, state, signals, and `suggested` (the listing gives a zero price or a free flag; no signal means no, and the plan's terms decide).
+- **How to approve.** Add the ids to `free_ids.<route>` in `catalog/routing.json` and merge. The next run probes them and plans them.
+- **Cloudflare.** If `CLOUDFLARE_ACCOUNT_ID` is unset or the `base.env` placeholder, the sync asks `GET /client/v4/accounts` with the token and uses the one account it sees (logged; several accounts is an error, set the id). Signals come from `GET /accounts/{id}/ai/models/search`: the item's `properties` (`price`, `context_window`, `beta`). Cloudflare's free tier is an account-wide Neuron allowance, so expect `suggested: no`; the list is a convenience, not a free signal. The search item fields are undocumented in the API reference and parsed defensively; verify against a live run.
+- **Failure.** A listing error leaves that route's candidates empty and is reported as a route error; it does not fail the run.
+
 ## Budgets
 
 `accounts` in `catalog/routing.json` is the one source of spending caps: per paid account, the `routes` it bills, `max_budget` and `window` (`{"calendar": "month"}` is `1mo`, `{"days": N}` is `Nd`, an optional `anchor` is the declared cycle start). Owner caps (2026-11-18): OpenCode Go 40 per 30-day cycle (started 2026-11-04 10:41 UTC), Vibe 255, Vibe-study 127, `vibe-api` 25.5 and `vibe-study-api` 12.7 per calendar month (each its own counter; the `-api` windows assumed like their parents); `anthropic` 90 per 30 days and `inferbase` 0.5/day.

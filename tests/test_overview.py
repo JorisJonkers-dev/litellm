@@ -161,9 +161,19 @@ class Render(unittest.TestCase):
     def test_route_order_follows_the_catalogue(self):
         text = overview.render(CATALOGUE)
         fixed = ("## How this stays current", "## Canonical models", "## Routing rules",
-                 "## Possible duplicates (not merged)", "## Summary")
+                 "## Possible duplicates (not merged)", "## Free-route candidates", "## Summary")
         headings = [line[3:] for line in text.splitlines() if line.startswith("## ") and line not in fixed]
         self.assertEqual(headings, list(CATALOGUE["providers"]))
+
+    def test_the_candidates_section_lists_approved_and_candidate_ids(self):
+        cat = dict(CATALOGUE, free_candidates={"cloudflare": [
+            {"id": "@cf/a/b", "approved": True, "signals": {"prices": [{"unit": "per M input tokens", "price": 0, "currency": "USD"}], "zero_priced": True}, "suggested": True},
+            {"id": "@cf/c/d", "approved": False, "signals": {"context_length": 8192}, "suggested": False}], "axforge": []})
+        text = overview.render(cat)
+        self.assertIn("## Free-route candidates", text)
+        self.assertIn("| @cf/a/b | approved | per M input tokens: 0 USD | yes |", text)
+        self.assertIn("| @cf/c/d | candidate | context 8192 | no |", text)
+        self.assertIn("**axforge**: nothing listed", text)
 
     def test_canonical_groups_are_sorted_with_deployments_in_order(self):
         rows = table_rows(overview.render(CATALOGUE), GROUPS_HEADER)
