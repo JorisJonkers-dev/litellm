@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 // Comments are prose; only the configuration itself is checked.
 const CONFIG = readFileSync(`${ROOT}/config/config.yaml`, 'utf8').replace(/^\s*#.*$/gm, '')
 const ROUTES = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)$/gm)].map((match) => match[1])
-const WILDCARDS = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)\n {4}litellm_params: \{ model: (\S+), litellm_credential_name: ([^\s,]+)(?:, extra_headers: \{ x-opencode-session: litellm-proxy \})? \}/gm)]
+const WILDCARDS = [...CONFIG.matchAll(/^ {2}- model_name: (\S+)\n {4}litellm_params: \{ model: (\S+), litellm_credential_name: ([^\s,]+)(?:, extra_headers: \{ x-opencode-session: litellm-proxy \})?(?:, max_budget: [\d.]+, budget_duration: \w+)? \}/gm)]
   .map((match) => ({ name: match[1], model: match[2], credential: match[3] }))
 const CREDENTIAL_BLOCK = CONFIG.slice(CONFIG.indexOf('credential_list:'), CONFIG.indexOf('model_list:'))
 const CREDENTIALS = [...CREDENTIAL_BLOCK.matchAll(/^ {2}- credential_name: (\S+)$/gm)].map((match) => match[1])
@@ -225,7 +225,7 @@ test('upstream keys and bases are environment names, never values', () => {
 test('telemetry is metadata only', () => {
   assert.match(CONFIG, /turn_off_message_logging: true/)
   assert.match(CONFIG, /store_prompts_in_spend_logs: false/)
-  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry"\]/)
+  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry", "account_budget\.account_budget"\]/)
   // The callback module is named relative to the config, so the image carries it beside it.
   assert.match(readFileSync(`${ROOT}/Dockerfile`, 'utf8'), /^COPY config\/tier_telemetry\.py \/app\/tier_telemetry\.py$/m)
   // No metric label can carry a person or an address.
@@ -334,18 +334,19 @@ test('the routing rules are the decided policy', () => {
 
 test('every routed account has a safety-net budget and a cooldown', () => {
   const rules = JSON.parse(readFileSync(`${ROOT}/catalog/routing.json`, 'utf8'))
-  assert.deepEqual(rules.budgets, {
-    vibe: { max_budget: 255, budget_duration: '30d' },
-    'vibe-study': { max_budget: 127, budget_duration: '30d' },
-    'vibe-api': { max_budget: 25, budget_duration: '30d' },
-    'vibe-study-api': { max_budget: 12, budget_duration: '30d' },
-    anthropic: { max_budget: 90, budget_duration: '30d' },
-    'opencode-go': { max_budget: 15, budget_duration: '30d' },
+  assert.equal(rules.budgets, undefined)
+  assert.deepEqual(rules.accounts, {
+    vibe: { routes: ['vibe'], max_budget: 255, window: { calendar: 'month' } },
+    'vibe-study': { routes: ['vibe-study'], max_budget: 127, window: { calendar: 'month' } },
+    'vibe-api': { routes: ['vibe-api'], max_budget: 25.5, window: { calendar: 'month' } },
+    'vibe-study-api': { routes: ['vibe-study-api'], max_budget: 12.7, window: { calendar: 'month' } },
+    anthropic: { routes: ['anthropic'], max_budget: 90, window: { days: 30 } },
+    'opencode-go': { routes: ['opencode-go'], max_budget: 40, window: { days: 30, anchor: '2026-11-04T10:41:00Z' } },
     // Inferbase's free share is $0.50 a day: the route can never bill past it.
-    inferbase: { max_budget: 0.5, budget_duration: '1d' },
+    inferbase: { routes: ['inferbase'], max_budget: 0.5, window: { days: 1 } },
   })
   // Google is a free tier: a budget would only take it out of the pick.
-  assert.equal(rules.budgets.google, undefined)
+  assert.ok(!Object.values(rules.accounts).some((account) => account.routes.includes('google')))
   assert.deepEqual(rules.cooldowns, {
     vibe: 3600,
     'vibe-study': 3600,

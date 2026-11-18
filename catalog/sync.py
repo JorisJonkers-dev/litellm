@@ -35,7 +35,7 @@ Canonical groups: one LiteLLM model_name per canonical model (mistral-large, dev
 gemini-2.5-pro, claude-sonnet-4-5, glm-5.3) whose deployments are the routes that serve it, ordered
 by catalog/routing.json. Deployments that share a model_name form a group in LiteLLM: `order` is
 tried lowest first and the router falls back to the next level when a level fails or is cooled
-down, `weight` splits traffic inside a level, and max_budget/budget_duration cap one deployment.
+down, `weight` splits traffic inside a level, and max_budget/budget_duration cap one deployment, and model_info.account names the paid account whose cap config/account_budget.py enforces across all its deployments.
 Routing is by which provider serves the canonical model, not by model family: the Vibe plan
 serves non-Mistral models too, and where it serves one it wins. Only exact canonical-name
 equality merges two upstream models; a near duplicate is reported in catalogue.possible_duplicates
@@ -625,6 +625,69 @@ def group_name(name, mode, primary, public=False, free_route=None):
     return prefix + name + suffix
 
 
+def window_duration(window):
+    """The LiteLLM budget_duration of an account's declared window.
+
+    {"calendar": "month"} is "1mo" (a calendar month, so it is not 30 days long); {"days": N} is "Nd".
+    LiteLLM opens a window at the first spend it sees and cannot be told when a window starts, so an
+    "anchor" is declared policy (next_reset) that LiteLLM only approximates: see account_budgets().
+    """
+    if window.get("calendar") == "month":
+        return "1mo"
+    if isinstance(window.get("days"), int) and window["days"] > 0:
+        return f"{window['days']}d"
+    raise ValueError(f"unsupported budget window {window!r}")
+
+
+def next_reset(window, now):
+    """When the window the owner declared next resets after `now` (an aware datetime, UTC)."""
+    if window.get("calendar") == "month":
+        return (now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) + datetime.timedelta(days=32)).replace(day=1)
+    length = datetime.timedelta(days=window["days"])
+    if not window.get("anchor"):
+        return None
+    anchor = datetime.datetime.fromisoformat(window["anchor"].replace("Z", "+00:00"))
+    if now < anchor:
+        return anchor
+    return anchor + length * ((now - anchor) // length + 1)
+
+
+def window_start(window, now):
+    """The start (an aware UTC datetime) of the window the owner declared that contains `now`.
+
+    A calendar month starts on the 1st at 00:00 UTC; a {"days": N, "anchor": T} cycle starts at T plus a
+    whole number of N-day cycles. A window without an anchor has no declared start: None.
+    """
+    if window.get("calendar") == "month":
+        return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if not window.get("anchor"):
+        return None
+    anchor = datetime.datetime.fromisoformat(window["anchor"].replace("Z", "+00:00"))
+    if now < anchor:
+        return anchor - datetime.timedelta(days=window["days"])
+    return anchor + datetime.timedelta(days=window["days"]) * ((now - anchor) // datetime.timedelta(days=window["days"]))
+
+
+def account_budgets(rules):
+    """route -> {max_budget, budget_duration, account}: the cap of the paid account each route bills.
+
+    `accounts` in routing.json names, per account, the routes that bill it, its cap and its window. A
+    route has at most one account. Every deployment of every route of an account (and its tier copies
+    and its route wildcard in config.yaml) carries model_info.account, and config/account_budget.py keeps
+    one counter per account from the response cost of each call. The deployment's own max_budget and
+    budget_duration stay as a per-deployment backstop (LiteLLM's own counter, which opens its window at the
+    first spend).
+    """
+    out = {}
+    for account, entry in ((rules or {}).get("accounts") or {}).items():
+        for route in entry["routes"]:
+            if route in out:
+                raise ValueError(f"route {route} is billed by two accounts")
+            out[route] = {"max_budget": entry["max_budget"], "budget_duration": window_duration(entry["window"]),
+                          "account": account}
+    return out
+
+
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
                free_only=False):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
@@ -643,7 +706,7 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     elif route in FREE_PRICED and chosen.get("price"):
         params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
     if budget:
-        params.update(budget)
+        params.update({key: budget[key] for key in ("max_budget", "budget_duration")})
     if cooldown:
         params["cooldown_time"] = cooldown
     if free_only:
@@ -662,6 +725,14 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         "canonical": canonical,
         "access_groups": groups,
     }
+    if budget:
+        # The account whose cap this deployment spends against: config/account_budget.py keeps one counter per
+        # account and takes this deployment out of the pick when it is spent. The id stays the deployment's own,
+        # so cooldown and failover stay per deployment.
+        info["account"] = budget["account"]
+        # Not "<route>/<upstream id>": the router resolves a model name equal to a deployment id to that one
+        # deployment and skips every pre-call filter for it, so "vibe/<id>" would walk past the account cap.
+        info["id"] = f"{route}:{upstream_id}"
     if chosen["modality"] in MODES:
         info["mode"] = MODES[chosen["modality"]]
     return {
@@ -715,7 +786,7 @@ def plan_groups(catalogue, rules):
     backup_only = rules.get("backup_only") or {}
     exclusive = rules.get("exclusive") or []
     api_only = set(rules.get("api_only_routes") or [])
-    budgets = rules.get("budgets") or {}
+    budgets = account_budgets(rules)
     cooldowns = rules.get("cooldowns") or {}
     public_routes = set(rules.get("public_routes") or [])
     by_route = {entry["route"]: entry for entry in ROUTES}
@@ -893,8 +964,8 @@ def render_models(deployments):
 # validate_tiers() checks the declaration against this table, so a paid step cannot be written down
 # as free: "free/" names only ever resolve to zero-cost deployments (assert_free_groups).
 STEP_CLASS_PREFIXES = {"free/": "free", "vibe-tier/": "vibe", "opencode-go-tier/": "go"}
-# A paid tier step is never a route wildcard (vibe/*, opencode-go/*): LiteLLM enforces no budget on a
-# wildcard, so a tier call through one would bypass the route's cap. It is "<route>-tier/<upstream id>", a
+# A paid tier step is never a route wildcard (vibe/*, opencode-go/*; those carry the account's cap too, but a
+# tier step names a copy so the key's access group decides what it reaches). It is "<route>-tier/<upstream id>", a
 # deployment that is a copy of the route's own budgeted deployment with the SAME model_info.id, because
 # LiteLLM keeps spend per deployment id: a tier call and a direct call draw on one budget. The copy's
 # access group is "<route>-tier", so a key reaches it by holding that group and never by `vibe/*`.
@@ -1057,7 +1128,7 @@ def tier_copies(specs, rules):
 
 def assert_tier_copies(specs, rules):
     """Fail the sync when a tier copy is not the budgeted deployment of its route (same id, same cap)."""
-    budgets = (rules or {}).get("budgets") or {}
+    budgets = account_budgets(rules)
     by_id = {spec["model_info"]["id"]: spec for spec in specs if spec["name"].split("/", 1)[0] not in TIER_ROUTES}
     for spec in specs:
         prefix = spec["name"].split("/", 1)[0]

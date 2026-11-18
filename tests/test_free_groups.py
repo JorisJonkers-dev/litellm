@@ -23,7 +23,7 @@ FREE_RULES = dict(
     RULES,
     free_order={"openrouter": 1, "requesty": 2, "kilo": 3, "nvidia": 4, "ovh": 4},
     cooldowns={"openrouter": 120, "requesty": 3600, "kilo": 120, "nvidia": 120, "ovh": 120},
-    budgets={"inferbase": {"max_budget": 0.5, "budget_duration": "1d"}},
+    accounts={"inferbase": {"routes": ["inferbase"], "max_budget": 0.5, "window": {"days": 1}}},
 )
 # Nemotron 3 Ultra as five providers spell it: only the vendor prefix and ":free" differ.
 NEMOTRON = [

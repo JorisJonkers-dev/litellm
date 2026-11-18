@@ -101,19 +101,19 @@ credential_list:
 model_list:
   - model_name: vibe/*
     litellm_params: { model: mistral/*, litellm_credential_name: vibe }
-    model_info: { health_check_model: mistral/mistral-small-latest }
+    model_info: { account: vibe, health_check_model: mistral/mistral-small-latest }
   - model_name: vibe-study/*
     litellm_params: { model: mistral/*, litellm_credential_name: vibe-study }
-    model_info: { health_check_model: mistral/mistral-small-latest }
+    model_info: { account: vibe-study, health_check_model: mistral/mistral-small-latest }
   - model_name: vibe-api/*
     litellm_params: { model: mistral/*, litellm_credential_name: vibe-api }
-    model_info: { health_check_model: mistral/mistral-small-latest }
+    model_info: { account: vibe-api, health_check_model: mistral/mistral-small-latest }
   - model_name: vibe-study-api/*
     litellm_params: { model: mistral/*, litellm_credential_name: vibe-study-api }
-    model_info: { health_check_model: mistral/mistral-small-latest }
+    model_info: { account: vibe-study-api, health_check_model: mistral/mistral-small-latest }
   - model_name: opencode-go/*
     litellm_params: { model: opencode_go/*, litellm_credential_name: opencode-go, extra_headers: { x-opencode-session: litellm-proxy } }
-    model_info: { health_check_model: opencode_go/glm-5.3-flash }
+    model_info: { account: opencode-go, health_check_model: opencode_go/glm-5.3-flash }
   - model_name: local/*
     litellm_params: { model: openai/*, litellm_credential_name: local }
   # No openrouter/* wildcard: OpenRouter is free only, and a suffix wildcard such as
@@ -132,7 +132,9 @@ litellm_settings:
   # Prometheus (open source in this release) and OpenTelemetry traces.
   # tier_telemetry.py (shipped beside this file) adds litellm_tier_served_total: requested tier
   # against the serving deployment, priced or not, fallback or not; and the same record in the spend log.
-  callbacks: ["prometheus", "otel", "tier_telemetry.tier_telemetry"]
+  # account_budget.py (shipped beside this file) caps each paid account once across its deployments, from
+  # catalog/routing.json `accounts`: see AGENTS.md, Budgets.
+  callbacks: ["prometheus", "otel", "tier_telemetry.tier_telemetry", "account_budget.account_budget"]
   # Only these series are emitted, with these labels: no user, e-mail, client address or agent.
   # model_id and api_provider name the deployment that served a request, so a canonical model's
   # fallback is visible per request (the spend log already stores both).
