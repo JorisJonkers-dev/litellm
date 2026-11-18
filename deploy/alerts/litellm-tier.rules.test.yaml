@@ -127,3 +127,28 @@ tests:
             exp_annotations:
               summary: "A free-tier request was served by a priced deployment (nvidia_nim, nv/x)"
               description: "A request to tier-free from key free@host was answered by the priced deployment nv/x at nvidia_nim. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+  # A leak series that has existed for 30m must not hide a new one: another deployment (and a
+  # same-labels series that differs only in fallback) first appears at 1 and stays there.
+  - interval: 1m
+    input_series:
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="old", priced="true", fallback="true", outcome="success"}'
+        values: '1x40'
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="new", priced="true", fallback="true", outcome="success"}'
+        values: '_x34 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts: []
+      - eval_time: 36m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              requested_group: tier-free
+              api_key_alias: free@host
+              api_provider: mistral
+              model_id: new
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, new)"
+              description: "A request to tier-free from key free@host was answered by the priced deployment new at mistral. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
