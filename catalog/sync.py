@@ -187,7 +187,36 @@ def load_rules(path=None):
         return {}
     if not isinstance(rules, dict):
         raise RuntimeError(f"the routing rules {path} are not a JSON object")
+    check_free_exclusions(rules, path)
     return rules
+
+
+def check_free_exclusions(rules, source="the routing rules"):
+    """Refuse a free_exclusions rule that would not say exactly what it excludes.
+
+    A rule needs a non-empty `match` regex that compiles, and a non-empty list of `routes`. Without
+    them the rule would match every model (an empty pattern matches everything), so it is an error
+    at load, never a silent exclusion of the whole catalogue.
+    """
+    rule_list = (rules or {}).get("free_exclusions")
+    if rule_list is None:
+        return
+    if not isinstance(rule_list, list):
+        raise RuntimeError(f"{source}: free_exclusions must be a list of rules")
+    for index, rule in enumerate(rule_list):
+        where = f"{source}: free_exclusions[{index}]"
+        if not isinstance(rule, dict):
+            raise RuntimeError(f"{where} is not an object")
+        match = rule.get("match")
+        if not isinstance(match, str) or not match:
+            raise RuntimeError(f"{where} has no `match` regex; without one it would exclude every model")
+        try:
+            re.compile(match)
+        except re.error as error:
+            raise RuntimeError(f"{where} `match` {match!r} is not a valid regex: {error}")
+        routes = rule.get("routes")
+        if not isinstance(routes, list) or not routes or not all(isinstance(r, str) and r for r in routes):
+            raise RuntimeError(f"{where} needs a non-empty list of `routes`")
 
 
 def classify(status, text):
@@ -517,6 +546,18 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     }
 
 
+def free_excluded(name, route, rules):
+    """Whether the rules keep a public (free-tier) route out of the free groups of a canonical name.
+
+    A provider that re-routes a model to a billed one under the same name must not keep serving it
+    on the free tier: routing.json's free_exclusions names the model (a regex on the canonical name)
+    and the route. Only a public route is ever excluded here; a paid route is not a free group.
+    The rules are validated by check_free_exclusions, so a rule here always has a real pattern.
+    """
+    return any(route in rule["routes"] and re.search(rule["match"], name)
+               for rule in (rules or {}).get("free_exclusions") or [])
+
+
 def plan_groups(catalogue, rules):
     """The canonical model groups: one model_name per canonical model, its deployments ordered.
 
@@ -533,6 +574,7 @@ def plan_groups(catalogue, rules):
     access group (FREE_ACCESS_GROUPS), so the key that holds that group reaches nothing paid.
     """
     rules = rules or {}
+    check_free_exclusions(rules)
     tiers = rules.get("tiers") or []
     rank = {}
     for index, tier in enumerate(tiers):
@@ -586,6 +628,9 @@ def plan_groups(catalogue, rules):
         gated = serving & set(GATED_ACCESS_GROUPS)
         if gated and serving - gated:
             serving -= gated
+        # A free-tier route the rules exclude for this model serves it in no group at all: the
+        # model is refused on the free tier, and a paid route that also serves it is not affected.
+        serving -= {route for route in serving & public_routes if free_excluded(name, route, rules)}
         if not serving:
             continue
         primary = primary_mode({route: routes[route] for route in serving})
