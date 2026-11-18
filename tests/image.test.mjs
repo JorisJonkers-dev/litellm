@@ -245,12 +245,14 @@ test('metrics are served on their own port per key alias and model, with no mess
   let text = ''
   for (const deadline = Date.now() + 30_000; Date.now() < deadline; await new Promise((resolve) => setTimeout(resolve, 1000))) {
     text = await (await fetch(`${metrics}/metrics/`)).text()
-    if (/litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/.test(text) && /litellm_spend_metric_total/.test(text)) break
+    if (/litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/.test(text) && /litellm_spend_metric_total/.test(text) && /litellm_tier_served_total/.test(text)) break
   }
   assert.match(text, /litellm_proxy_total_requests_metric_total\{[^}]*requested_model="vibe\/metrics-model"[^}]*status_code="200"/)
   assert.match(text, /litellm_total_tokens_metric_total\{[^}]*requested_model="vibe\/metrics-model"[^}]*\} 10\.0/)
   assert.match(text, /litellm_request_total_latency_metric_bucket\{[^}]*requested_model="vibe\/metrics-model"/)
   assert.match(text, /litellm_spend_metric_total/)
+  // The tier telemetry callback loaded and exports requested tier against the serving deployment.
+  assert.match(text, /litellm_tier_served_total\{api_key_alias="[^"]*",api_provider="mistral",fallback="false",model_id="[0-9a-f]+",outcome="success",priced="false",requested_group="vibe\/\*"\}/)
   assert.doesNotMatch(text, new RegExp(`${PROMPT}|${ANSWER}`))
   // Only the labels the config allows.
   assert.doesNotMatch(text, /user_email|client_ip|user_agent|end_user/)

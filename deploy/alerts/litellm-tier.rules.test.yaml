@@ -1,0 +1,154 @@
+# promtool test rules deploy/alerts/litellm-tier.rules.test.yaml
+rule_files:
+  - litellm-tier.rules.yaml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # A free request served by a priced deployment from minute 6: a leak.
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="vibe/mistral-small", priced="true", fallback="true", outcome="success"}'
+        values: '0x5 1 2 3 3 3'
+      # The free tier answered by free deployments only: never alerts.
+      - series: 'litellm_tier_served_total{requested_group="free/*", api_key_alias="free@host", api_provider="openrouter", model_id="free/openrouter/x", priced="false", fallback="false", outcome="success"}'
+        values: '0+5x11'
+      # A paid tier answered by a priced deployment: not a leak.
+      - series: 'litellm_tier_served_total{requested_group="tier-go-cheap", api_key_alias="agent@host", api_provider="opencode_go", model_id="go/x", priced="true", fallback="false", outcome="success"}'
+        values: '0+5x11'
+      # The public key's paid fallback is by design.
+      - series: 'litellm_tier_served_total{requested_group="canonical", api_key_alias="public@host", api_provider="mistral", model_id="m", priced="true", fallback="true", outcome="success"}'
+        values: '0+5x11'
+      # A free key reaching a priced deployment through an ordinary model name is still a leak.
+      - series: 'litellm_tier_served_total{requested_group="canonical", api_key_alias="openrouter@host", api_provider="mistral", model_id="m2", priced="true", fallback="false", outcome="success"}'
+        values: '0x5 1 2 2 2'
+    alert_rule_test:
+      # Long after the last leak the alert has stopped.
+      - eval_time: 18m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              requested_group: tier-free
+              api_key_alias: free@host
+              api_provider: mistral
+              model_id: vibe/mistral-small
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, vibe/mistral-small)"
+              description: >-
+                A request to tier-free from key free@host was answered by
+                the priced deployment vibe/mistral-small at mistral. A free tier must fail
+                or fall through to another free deployment, never bill: check the group's members and fallbacks
+                in the generated config.
+          - exp_labels:
+              severity: warning
+              requested_group: canonical
+              api_key_alias: openrouter@host
+              api_provider: mistral
+              model_id: m2
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, m2)"
+              description: >-
+                A request to canonical from key openrouter@host was answered by
+                the priced deployment m2 at mistral. A free tier must fail
+                or fall through to another free deployment, never bill: check the group's members and fallbacks
+                in the generated config.
+  # A series the callback creates already at 1 has no earlier sample for increase(): a one-off leak
+  # must still fire, on every free route, and a failed attempt on a priced deployment counts too.
+  - interval: 1m
+    input_series:
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="nvidia_nim", model_id="nv/x", priced="true", fallback="true", outcome="success"}'
+        values: '_x8 1 1 1 1'
+      - series: 'litellm_tier_served_total{requested_group="google-free/*", api_key_alias="agent@host", api_provider="gemini", model_id="g", priced="true", fallback="true", outcome="success"}'
+        values: '_x8 1 1 1 1'
+      - series: 'litellm_tier_served_total{requested_group="openrouter/*", api_key_alias="agent@host", api_provider="openrouter", model_id="o", priced="true", fallback="true", outcome="failure"}'
+        values: '_x8 1 1 1 1'
+      - series: 'litellm_tier_served_total{requested_group="opencode-go-free/*", api_key_alias="agent@host", api_provider="opencode_go", model_id="c", priced="true", fallback="true", outcome="success"}'
+        values: '_x8 1 1 1 1'
+      - series: 'litellm_tier_served_total{requested_group="free/*", api_key_alias="agent@host", api_provider="mistral", model_id="f", priced="true", fallback="true", outcome="success"}'
+        values: '_x8 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              requested_group: "free/*"
+              api_key_alias: agent@host
+              api_provider: mistral
+              model_id: f
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, f)"
+              description: "A request to free/* from key agent@host was answered by the priced deployment f at mistral. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+          - exp_labels:
+              severity: warning
+              requested_group: "google-free/*"
+              api_key_alias: agent@host
+              api_provider: gemini
+              model_id: g
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (gemini, g)"
+              description: "A request to google-free/* from key agent@host was answered by the priced deployment g at gemini. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+          - exp_labels:
+              severity: warning
+              requested_group: "opencode-go-free/*"
+              api_key_alias: agent@host
+              api_provider: opencode_go
+              model_id: c
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (opencode_go, c)"
+              description: "A request to opencode-go-free/* from key agent@host was answered by the priced deployment c at opencode_go. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+          - exp_labels:
+              severity: warning
+              requested_group: "openrouter/*"
+              api_key_alias: agent@host
+              api_provider: openrouter
+              model_id: o
+              outcome: failure
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (openrouter, o)"
+              description: "A request to openrouter/* from key agent@host was answered by the priced deployment o at openrouter. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+          - exp_labels:
+              severity: warning
+              requested_group: "tier-free"
+              api_key_alias: free@host
+              api_provider: nvidia_nim
+              model_id: nv/x
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (nvidia_nim, nv/x)"
+              description: "A request to tier-free from key free@host was answered by the priced deployment nv/x at nvidia_nim. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
+  # A leak series that has existed for 30m must not hide a new one: another deployment (and a
+  # same-labels series that differs only in fallback) first appears at 1 and stays there.
+  - interval: 1m
+    input_series:
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="old", priced="true", fallback="true", outcome="success"}'
+        values: '1x40'
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="new", priced="true", fallback="true", outcome="success"}'
+        values: '_x34 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts: []
+      - eval_time: 36m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              requested_group: tier-free
+              api_key_alias: free@host
+              api_provider: mistral
+              model_id: new
+              outcome: success
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, new)"
+              description: "A request to tier-free from key free@host was answered by the priced deployment new at mistral. A free tier must fail or fall through to another free deployment, never bill: check the group's members and fallbacks in the generated config."
