@@ -581,5 +581,82 @@ class Routes(unittest.TestCase):
             self.assertNotIn(secret, bodies)
 
 
+
+class FreeExclusions(unittest.TestCase):
+    """The free tier never serves a model the 2026-12-01 re-route bills: the real routing.json decides."""
+
+    # Dated, preview, experimental and versioned ids of 2.5 Pro and 2.5 Flash: all excluded.
+    EXCLUDED = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05",
+                "gemini-2.5-flash-preview-09-2025", "gemini-2.5-pro-exp-03-25", "gemini-2.5-flash-001"]
+    # Every 2.5 Flash Lite variant, and other families, stays on the free tier.
+    ALLOWED = ["gemini-2.5-flash-lite", "gemini-2.5-flash-lite-preview-09-2025", "gemini-2.5-flash-lite-001",
+               "gemini-2.5-flash-lite-preview-06-17", "gemini-2.0-flash-001"]
+
+    def setUp(self):
+        self.rules = sync.load_rules(str(ROOT / "catalog" / "routing.json"))
+
+    def test_every_dated_preview_and_exp_2_5_pro_or_flash_is_in_no_free_group(self):
+        for name in self.EXCLUDED:
+            with self.subTest(name=name):
+                self.assertEqual(sync.plan_groups(catalogue(("google", name, "usable", {})), self.rules), [])
+
+    def test_a_paid_route_still_serves_an_excluded_model_with_no_free_group(self):
+        for name in self.EXCLUDED:
+            with self.subTest(name=name):
+                specs = sync.plan_groups(catalogue(("google", name, "usable", {}), ("vibe", name, "usable", {})),
+                                         self.rules)
+                self.assertEqual({s["route"] for s in specs}, {"vibe"})
+                self.assertFalse([s for s in specs if s["name"].startswith(("public/", "google-free/"))])
+                self.assertEqual(len(specs), 1)
+
+    def test_every_flash_lite_variant_stays_on_the_free_tier(self):
+        for name in self.ALLOWED:
+            with self.subTest(name=name):
+                canon = sync.canonical_name("google", name, self.rules)
+                specs = sync.plan_groups(catalogue(("google", name, "usable", {})), self.rules)
+                self.assertEqual(sorted((s["name"], s["route"]) for s in specs),
+                                 [(f"google-free/{canon}", "google"), (f"public/{canon}", "google")])
+                free = [s for s in specs if s["name"].startswith("google-free/")]
+                self.assertEqual(free[0]["model_info"]["access_groups"], ["free"])
+
+    def test_a_public_group_keeps_its_other_public_routes_when_only_google_is_excluded(self):
+        # Hypothetical: a second public route serves the excluded model. Only the google copy goes;
+        # the other public route keeps its public group.
+        rules = dict(self.rules, public_routes=["google", "vibe"])
+        specs = sync.plan_groups(catalogue(("google", "gemini-2.5-pro", "usable", {}),
+                                           ("vibe", "gemini-2.5-pro", "usable", {})), rules)
+        self.assertFalse([s for s in specs if s["route"] == "google"])
+        self.assertIn(("public/gemini-2.5-pro", "vibe"), [(s["name"], s["route"]) for s in specs])
+
+    def test_a_rule_without_a_match_is_refused_rather_than_excluding_everything(self):
+        for rule in ({"routes": ["google"]}, {"match": "", "routes": ["google"]}):
+            with self.subTest(rule=rule):
+                rules = dict(self.rules, free_exclusions=[rule])
+                with self.assertRaisesRegex(RuntimeError, "match"):
+                    sync.plan_groups(catalogue(("google", "gemini-4-hydrogen", "usable", {})), rules)
+
+    def test_a_rule_with_an_invalid_regex_is_refused(self):
+        rules = dict(self.rules, free_exclusions=[{"match": "^gemini-2.5-(pro", "routes": ["google"]}])
+        with self.assertRaisesRegex(RuntimeError, "not a valid regex"):
+            sync.plan_groups(catalogue(), rules)
+
+    def test_a_rule_without_routes_is_refused(self):
+        rules = dict(self.rules, free_exclusions=[{"match": "^gemini-2\\.5-pro$"}])
+        with self.assertRaisesRegex(RuntimeError, "routes"):
+            sync.plan_groups(catalogue(), rules)
+
+    def test_loading_a_malformed_routing_file_fails_at_load(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "routing.json")
+            with open(path, "w") as handle:
+                json.dump({"free_exclusions": [{"routes": ["google"]}]}, handle)
+            with self.assertRaisesRegex(RuntimeError, "match"):
+                sync.load_rules(path)
+
+    def test_the_real_routing_file_loads_and_is_valid(self):
+        self.assertTrue(self.rules["free_exclusions"])
+        sync.check_free_exclusions(self.rules)
+
+
 if __name__ == "__main__":
     unittest.main()
