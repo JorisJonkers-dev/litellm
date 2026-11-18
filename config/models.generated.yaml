@@ -3042,6 +3042,75 @@
       }
     },
     {
+      "model_name": "opencode-go-tier/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "opencode_go/mimo-v2.6-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "max_budget": 15,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go/mimo-v2.6-flash",
+        "route": "opencode-go",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "opencode-go-tier"
+        ]
+      }
+    },
+    {
+      "model_name": "opencode-go-tier/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "opencode_go/minimax-m3.1-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "max_budget": 15,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go/minimax-m3.1-flash",
+        "route": "opencode-go",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "opencode-go-tier"
+        ]
+      }
+    },
+    {
+      "model_name": "opencode-go-tier/qwen3.8-flash",
+      "litellm_params": {
+        "model": "opencode_go/qwen3.8-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "max_budget": 15,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go/qwen3.8-flash",
+        "route": "opencode-go",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "opencode-go-tier"
+        ]
+      }
+    },
+    {
       "model_name": "openrouter/dots-3-note-preview",
       "litellm_params": {
         "model": "openrouter/dots-studio/dots-3-note-preview:free",
@@ -3805,6 +3874,66 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "vibe-tier/deepseek-v4-1-flash-1017",
+      "litellm_params": {
+        "model": "mistral/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "vibe",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "30d",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe/deepseek-v4-1-flash-1017",
+        "route": "vibe",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "vibe-tier"
+        ]
+      }
+    },
+    {
+      "model_name": "vibe-tier/mistral-small-2603",
+      "litellm_params": {
+        "model": "mistral/mistral-small-2603",
+        "litellm_credential_name": "vibe",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "30d",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe/mistral-small-2603",
+        "route": "vibe",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "vibe-tier"
+        ]
+      }
+    },
+    {
+      "model_name": "vibe-tier/zai-glm-5-3-flash",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3-flash",
+        "litellm_credential_name": "vibe",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "30d",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe/zai-glm-5-3-flash",
+        "route": "vibe",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "vibe-tier"
+        ]
       }
     },
     {

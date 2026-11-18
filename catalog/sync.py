@@ -59,6 +59,7 @@ Standard library only: it runs in the LiteLLM image as a scheduled Process, and 
 """
 import argparse
 import base64
+import copy as copy_module
 import datetime
 import json
 import os
@@ -760,6 +761,8 @@ def plan_groups(catalogue, rules):
                 specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
                                         routes[route], order + 1, weight, by_route[route], public=True,
                                         budget=budgets.get(route), cooldown=cooldowns.get(route)))
+    if rules.get("tier_groups"):
+        specs.extend(tier_copies(specs, rules))
     # A group of one deployment has nothing to fall back to: it must cool down on a 402 or 429
     # itself, which LiteLLM only does with an explicit allowed-fails entry.
     counts = {}
@@ -776,6 +779,7 @@ def plan_groups(catalogue, rules):
         if extra:
             spec["model_info"]["allowed_fails_policy"] = {**spec["model_info"].get("allowed_fails_policy", {}), **extra}
     assert_free_groups(specs)
+    assert_tier_copies(specs, rules)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
 
 
@@ -842,7 +846,13 @@ def render_models(deployments):
 # The cost class of a callable model name, by its prefix. A tier step declares its class and
 # validate_tiers() checks the declaration against this table, so a paid step cannot be written down
 # as free: "free/" names only ever resolve to zero-cost deployments (assert_free_groups).
-STEP_CLASS_PREFIXES = {"free/": "free", "vibe/": "vibe", "vibe-study/": "vibe", "opencode-go/": "go"}
+STEP_CLASS_PREFIXES = {"free/": "free", "vibe-tier/": "vibe", "opencode-go-tier/": "go"}
+# A paid tier step is never a route wildcard (vibe/*, opencode-go/*): LiteLLM enforces no budget on a
+# wildcard, so a tier call through one would bypass the route's cap. It is "<route>-tier/<upstream id>", a
+# deployment that is a copy of the route's own budgeted deployment with the SAME model_info.id, because
+# LiteLLM keeps spend per deployment id: a tier call and a direct call draw on one budget. The copy's
+# access group is "<route>-tier", so a key reaches it by holding that group and never by `vibe/*`.
+TIER_ROUTES = {"vibe-tier": "vibe", "opencode-go-tier": "opencode-go"}
 TIERS_BEGIN = "  # BEGIN tiers"
 TIERS_NOTE = " (rendered from catalog/routing.json by `python3 catalog/sync.py --render-tiers`; do not edit by hand)"
 TIERS_END = "  # END tiers"
@@ -895,8 +905,8 @@ def validate_tiers(rules):
     its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
     paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
     a tier is no model_name of the catalogue; and each tier's key_models cover every step, because a
-    key reaches a name only by holding it (or its access group) and a fallback the key does not hold
-    is skipped.
+    key reaches a name only by holding it or its access group ("free", "vibe-tier", "opencode-go-tier")
+    and a fallback the key does not hold is skipped.
     """
     rules = rules or {}
     classes = list(rules.get("tier_cost_classes") or [])
@@ -919,8 +929,8 @@ def validate_tiers(rules):
                 raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
             if canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
                 raise RuntimeError(f"tier {name}: {model} is opt-in only and may not be in a tier chain")
-            if not any(model == key or (key.endswith("/*") and model.startswith(key[:-1])) or
-                       (key == FREE_ACCESS_GROUP and cost == "free") for key in keys):
+            if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
+                       for key in keys):
                 raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
 
 
@@ -959,15 +969,63 @@ def splice_tier_block(config_text, rules):
     return config_text[:start] + render_tier_block(rules) + config_text[end + len(TIERS_END):]
 
 
-def missing_tier_steps(deployments, rules):
-    """Free steps of the tiers whose free/<canonical> group the plan does not (yet) hold.
+def tier_copies(specs, rules):
+    """The budgeted deployment each paid tier step is served by: a copy of the route's own deployment.
 
-    Paid steps are wildcard names (vibe/*, opencode-go/*) the config always holds. A free step with
-    no group is skipped by the router (the next step serves), and listed here so the run says so.
+    A step "vibe-tier/<id>" or "opencode-go-tier/<id>" is the route's canonical deployment of that
+    upstream id, renamed to the step and given the access group "<prefix>". It keeps its model_info.id,
+    budget and cooldown, so the spend of a tier call and of a direct call share one counter.
+    A step whose model the plan has no canonical deployment for gets no copy: the name is then unknown to
+    the router, which skips the step. It is never served by a wildcard, which carries no budget.
     """
+    copies, seen = [], set()
+    for chain in tier_chains(rules).values():
+        for step in chain:
+            prefix, _, upstream_id = step["model"].partition("/")
+            route = TIER_ROUTES.get(prefix)
+            if not route or step["model"] in seen:
+                continue
+            seen.add(step["model"])
+            for spec in specs:
+                if (spec["route"], spec["upstream_id"]) == (route, upstream_id) and spec["model_info"]["access_groups"] == [CANONICAL_ACCESS_GROUP]:
+                    copy = copy_module.deepcopy(spec)
+                    copy["name"] = step["model"]
+                    copy["order"], copy["weight"] = 1, 1
+                    copy["litellm_params"]["order"], copy["litellm_params"]["weight"] = 1, 1
+                    copy["model_info"]["access_groups"] = [prefix]
+                    copy["model_info"].pop("allowed_fails_policy", None)
+                    copies.append(copy)
+                    break
+    return copies
+
+
+def assert_tier_copies(specs, rules):
+    """Fail the sync when a tier copy is not the budgeted deployment of its route (same id, same cap)."""
+    budgets = (rules or {}).get("budgets") or {}
+    by_id = {spec["model_info"]["id"]: spec for spec in specs if spec["name"].split("/", 1)[0] not in TIER_ROUTES}
+    for spec in specs:
+        prefix = spec["name"].split("/", 1)[0]
+        if prefix not in TIER_ROUTES:
+            continue
+        route, params = TIER_ROUTES[prefix], spec["litellm_params"]
+        origin = by_id.get(spec["model_info"]["id"])
+        budget = budgets.get(route) or {}
+        problems = []
+        if spec["route"] != route or origin is None:
+            problems.append("it is not a copy of a deployment of its route")
+        if not budget or (params.get("max_budget"), params.get("budget_duration")) != (budget.get("max_budget"), budget.get("budget_duration")):
+            problems.append("it does not carry the route's budget")
+        if origin is not None and origin["litellm_params"].get("max_budget") != params.get("max_budget"):
+            problems.append("its budget differs from the deployment it shares an id with")
+        if problems:
+            raise RuntimeError(f"{spec['model_info']['id']} may not serve {spec['name']}: " + "; ".join(problems))
+
+
+def missing_tier_steps(deployments, rules):
+    """Steps of the tiers whose group the plan does not (yet) hold: a free/<canonical> group, or a paid
+    step's budgeted copy. The router skips an unknown step and the next one serves; the run says so."""
     names = {spec["name"] for spec in deployments}
-    return sorted({step["model"] for chain in tier_chains(rules).values() for step in chain
-                   if step["cost"] == "free" and step["model"] not in names})
+    return sorted({step["model"] for chain in tier_chains(rules).values() for step in chain if step["model"] not in names})
 
 
 def record_groups(deployments):

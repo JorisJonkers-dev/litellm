@@ -195,6 +195,32 @@ test('a wildcard route passes any model id to its provider with that route\'s ow
   }
 })
 
+test('the tier names load and are served: an alias with ordered fallbacks, through the budgeted deployments', async () => {
+  // The proxy started with config.yaml's router_settings tier block (model_group_alias and fallbacks).
+  // tier-go-cheap: its first two steps have no deployment, so the router skips them and the Go copy of
+  // mimo-v2.6-flash serves, with the opencode-go key, at the Go stub.
+  await chat('tier-go-cheap')
+  const go = stubs.OPENCODE_GO_API_BASE.seen.filter((seen) => seen.method === 'POST').at(-1)
+  assert.equal(go.model, 'mimo-v2.6-flash')
+  assert.equal(go.auth, 'Bearer upstream-opencode-go')
+  // tier-vibe starts on Vibe Flash: the Vibe copy answers at the Mistral stub with the vibe key.
+  await chat('tier-vibe')
+  const vibe = stubs.MISTRAL_API_BASE.seen.filter((seen) => seen.method === 'POST').at(-1)
+  assert.equal(vibe.model, 'deepseek-v4-1-flash-1017')
+  assert.equal(vibe.auth, 'Bearer upstream-vibe')
+  // tier-review and tier-strong-open skip their absent steps the same way and are served by a paid copy.
+  for (const tier of ['tier-review', 'tier-strong-open']) await chat(tier)
+  // tier-free has no free deployment in this catalogue: it is refused, and nothing paid answers it.
+  const before = stubs.MISTRAL_API_BASE.seen.length + stubs.OPENCODE_GO_API_BASE.seen.length
+  const refused = await fetch(`${base}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'x-litellm-api-key': `Bearer ${MASTER}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'tier-free', messages: [{ role: 'user', content: 'x' }] }),
+  })
+  assert.notEqual(refused.status, 200)
+  assert.equal(stubs.MISTRAL_API_BASE.seen.length + stubs.OPENCODE_GO_API_BASE.seen.length, before)
+})
+
 test('OpenRouter has no wildcard: an id without a generated deployment is refused', async () => {
   const res = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
