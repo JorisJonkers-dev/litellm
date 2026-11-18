@@ -97,6 +97,9 @@
       "key_models": ["tier-strong-open", "vibe-tier", "opencode-go-tier"],
       "steps": [
         {"model": "opencode-go-tier/qwen4-max", "cost": "go"},
+        {"model": "vibe-tier/zai-glm-5-3", "cost": "vibe"},
+        {"model": "opencode-go-tier/kimi-k3.1-pro", "cost": "go"},
+        {"model": "opencode-go-tier/gpt-6-luna", "cost": "go"},
         {"tier": "tier-vibe"}
       ]
     },

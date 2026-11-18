@@ -50,13 +50,41 @@ class Definition(unittest.TestCase):
             for step in tier["steps"]:
                 self.assertTrue(("model" in step and "cost" in step) != ("tier" in step), (name, step))
 
-    def test_the_real_rules_validate_and_no_tier_names_an_opt_in_model(self):
+    def test_the_real_rules_validate_and_only_tier_strong_open_names_an_opt_in_model(self):
         sync.validate_tiers(RULES)
+        held = {}
         for name, chain in sync.tier_chains(RULES).items():
             for step in chain:
-                self.assertNotIn(sync.canonical_name(None, step["model"].split("/", 1)[1], RULES), RULES["opt_in_only"], (name, step))
+                canonical = sync.canonical_name(None, step["model"].split("/", 1)[1], RULES)
+                if canonical in RULES["opt_in_only"]:
+                    held.setdefault(name, set()).add(canonical)
+        # tier-strong-open is the opt-in escalation tier (owner, 2026-11-18) and holds all three, as budgeted copies.
+        self.assertEqual(held, {"tier-strong-open": set(RULES["opt_in_only"])})
+        for step in sync.tier_chains(RULES)["tier-strong-open"]:
+            self.assertEqual(step["cost"], sync.step_class(step["model"]))
+            self.assertNotEqual(step["cost"], "free")
         # The three owner-gated models are named, so a rule edit cannot quietly drop one.
         self.assertEqual(sorted(RULES["opt_in_only"]), ["glm-5.3", "gpt-6-luna", "kimi-k3.1-pro"])
+
+    def test_an_opt_in_model_is_allowed_in_tier_strong_open_and_refused_in_every_other_tier(self):
+        step = {"model": "opencode-go-tier/kimi-k3.1-pro", "cost": "go"}
+        rules = json.loads(json.dumps(RULES))
+        rules["tier_groups"]["tier-strong-open"]["steps"] = [step, {"tier": "tier-vibe"}]
+        sync.validate_tiers(rules)  # allowed in tier-strong-open
+        for name in ("tier-vibe", "tier-go-cheap", "tier-review"):
+            rules = json.loads(json.dumps(RULES))
+            rules["tier_groups"][name]["steps"].append(step)
+            with self.assertRaisesRegex(RuntimeError, "opt-in only", msg=name):
+                sync.validate_tiers(rules)
+        # An alias spelling is refused the same way, and so is splicing tier-strong-open into another tier.
+        rules = json.loads(json.dumps(RULES))
+        rules["tier_groups"]["tier-review"]["steps"].append({"model": "vibe-tier/zai-glm-5-3", "cost": "vibe"})
+        with self.assertRaisesRegex(RuntimeError, "opt-in only"):
+            sync.validate_tiers(rules)
+        rules = json.loads(json.dumps(RULES))
+        rules["tier_groups"]["tier-review"]["steps"].append({"tier": "tier-strong-open"})
+        with self.assertRaisesRegex(RuntimeError, "opt-in only"):
+            sync.validate_tiers(rules)
 
     def test_the_cost_classes_of_each_tier(self):
         chains = {name: [step["cost"] for step in chain] for name, chain in sync.tier_chains(RULES).items()}

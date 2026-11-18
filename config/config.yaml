@@ -191,7 +191,7 @@ router_settings:
     - {"tier-free": ["free/longcat-2.5-free", "free/beam-free", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
     - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
-    - {"tier-strong-open": ["vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-strong-open": ["vibe-tier/zai-glm-5-3", "opencode-go-tier/kimi-k3.1-pro", "opencode-go-tier/gpt-6-luna", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-review": ["free/gemma-4-31b", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
   # END tiers
 

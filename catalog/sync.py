@@ -1088,6 +1088,10 @@ TIERS_END = "  # END tiers"
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.yaml")
 
 
+# The one tier whose chain may hold an opt_in_only model: it is the opt-in escalation tier.
+OPT_IN_TIER = "tier-strong-open"
+
+
 def step_class(model):
     """The cost class a callable model name belongs to, or None when no prefix names one."""
     for prefix, cost in STEP_CLASS_PREFIXES.items():
@@ -1132,7 +1136,8 @@ def validate_tiers(rules):
 
     Each step's declared cost class must be the class its name's prefix gives; no step may cost more than
     its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
-    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
+    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain but
+    tier-strong-open's, which is itself the opt-in escalation tier (owner, 2026-11-18);
     a tier name is no planned model group (assert_no_tier_shadow(), against the real plan); and each tier's key_models cover every step, because a
     key reaches a name only by holding it or its access group ("free", "vibe-tier", "opencode-go-tier")
     and a fallback the key does not hold is skipped.
@@ -1156,8 +1161,8 @@ def validate_tiers(rules):
                 raise RuntimeError(f"tier {name}: step {model} declares cost {cost}, its name is class {step_class(model)}")
             if classes.index(cost) > classes.index(ceiling):
                 raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
-            if canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
-                raise RuntimeError(f"tier {name}: {model} is opt-in only and may not be in a tier chain")
+            if name != OPT_IN_TIER and canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
+                raise RuntimeError(f"tier {name}: {model} is opt-in only and may be in {OPT_IN_TIER} alone")
             if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
                        for key in keys):
                 raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
