@@ -18,14 +18,14 @@
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
   "free_exclusions": [{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}],
-  "budgets": {
-    "vibe": {"max_budget": 255, "budget_duration": "30d"},
-    "vibe-study": {"max_budget": 127, "budget_duration": "30d"},
-    "vibe-api": {"max_budget": 25, "budget_duration": "30d"},
-    "vibe-study-api": {"max_budget": 12, "budget_duration": "30d"},
-    "anthropic": {"max_budget": 90, "budget_duration": "30d"},
-    "opencode-go": {"max_budget": 15, "budget_duration": "30d"},
-    "inferbase": {"max_budget": 0.5, "budget_duration": "1d"}
+  "accounts": {
+    "vibe": {"routes": ["vibe"], "max_budget": 255, "window": {"calendar": "month"}},
+    "vibe-study": {"routes": ["vibe-study"], "max_budget": 127, "window": {"calendar": "month"}},
+    "vibe-api": {"routes": ["vibe-api"], "max_budget": 25.5, "window": {"calendar": "month"}},
+    "vibe-study-api": {"routes": ["vibe-study-api"], "max_budget": 12.7, "window": {"calendar": "month"}},
+    "anthropic": {"routes": ["anthropic"], "max_budget": 90, "window": {"days": 30}},
+    "opencode-go": {"routes": ["opencode-go"], "max_budget": 40, "window": {"days": 30, "anchor": "2026-11-04T10:41:00Z"}},
+    "inferbase": {"routes": ["inferbase"], "max_budget": 0.5, "window": {"days": 1}}
   },
   "free_ids": {
     "groq": ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],

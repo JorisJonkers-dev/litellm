@@ -15,6 +15,8 @@ COPY config/config.yaml /app/config.yaml
 COPY config/models.generated.yaml /app/models.generated.yaml
 # The telemetry callback config.yaml's `callbacks` names (module.instance, next to the config).
 COPY config/tier_telemetry.py /app/tier_telemetry.py
+# The account spending caps config.yaml's `callbacks` names (read from catalog/routing.json, copied below).
+COPY config/account_budget.py /app/account_budget.py
 COPY catalog/sync.py catalog/overview.py catalog/routing.json /app/catalog/
 
 # Numeric, so the images lock can record the uid and gid (nobody). The process's writablePaths

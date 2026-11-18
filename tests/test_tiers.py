@@ -239,8 +239,9 @@ class ConfigLoad(unittest.TestCase):
         self.assertEqual(self.ask(router, "tier-free"), chain[1]["model"])
 
 
-BUDGETED = dict(RULES, budgets={"opencode-go": {"max_budget": 0.05, "budget_duration": "30d"},
-                                "vibe": {"max_budget": 0.05, "budget_duration": "30d"}})
+BUDGETED = dict(RULES, accounts={
+    "opencode-go": {"routes": ["opencode-go"], "max_budget": 0.05, "window": {"days": 30}},
+    "vibe": {"routes": ["vibe"], "max_budget": 0.05, "window": {"days": 30}}})
 PAID_MODELS = [("opencode-go", "mimo-v2.6-flash", "usable", {}), ("opencode-go", "qwen3.8-flash", "usable", {}),
                ("vibe", "zai-glm-5-3-flash", "usable", {}), ("vibe", "mistral-small-2603", "usable", {})]
 
@@ -258,6 +259,7 @@ class TierCopies(unittest.TestCase):
         by_id = {s["model_info"]["id"]: s for s in specs if s["name"] not in copies}
         for name, copy in copies.items():
             origin = by_id[copy["model_info"]["id"]]  # the same id: one spend counter
+            self.assertEqual(copy["model_info"]["account"], origin["model_info"]["account"])
             self.assertEqual(copy["litellm_params"]["max_budget"], 0.05)
             self.assertEqual(copy["litellm_params"]["max_budget"], origin["litellm_params"]["max_budget"])
             self.assertEqual(copy["model_info"]["access_groups"], [name.split("/")[0]])
@@ -286,7 +288,7 @@ class TierCopies(unittest.TestCase):
             sync.assert_tier_copies(specs, BUDGETED)
         # No budget in the rules for the route: the plan fails rather than deploy an uncapped tier step.
         with self.assertRaisesRegex(RuntimeError, "route's budget"):
-            self.specs(dict(RULES, budgets={}))
+            self.specs(dict(RULES, accounts={}))
 
     def test_the_generated_file_holds_a_budgeted_copy_for_every_paid_step_the_catalogue_serves(self):
         text = (ROOT / "config" / "models.generated.yaml").read_text()
@@ -297,7 +299,7 @@ class TierCopies(unittest.TestCase):
         for entry in copies:
             origin = by_id[entry["model_info"]["id"]]
             route = sync.TIER_ROUTES[entry["model_name"].split("/")[0]]
-            budget = RULES["budgets"][route]
+            budget = sync.account_budgets(RULES)[route]
             self.assertEqual((entry["litellm_params"]["max_budget"], entry["litellm_params"]["budget_duration"]),
                              (budget["max_budget"], budget["budget_duration"]), entry["model_name"])
             self.assertEqual(origin["litellm_params"]["max_budget"], entry["litellm_params"]["max_budget"])

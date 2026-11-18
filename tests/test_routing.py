@@ -55,7 +55,7 @@ RULES = {
     "exclusive": [{"match": "^claude", "routes": ["anthropic"]}],
     "aliases": {"claude-sonnet-4-5-20250929": "claude-sonnet-4-5"},
     "api_only_routes": ["vibe-api", "vibe-study-api"],
-    "budgets": {"vibe-api": {"max_budget": 50, "budget_duration": "30d"}},
+    "accounts": {"vibe-api": {"routes": ["vibe-api"], "max_budget": 50, "window": {"days": 30}}},
     "cooldowns": {"vibe": 5, "vibe-study": 5, "vibe-api": 5, "vibe-study-api": 5,
                   "google": 120, "anthropic": 5, "opencode-go": 5, "openrouter": 5, "local": 5},
     "public_routes": ["google"],
@@ -438,10 +438,11 @@ class Plan(unittest.TestCase):
             "cooldown_time": 5,
         })
         self.assertEqual(spec["model_info"], {
-            "id": "vibe-api/mistral-large",
+            "id": "vibe-api:mistral-large",
             "route": "vibe-api",
             "canonical": "mistral-large",
             "access_groups": ["canonical"],
+            "account": "vibe-api",
             "allowed_fails_policy": {"RateLimitErrorAllowedFails": 0},
         })
 
@@ -594,7 +595,7 @@ class FreeRoutesWave1(unittest.TestCase):
     """The first-wave free-only routes (agent-kit#916): public work only, never canonical, never paid."""
 
     ROUTES = ("groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase")
-    RULES = dict(RULES, budgets={"inferbase": {"max_budget": 0.5, "budget_duration": "1d"}}, cooldowns={"naga": 3600})
+    RULES = dict(RULES, accounts={"inferbase": {"routes": ["inferbase"], "max_budget": 0.5, "window": {"days": 1}}}, cooldowns={"naga": 3600})
 
     def plan(self, *models):
         return per_route_plan(catalogue(*models), self.RULES)
@@ -657,7 +658,7 @@ class FreeRoutesWave1(unittest.TestCase):
         # Free routes are outside the tiers, so no rule makes one a fallback of a paid group.
         tiered = {route for tier in rules["tiers"] for route, _ in tier}
         self.assertFalse(tiered & set(self.ROUTES))
-        self.assertEqual(rules["budgets"]["inferbase"], {"max_budget": 0.5, "budget_duration": "1d"})
+        self.assertEqual(sync.account_budgets(rules)["inferbase"], {"max_budget": 0.5, "budget_duration": "1d", "account": "inferbase"})
         for route in ("requesty", "naga", "routeway"):
             self.assertEqual(rules["cooldowns"][route], 3600)
 
