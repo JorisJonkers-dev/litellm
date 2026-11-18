@@ -54,6 +54,42 @@ credential_list:
   - credential_name: local
     credential_values: { api_key: os.environ/LOCAL_LLM_API_KEY, api_base: os.environ/LOCAL_LLM_API_BASE }
     credential_info: {}
+  # Free-only routes (agent-kit#916): no wildcard, only generated free deployments reach them.
+  - credential_name: groq
+    credential_values: { api_key: os.environ/GROQ_API_KEY, api_base: os.environ/GROQ_API_BASE }
+    credential_info: {}
+  # Cloudflare's base holds the account id, which LiteLLM's provider takes from CLOUDFLARE_ACCOUNT_ID.
+  - credential_name: cloudflare
+    credential_values: { api_key: os.environ/CLOUDFLARE_API_KEY }
+    credential_info: {}
+  - credential_name: nvidia
+    credential_values: { api_key: os.environ/NVIDIA_NIM_API_KEY, api_base: os.environ/NVIDIA_NIM_API_BASE }
+    credential_info: {}
+  - credential_name: zai
+    credential_values: { api_key: os.environ/ZAI_API_KEY, api_base: os.environ/ZAI_API_BASE }
+    credential_info: {}
+  # Kilo and OVHcloud need no account; LiteLLM wants some key, so they carry a placeholder, never sent by the sync.
+  - credential_name: kilo
+    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/KILO_API_BASE }
+    credential_info: {}
+  - credential_name: ovh
+    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/OVHCLOUD_API_BASE }
+    credential_info: {}
+  - credential_name: requesty
+    credential_values: { api_key: os.environ/REQUESTY_API_KEY, api_base: os.environ/REQUESTY_API_BASE }
+    credential_info: {}
+  - credential_name: axforge
+    credential_values: { api_key: os.environ/AXFORGE_API_KEY, api_base: os.environ/AXFORGE_API_BASE }
+    credential_info: {}
+  - credential_name: naga
+    credential_values: { api_key: os.environ/NAGA_API_KEY, api_base: os.environ/NAGA_API_BASE }
+    credential_info: {}
+  - credential_name: routeway
+    credential_values: { api_key: os.environ/ROUTEWAY_API_KEY, api_base: os.environ/ROUTEWAY_API_BASE }
+    credential_info: {}
+  - credential_name: inferbase
+    credential_values: { api_key: os.environ/INFERBASE_API_KEY, api_base: os.environ/INFERBASE_API_BASE }
+    credential_info: {}
   # Google and Anthropic are addressed by LiteLLM itself, so their credential carries the key only.
   - credential_name: google
     credential_values: { api_key: os.environ/GEMINI_API_KEY }

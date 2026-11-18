@@ -103,6 +103,14 @@ function runLitellm(name, extra = []) {
     '-e', 'OPENCODE_GO_API_KEY=upstream-opencode-go', '-e', 'OPENROUTER_API_KEY=upstream-openrouter',
     '-e', 'GEMINI_API_KEY=upstream-google', '-e', 'ANTHROPIC_API_KEY=upstream-anthropic', '-e', 'GOOGLE_API_BASE=https://google.example.test/v1', '-e', 'ANTHROPIC_API_BASE=https://anthropic.example.test/v1',
     '-e', 'LOCAL_LLM_API_KEY=none',
+    // The free-only credentials of config.yaml; their routes have no wildcard, so nothing calls them.
+    ...Object.entries({
+      GROQ: 'groq', CLOUDFLARE: 'cloudflare', NVIDIA_NIM: 'nvidia', ZAI: 'zai', REQUESTY: 'requesty', AXFORGE: 'axforge',
+      NAGA: 'naga', ROUTEWAY: 'routeway', INFERBASE: 'inferbase',
+    }).flatMap(([name, route]) => ['-e', `${name}_API_KEY=upstream-${route}`]),
+    '-e', 'ANONYMOUS_UPSTREAM_KEY=anonymous', '-e', 'CLOUDFLARE_ACCOUNT_ID=image-test',
+    ...['GROQ', 'NVIDIA_NIM', 'ZAI', 'KILO', 'OVHCLOUD', 'REQUESTY', 'AXFORGE', 'NAGA', 'ROUTEWAY', 'INFERBASE']
+      .flatMap((name) => ['-e', `${name}_API_BASE=https://${name.toLowerCase()}.example.test/v1`]),
     '-e', `MISTRAL_API_BASE=${upstream('MISTRAL_API_BASE')}`, '-e', `OPENCODE_GO_API_BASE=${upstream('OPENCODE_GO_API_BASE')}`,
     '-e', 'OPENROUTER_API_BASE=https://openrouter.example.test/v1', '-e', `LOCAL_LLM_API_BASE=${upstream('LOCAL_LLM_API_BASE')}`,
     // The runtime profile hands the collector's gRPC endpoint in production; the test receives HTTP.

@@ -772,5 +772,94 @@ class Transport(unittest.TestCase):
         self.assertEqual(sync.make_http(1)("GET", base + "/ok", {}, None)[0], 599)
 
 
+class FreeSignals(unittest.TestCase):
+    """One free signal per kind, and the anonymous probe, for the first-wave free-only routes."""
+
+    def listed(self, route, data, rules=None, env=None):
+        env = dict(env or {}, **{e["base_env"]: f"https://{route}/v1" for e in sync.ROUTES if e["route"] == route})
+        http = Http(lists={f"https://{route}/v1/models": {"data": data}})
+        found = sync.list_models(next(e for e in sync.ROUTES if e["route"] == route), env, http, rules)
+        return {m["id"]: m["free"] for m in found}, http
+
+    def test_kilo_is_free_when_it_says_isFree(self):
+        free, _ = self.listed("kilo", [{"id": "a:free", "isFree": True}, {"id": "b", "isFree": False}, {"id": "c"}])
+        self.assertEqual(free, {"a:free": True, "b": False, "c": False})
+
+    def test_requesty_is_free_at_zero_price_and_a_missing_price_is_not_free(self):
+        free, _ = self.listed("requesty", [{"id": "a", "input_price": 0, "output_price": 0}, {"id": "b", "input_price": 0, "output_price": 1e-6},
+                                           {"id": "c"}, {"id": "d", "input_price": "0", "output_price": "0"}])
+        self.assertEqual(free, {"a": True, "b": False, "c": False, "d": True})
+
+    def test_ovh_is_free_at_zero_pricing(self):
+        free, _ = self.listed("ovh", [{"id": "a", "pricing": {"prompt": 0, "completion": 0}}, {"id": "b", "pricing": {"prompt": 1, "completion": 0}},
+                                      {"id": "c"}])
+        self.assertEqual(free, {"a": True, "b": False, "c": False})
+
+    def test_naga_and_routeway_are_free_by_the_free_suffix(self):
+        for route in ("naga", "routeway"):
+            free, _ = self.listed(route, [{"id": "m:free"}, {"id": "m"}])
+            self.assertEqual(free, {"m:free": True, "m": False}, route)
+
+    def test_nvidia_lists_only_free_models(self):
+        free, _ = self.listed("nvidia", [{"id": "nvidia/a"}, {"id": "nvidia/embed-x"}])
+        self.assertEqual(free, {"nvidia/a": True, "nvidia/embed-x": True})
+
+    def test_the_static_list_mechanism_is_the_signal_of_a_plan_wide_free_tier(self):
+        # Synthetic lists: this proves the mechanism, not what routing.json holds (see test_routing).
+        rules = {"free_ids": {"groq": ["openai/gpt-oss-120b"], "zai": ["glm-4.7-flash"], "cloudflare": ["@cf/x"]}}
+        for route, ids in (("groq", ["openai/gpt-oss-120b", "llama-4"]), ("zai", ["glm-4.7-flash", "glm-5"]),
+                           ("cloudflare", ["@cf/x", "@cf/y"])):
+            env = {"CLOUDFLARE_ACCOUNT_ID": "acc"} if route == "cloudflare" else None
+            free, _ = self.listed(route, [{"id": model} for model in ids], rules, env)
+            self.assertEqual(free, {ids[0]: True, ids[1]: False}, route)
+        # No list, nothing free: a paid id can never be deployed.
+        free, _ = self.listed("groq", [{"id": "openai/gpt-oss-120b"}])
+        self.assertEqual(free, {"openai/gpt-oss-120b": False})
+
+    def test_a_static_free_id_the_listing_prices_above_zero_is_refused(self):
+        rules = {"free_ids": {"groq": ["a", "b", "c", "d"], "zai": ["a", "b"]}}
+        data = [{"id": "a", "pricing": {"prompt": "0.000001", "completion": "0"}},
+                {"id": "b", "input_price": 0, "output_price": 0.5},
+                {"id": "c", "pricing": {"input": 0, "output": 0}},
+                {"id": "d"}]
+        free, _ = self.listed("groq", data, rules)
+        self.assertEqual(free, {"a": False, "b": False, "c": True, "d": True})
+        free, _ = self.listed("zai", data[:2], rules)
+        self.assertEqual(free, {"a": False, "b": False})
+
+    def test_inferbase_carries_a_real_price_and_an_unpriced_id_is_not_free(self):
+        rules = {"free_ids": {"inferbase": ["a", "b"]}}
+        found = {m["id"]: m for m in sync.list_models(
+            next(e for e in sync.ROUTES if e["route"] == "inferbase"), {"INFERBASE_API_BASE": "https://inferbase/v1"},
+            Http(lists={"https://inferbase/v1/models": {"data": [
+                {"id": "a", "pricing": {"prompt": "0.0000005", "completion": "0.000002"}}, {"id": "b"}, {"id": "c"}]}}), rules)}
+        self.assertTrue(found["a"]["free"])
+        self.assertEqual(found["a"]["price"], {"input": 5e-7, "output": 2e-6})
+        self.assertFalse(found["b"]["free"])  # in the list, not priced: fail closed
+        self.assertFalse(found["c"]["free"])  # priced or not, not in the list
+
+    def test_an_anonymous_route_is_listed_and_probed_without_authorization(self):
+        for route in ("kilo", "ovh"):
+            self.assertTrue(next(e for e in sync.ROUTES if e["route"] == route)["anonymous"])
+        env = {"KILO_API_BASE": "https://kilo/v1"}
+        http = Http(lists={"https://kilo/v1/models": {"data": [{"id": "a:free", "isFree": True}, {"id": "paid"}]}})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        self.assertEqual(stats["route_errors"], [])
+        # Listed and probed, no Authorization anywhere; the paid id is not probed.
+        requests = [c for c in http.calls if c[1].startswith("https://kilo/v1")]
+        self.assertEqual(len(requests), 2)
+        for call in requests:
+            self.assertNotIn("Authorization", call[2])
+        self.assertEqual(http.probed_ids(), ["a:free"])
+        statuses = {m["id"]: m["metadata"]["status"] for m in cat["providers"]["kilo"]["models"]}
+        self.assertEqual(statuses, {"kilo/a:free": "usable", "kilo/paid": "unprobed"})
+
+    def test_a_keyed_free_route_is_skipped_without_its_key(self):
+        http = Http(lists={})
+        cat, stats = sync.build({"REQUESTY_API_BASE": "https://requesty/v1"}, http, {"providers": {}}, NOW, rules={})
+        self.assertEqual((cat["providers"]["requesty"]["models"], stats["route_errors"]), ([], []))
+        self.assertEqual(http.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

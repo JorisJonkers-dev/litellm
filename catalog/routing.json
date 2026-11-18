@@ -23,7 +23,15 @@
     "vibe-api": {"max_budget": 25, "budget_duration": "30d"},
     "vibe-study-api": {"max_budget": 12, "budget_duration": "30d"},
     "anthropic": {"max_budget": 90, "budget_duration": "30d"},
-    "opencode-go": {"max_budget": 15, "budget_duration": "30d"}
+    "opencode-go": {"max_budget": 15, "budget_duration": "30d"},
+    "inferbase": {"max_budget": 0.5, "budget_duration": "1d"}
+  },
+  "free_ids": {
+    "groq": ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
+    "cloudflare": [],
+    "zai": ["glm-4.7-flash", "glm-4.5-flash", "glm-4.6v-flash"],
+    "axforge": [],
+    "inferbase": []
   },
   "cooldowns": {
     "vibe": 3600,
@@ -33,7 +41,18 @@
     "opencode-go": 900,
     "google": 120,
     "anthropic": 300,
-    "openrouter": 120
+    "openrouter": 120,
+    "groq": 120,
+    "cloudflare": 120,
+    "nvidia": 120,
+    "zai": 120,
+    "kilo": 120,
+    "ovh": 120,
+    "requesty": 3600,
+    "axforge": 120,
+    "naga": 3600,
+    "routeway": 3600,
+    "inferbase": 120
   },
   "policies": {
     "anthropic": {"BadRequestErrorAllowedFails": 2}
