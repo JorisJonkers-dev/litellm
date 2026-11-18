@@ -63,14 +63,14 @@ applications:
           reason: >-
             The proxy calls the Mistral API (Vibe, Vibe-study and the two general keys), the OpenCode Go
             API, OpenRouter, Google and Anthropic, and the free-only providers (Groq, Cloudflare Workers AI, NVIDIA, Z.ai,
-            Kilo, OVHcloud, Requesty, AxForge, NagaAI, Routeway, Inferbase). The local/* route calls the GPU workstation's keyed gate on its
+            Kilo, OVHcloud, Requesty, AxForge, NagaAI, Routeway, Inferbase) and the second-wave free-only providers (BazaarLink, Electron Hub, UnoRouter, Cohere, Api.Airforce, Plugsky, Poe, Vercel AI Gateway, watsonx, Novita, Together, Typhoon, SEA-LION, Gonka, LongCat, Neosantara). The local/* route calls the GPU workstation's keyed gate on its
             tailnet address (100.112.121.102:11435), which this declaration does not cover: internet egress
             excludes every private and tailnet range, and the model has no edge to a host outside the
             cluster. That works only while the estate's policies stay render-only; promoting them needs
             that edge first.
 
         secrets:
-          # The nine free-provider keys (groq .. inferbase) are optional: a Process starts whether the Vault
+          # The free-provider keys (groq .. neosantara) are optional: a Process starts whether the Vault
           # field is there or not (deploy-kit spec 10, Optional keys), so a provider the owner has not
           # registered yet (axforge) cannot stop the proxy; the sync skips a route whose key is empty.
           # Placeholder names: the owner writes the values with estate bootstrap/secrets.sh.
@@ -111,6 +111,36 @@ applications:
                 optional: true
               - name: inferbase_api_key
                 optional: true
+              - name: bazaarlink_api_key
+                optional: true
+              - name: electronhub_api_key
+                optional: true
+              - name: cohere_api_key
+                optional: true
+              - name: airforce_api_key
+                optional: true
+              - name: plugsky_api_key
+                optional: true
+              - name: poe_api_key
+                optional: true
+              - name: vercel_ai_gateway_api_key
+                optional: true
+              - name: watsonx_api_key
+                optional: true
+              - name: novita_api_key
+                optional: true
+              - name: together_api_key
+                optional: true
+              - name: typhoon_api_key
+                optional: true
+              - name: sealion_api_key
+                optional: true
+              - name: gonka_api_key
+                optional: true
+              - name: longcat_api_key
+                optional: true
+              - name: neosantara_api_key
+                optional: true
               - local_llm_api_key
             access: read
             delivery: env
@@ -148,7 +178,7 @@ applications:
         egress:
           to: internet
           reason: >-
-            Lists and probes models at the Mistral, OpenCode Go, OpenRouter, Google, Anthropic and free-only provider APIs,
+            Lists and probes models at the Mistral, OpenCode Go, OpenRouter, Google, Anthropic and free-only provider APIs (both waves),
             publishes the catalogue to GitHub and opens the routing pull request there. It lists the GPU
             workstation's models at its keyed gate too, which this declaration does not cover (see the
             proxy's egress above).
@@ -184,6 +214,36 @@ applications:
               - name: routeway_api_key
                 optional: true
               - name: inferbase_api_key
+                optional: true
+              - name: bazaarlink_api_key
+                optional: true
+              - name: electronhub_api_key
+                optional: true
+              - name: cohere_api_key
+                optional: true
+              - name: airforce_api_key
+                optional: true
+              - name: plugsky_api_key
+                optional: true
+              - name: poe_api_key
+                optional: true
+              - name: vercel_ai_gateway_api_key
+                optional: true
+              - name: watsonx_api_key
+                optional: true
+              - name: novita_api_key
+                optional: true
+              - name: together_api_key
+                optional: true
+              - name: typhoon_api_key
+                optional: true
+              - name: sealion_api_key
+                optional: true
+              - name: gonka_api_key
+                optional: true
+              - name: longcat_api_key
+                optional: true
+              - name: neosantara_api_key
                 optional: true
               - catalog_publish_token
               - catalog_pr_token
