@@ -15,8 +15,10 @@ Series, per successful request:
                    a series per model id a client sends. `free/<canonical>` becomes `free/*`.
   model_id         the serving deployment (the generated config's `model_info.id`)
   api_provider     the serving deployment's LiteLLM provider (mistral, openrouter, gemini, ...)
-  priced           "true" when the deployment has a price: an explicit input or output cost on the
-                   deployment, a cost-map price for its model, or a request that was charged
+  priced           "true" when the deployment has a price. An explicit input or output cost on the
+                   deployment decides (zero is free, even if the cost map prices the id); a
+                   deployment that declares none is priced if the request was charged or the
+                   cost map prices its model
   fallback         "true" when the router retried or fell back before this deployment answered
 
 The same facts go to the spend log under `metadata.spend_logs_metadata.tier_telemetry`.
@@ -60,12 +62,22 @@ def _cost_map_priced(model: Any, provider: Any) -> bool:
     return _positive(info.get("input_cost_per_token")) or _positive(info.get("output_cost_per_token"))
 
 
+def _declared(source: Any) -> list:
+    """The explicit input and output costs a deployment declares, zero included."""
+    if not isinstance(source, dict):
+        return []
+    return [
+        source[key]
+        for key in ("input_cost_per_token", "output_cost_per_token")
+        if isinstance(source.get(key), (int, float)) and not isinstance(source.get(key), bool)
+    ]
+
+
 def is_priced(kwargs: dict, metadata: dict, hidden: dict) -> bool:
-    model_info = metadata.get("model_info") or {}
-    params = kwargs.get("litellm_params") or {}
-    for source in (model_info, params):
-        if _positive(source.get("input_cost_per_token")) or _positive(source.get("output_cost_per_token")):
-            return True
+    """Explicit deployment cost first (zero is authoritative free), then a charge, then the cost map."""
+    declared = _declared(metadata.get("model_info")) + _declared(kwargs.get("litellm_params"))
+    if declared:
+        return any(value > 0 for value in declared)
     if _positive(kwargs.get("response_cost")) or _positive(hidden.get("response_cost")):
         return True
     return _cost_map_priced(hidden.get("litellm_model_name") or kwargs.get("model"), kwargs.get("custom_llm_provider"))

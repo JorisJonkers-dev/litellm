@@ -108,6 +108,12 @@ class TierTelemetryTest(unittest.IsolatedAsyncioTestCase):
         await self.ask(router([entry]), "tier-free", key="mapped@test")
         self.assertEqual(one(api_key_alias="mapped@test", model_id="mapped", priced="true", fallback="false"), 1)
 
+    async def test_an_explicit_zero_cost_is_free_even_when_the_cost_map_prices_the_model(self):
+        entry = deployment("tier-free", "zeroed", 1, "ok", input_cost_per_token=0, output_cost_per_token=0)
+        entry["litellm_params"]["model"] = "mistral/mistral-small-latest"  # priced in the cost map
+        await self.ask(router([entry]), "tier-free", key="zero@test")
+        self.assertEqual(one(api_key_alias="zero@test", model_id="zeroed", priced="false", fallback="false"), 1)
+
     def test_group_bounding(self):
         self.assertEqual(tt.requested_group("tier-vibe"), "tier-vibe")
         self.assertEqual(tt.requested_group("free/qwen"), "free/*")
