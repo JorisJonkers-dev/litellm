@@ -41,6 +41,14 @@ serves non-Mistral models too, and where it serves one it wins. Only exact canon
 equality merges two upstream models; a near duplicate is reported in catalogue.possible_duplicates
 and never merged.
 
+Free groups: beside each free route's own "<route>/<canonical>" group, every zero-cost copy of a
+canonical model (matched by canonical_name(), whatever the provider calls it) is also in one shared
+"free/<canonical>" group, ordered by allowance, each copy with its own cooldown, so a 429 falls
+through to the next free copy. assert_free_groups() fails the run when a copy in it is not zero-cost.
+
+Tier groups: catalog/routing.json's `tier_groups` define the callable tier-* names and their ordered
+steps; validate_tiers() checks them and `--render-tiers` renders them into config/config.yaml.
+
 Probe cost bound: each probe is one minimal request (about 8 input tokens + 16 output tokens), and
 a provider that refuses a small max_tokens is retried once with its own minimum, so a run costs at
 most (models probed) x (about 8 input + 16 output tokens), doubled in the worst case. The models
@@ -51,6 +59,7 @@ Standard library only: it runs in the LiteLLM image as a scheduled Process, and 
 """
 import argparse
 import base64
+import copy as copy_module
 import datetime
 import json
 import os
@@ -75,14 +84,49 @@ ROUTES = [
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
     {"route": "google", "base_env": "GOOGLE_API_BASE", "key_env": "GEMINI_API_KEY", "kind": "google"},
     {"route": "anthropic", "base_env": "ANTHROPIC_API_BASE", "key_env": "ANTHROPIC_API_KEY", "kind": "anthropic"},
+    # Free-only routes (agent-kit#916): a paid id is never deployed on these. Their free signal is the
+    # kind (see list_models): a plan-wide free tier lists its free ids in routing.json (`free_ids`).
+    {"route": "groq", "base_env": "GROQ_API_BASE", "key_env": "GROQ_API_KEY", "kind": "groq"},
+    # The account id is part of Cloudflare's base, so the base is composed from CLOUDFLARE_ACCOUNT_ID.
+    {"route": "cloudflare", "base_env": "CLOUDFLARE_API_BASE", "key_env": "CLOUDFLARE_API_KEY", "kind": "cloudflare",
+     "base_template": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"},
+    {"route": "nvidia", "base_env": "NVIDIA_NIM_API_BASE", "key_env": "NVIDIA_NIM_API_KEY", "kind": "nvidia"},
+    {"route": "zai", "base_env": "ZAI_API_BASE", "key_env": "ZAI_API_KEY", "kind": "zai"},
+    # Anonymous routes have no key: listed and probed without an Authorization header. Their key_env is
+    # never set, so only "anonymous" lets them past the missing-key skip.
+    {"route": "kilo", "base_env": "KILO_API_BASE", "key_env": "KILO_API_KEY", "kind": "kilo", "anonymous": True},
+    {"route": "ovh", "base_env": "OVHCLOUD_API_BASE", "key_env": "OVHCLOUD_API_KEY", "kind": "ovh", "anonymous": True},
+    {"route": "requesty", "base_env": "REQUESTY_API_BASE", "key_env": "REQUESTY_API_KEY", "kind": "requesty"},
+    # AxForge is not registered yet: its key is empty, so the sync skips the route like any keyless one.
+    # It is also OFF by data: routing.json's free_ids.axforge is empty, because the site's "3M free
+    # serverless tokens every 30 days" is followed by billing, and a zero recorded cost with no budget
+    # would hide that spend. It deploys nothing until the owner has checked billing and filled the list.
+    {"route": "axforge", "base_env": "AXFORGE_API_BASE", "key_env": "AXFORGE_API_KEY", "kind": "axforge"},
+    {"route": "naga", "base_env": "NAGA_API_BASE", "key_env": "NAGA_API_KEY", "kind": "naga"},
+    {"route": "routeway", "base_env": "ROUTEWAY_API_BASE", "key_env": "ROUTEWAY_API_KEY", "kind": "routeway"},
+    {"route": "inferbase", "base_env": "INFERBASE_API_BASE", "key_env": "INFERBASE_API_KEY", "kind": "inferbase"},
 ]
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
-DEFAULT_ROUTE_LIMITS = {"openrouter": 30}
+# A limit is per RUN. The catalogue Process runs hourly (deploy/litellm.project.yml, "17 * * * *"), so
+# at worst (a model whose probe errors is retried every run) a route is probed limit x 24 times a day;
+# a healthy model is probed once per --max-age. Each limit keeps that worst case at or under half the
+# provider's daily cap, so real traffic keeps the rest:
+#   groq        10 x 24 = 240    of 1,000 a day          zai        10 x 24 = 240   (1 concurrent; probes are serial)
+#   requesty     4 x 24 =  96    of 200 a day (all free models together, 20 a minute)
+#   naga         2 x 24 =  48    of 100 a day            routeway    4 x 24 =  96   of 200 a day
+#   inferbase    2 x 24 =  48    of 100 managed a day    cloudflare  5 x 24 = 120   (10,000 neurons a day; a probe is a few)
+#   ovh          2 x 24 =  48    at 2 a minute per IP per model: two serial probes of different models
+#   kilo        30 per run, 200 an hour per IP shared with real traffic
+#   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
+DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
+                        "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
+# Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
+STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase")
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -94,11 +138,14 @@ PROBE_MINIMUM = re.compile(r">= (\d+)")
 PROBE_RETRY_CEILING = 256
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
 PREFIXES = {"mistral": "mistral", "openai": "openai", "opencode-go": "opencode_go", "openrouter": "openrouter",
-            "google": "gemini", "anthropic": "anthropic"}
+            "google": "gemini", "anthropic": "anthropic", "groq": "groq", "cloudflare": "cloudflare",
+            "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai", "ovh": "ovhcloud", "requesty": "openai",
+            "axforge": "openai", "naga": "openai", "routeway": "openai", "inferbase": "openai"}
 # The API families OpenCode Go names per model ("api" in its /models), in the order one is chosen.
 GO_FAMILIES = ("chat-completions", "responses", "messages", "generate-content")
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
-FREE_KINDS = ("openrouter",)
+FREE_KINDS = ("openrouter", "groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga",
+              "routeway", "inferbase")
 FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
 # A free-only route is public work only: a free-tier provider may train on the prompts, so its
 # deployments are never in `canonical` (the group every key holds). Each one gets its own
@@ -107,8 +154,18 @@ FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FRE
 # shared group would let every free key reach every free provider, and LiteLLM grants access per
 # model name, so two routes in one name would leak each other's deployments. This is code, not a rule in routing.json, so no rules
 # edit can put a free deployment back in `canonical`.
-FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public"}
+FREE_ACCESS_GROUPS = {entry["route"]: f"{entry['route']}-free-public" for entry in ROUTES if entry["kind"] in FREE_KINDS}
+# A free deployment the price map does not know records a real cost of 0, not an unknown. Inferbase's
+# free share is a dollar allowance, so its deployments keep their price and the route's budget caps it.
+FREE_PRICED = frozenset({"inferbase"})
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
+# The routes whose deployments may join a shared "free/<canonical>" group (agent-kit#916, litellm#60):
+# the free-only routes that record a zero cost, plus the free ids of a paid route (FREE_ID_ROUTES).
+# A route that bills against a dollar allowance (FREE_PRICED) is never in it. The sync asserts the
+# zero cost of every deployment in the group (assert_free_groups), so a route added here by mistake
+# fails the run instead of putting a paid copy behind a free key.
+FREE_GROUP_ROUTES = None  # set below, once FREE_PRICED and FREE_ID_ROUTES exist
+FREE_GROUP = "free"
 # A gated route is never in `canonical` either: a key reaches its deployments only by holding the
 # route's own access group, and no workstation key holds it (agent-kit withholds the same routes).
 # Claude is never used through the proxy by a key minted for general work; a dedicated key holding
@@ -121,6 +178,7 @@ GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # own free access group, alone, with no budget. The "<route>-free" prefix keeps the name clear of
 # the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
 FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
+FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES)
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -187,7 +245,36 @@ def load_rules(path=None):
         return {}
     if not isinstance(rules, dict):
         raise RuntimeError(f"the routing rules {path} are not a JSON object")
+    check_free_exclusions(rules, path)
     return rules
+
+
+def check_free_exclusions(rules, source="the routing rules"):
+    """Refuse a free_exclusions rule that would not say exactly what it excludes.
+
+    A rule needs a non-empty `match` regex that compiles, and a non-empty list of `routes`. Without
+    them the rule would match every model (an empty pattern matches everything), so it is an error
+    at load, never a silent exclusion of the whole catalogue.
+    """
+    rule_list = (rules or {}).get("free_exclusions")
+    if rule_list is None:
+        return
+    if not isinstance(rule_list, list):
+        raise RuntimeError(f"{source}: free_exclusions must be a list of rules")
+    for index, rule in enumerate(rule_list):
+        where = f"{source}: free_exclusions[{index}]"
+        if not isinstance(rule, dict):
+            raise RuntimeError(f"{where} is not an object")
+        match = rule.get("match")
+        if not isinstance(match, str) or not match:
+            raise RuntimeError(f"{where} has no `match` regex; without one it would exclude every model")
+        try:
+            re.compile(match)
+        except re.error as error:
+            raise RuntimeError(f"{where} `match` {match!r} is not a valid regex: {error}")
+        routes = rule.get("routes")
+        if not isinstance(routes, list) or not routes or not all(isinstance(r, str) and r for r in routes):
+            raise RuntimeError(f"{where} needs a non-empty list of `routes`")
 
 
 def classify(status, text):
@@ -228,6 +315,42 @@ def is_free_price(pricing):
         return False
 
 
+def zero_price(*prices):
+    """Whether every price is present and zero: a missing price is not free."""
+    try:
+        return all(price is not None and float(price) == 0 for price in prices)
+    except (TypeError, ValueError):
+        return False
+
+
+def listed_prices(item):
+    """The (input, output) price a listing reports, or None: pricing.prompt/completion, pricing.input/output
+    or input_price/output_price. Units are the provider's own (per token for the OpenAI-style lists)."""
+    pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+    for source, names in ((pricing, ("prompt", "completion")), (pricing, ("input", "output")),
+                          (item, ("input_price", "output_price"))):
+        try:
+            pair = tuple(float(source[name]) for name in names)
+        except (KeyError, TypeError, ValueError):
+            continue
+        return pair
+    return None
+
+
+def route_base(entry, env):
+    """The provider base of one route: its env value, or the route's template filled from the env.
+
+    A template whose parts are unset is no base, so the route is a route error, never a bad URL.
+    """
+    template = entry.get("base_template")
+    if template and not env.get(entry["base_env"]):
+        parts = {name: env.get(name) or "" for name in re.findall(r"{(\w+)}", template)}
+        # base.env ships a REPLACE_WITH_... placeholder until the owner writes the real id.
+        parts = {name: "" if value.startswith("REPLACE_WITH") else value for name, value in parts.items()}
+        return template.format(**parts) if all(parts.values()) else ""
+    return (env.get(entry["base_env"]) or "").rstrip("/")
+
+
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -246,11 +369,17 @@ def modality(kind, item):
     return "embedding" if "embed" in model_id else "chat"
 
 
-def list_models(entry, env, http):
-    """The models the provider lists for this route: id, name, context length, free, chat, modality."""
-    base = (env.get(entry["base_env"]) or "").rstrip("/")
+def list_models(entry, env, http, rules=None):
+    """The models the provider lists for this route: id, name, context length, free, chat, modality.
+
+    A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
+    `:free` suffix (Naga, Routeway), everything listed (NVIDIA), or an id in routing.json's
+    `free_ids` for a plan-wide free tier (Groq, Cloudflare, Z.ai, AxForge, Inferbase).
+    """
+    base = route_base(entry, env).rstrip("/")
     if not base:
         raise RuntimeError(f"{entry['base_env']} is not set")
+    free_ids = set(((rules or {}).get("free_ids") or {}).get(entry["route"]) or [])
     key = env.get(entry["key_env"]) or ""
     kind = entry["kind"]
     if kind == "anthropic":
@@ -295,6 +424,32 @@ def list_models(entry, env, http):
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
+        elif kind == "kilo":
+            out["context_length"] = item.get("context_length")
+            out["free"] = item.get("isFree") is True
+        elif kind == "requesty":
+            out["context_length"] = item.get("context_window") or item.get("context_length")
+            out["free"] = zero_price(item.get("input_price"), item.get("output_price"))
+        elif kind == "ovh":
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = zero_price(pricing.get("prompt"), pricing.get("completion"))
+        elif kind in ("naga", "routeway"):
+            out["free"] = model_id.endswith(":free")
+        elif kind == "nvidia":
+            out["free"] = True
+        elif kind in STATIC_KINDS:
+            # The plan is free, so the list is the signal; a listing that prices the id above zero
+            # overrides it (fail closed): the plan is not free for that model.
+            price = listed_prices(item)
+            if kind == "inferbase":
+                # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
+                # deployment needs the real per-token price for the route's budget to fire; an id the
+                # listing does not price is not deployed.
+                out["free"] = model_id in free_ids and price is not None
+                if price is not None:
+                    out["price"] = {"input": price[0], "output": price[1]}
+            else:
+                out["free"] = model_id in free_ids and not (price and any(price))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -330,7 +485,7 @@ def probe(entry, upstream_id, env, http, meta=None):
     An OpenCode Go model is probed in the family and at the base its listing named (`meta`).
     """
     meta = meta or {}
-    base = (env.get(entry["base_env"]) or "").rstrip("/")
+    base = route_base(entry, env).rstrip("/")
     if not base:
         return "error", f"{entry['base_env']} is not set"
     key = env.get(entry["key_env"]) or ""
@@ -483,6 +638,10 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
+    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")):
+        params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
+    elif route in FREE_PRICED and chosen.get("price"):
+        params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
     if budget:
         params.update(budget)
     if cooldown:
@@ -517,6 +676,18 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     }
 
 
+def free_excluded(name, route, rules):
+    """Whether the rules keep a public (free-tier) route out of the free groups of a canonical name.
+
+    A provider that re-routes a model to a billed one under the same name must not keep serving it
+    on the free tier: routing.json's free_exclusions names the model (a regex on the canonical name)
+    and the route. Only a public route is ever excluded here; a paid route is not a free group.
+    The rules are validated by check_free_exclusions, so a rule here always has a real pattern.
+    """
+    return any(route in rule["routes"] and re.search(rule["match"], name)
+               for rule in (rules or {}).get("free_exclusions") or [])
+
+
 def plan_groups(catalogue, rules):
     """The canonical model groups: one model_name per canonical model, its deployments ordered.
 
@@ -533,6 +704,7 @@ def plan_groups(catalogue, rules):
     access group (FREE_ACCESS_GROUPS), so the key that holds that group reaches nothing paid.
     """
     rules = rules or {}
+    check_free_exclusions(rules)
     tiers = rules.get("tiers") or []
     rank = {}
     for index, tier in enumerate(tiers):
@@ -562,7 +734,8 @@ def plan_groups(catalogue, rules):
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
             if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
-                groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free"))}
+                groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
+                                      "price": meta.get("price")}
     specs = []
     for name, routes in sorted(groups.items()):
         serving = set(routes)
@@ -586,6 +759,9 @@ def plan_groups(catalogue, rules):
         gated = serving & set(GATED_ACCESS_GROUPS)
         if gated and serving - gated:
             serving -= gated
+        # A free-tier route the rules exclude for this model serves it in no group at all: the
+        # model is refused on the free tier, and a paid route that also serves it is not affected.
+        serving -= {route for route in serving & public_routes if free_excluded(name, route, rules)}
         if not serving:
             continue
         primary = primary_mode({route: routes[route] for route in serving})
@@ -596,12 +772,14 @@ def plan_groups(catalogue, rules):
         for route in sorted(free):
             # Its own group, alone: public work only, and nothing paid behind it.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
-                                    routes[route], 1, 1, by_route[route], cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+                                    routes[route], 1, 1, by_route[route], budget=budgets.get(route),
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
         for route in sorted(free_ids):
             # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
             group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
             specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
                                     cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+        specs.extend(free_group(name, routes, primary, (free | free_ids) & FREE_GROUP_ROUTES, by_route, rules))
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
         levels = sorted({rank.get(route, unranked)[0] for route in normal})
         order_of = {level: index + 1 for index, level in enumerate(levels)}
@@ -628,6 +806,8 @@ def plan_groups(catalogue, rules):
                 specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
                                         routes[route], order + 1, weight, by_route[route], public=True,
                                         budget=budgets.get(route), cooldown=cooldowns.get(route)))
+    if rules.get("tier_groups"):
+        specs.extend(tier_copies(specs, rules))
     # A group of one deployment has nothing to fall back to: it must cool down on a 402 or 429
     # itself, which LiteLLM only does with an explicit allowed-fails entry.
     counts = {}
@@ -643,7 +823,59 @@ def plan_groups(catalogue, rules):
         extra = (rules.get("policies") or {}).get(spec["route"])
         if extra:
             spec["model_info"]["allowed_fails_policy"] = {**spec["model_info"].get("allowed_fails_policy", {}), **extra}
+    assert_free_groups(specs)
+    assert_tier_copies(specs, rules)
+    assert_no_tier_shadow(specs, rules)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
+
+
+def free_group(name, routes, primary, serving, by_route, rules):
+    """The shared "free/<canonical>" group: every zero-cost copy of one canonical model.
+
+    The per-route groups ("<route>/<canonical>") stay, for a key that holds one route's access
+    group; this group is the one a 429 falls through. Its deployments are ordered by allowance
+    (rules["free_order"]: the route with the biggest allowance first; a route the rules do not
+    name comes last) and cool down on their own (litellm_params.cooldown_time), so a rate-limited
+    copy is skipped for its cooldown and the next free copy serves. The copy has its own
+    model_info.id, because LiteLLM keeps cooldown state per deployment id. Which models are "the
+    same" is decided by canonical_name() alone: the ids differ per provider, and an id the
+    stripping does not unify is named in rules["aliases"] (sync reports near duplicates).
+    """
+    order = (rules or {}).get("free_order") or {}
+    cooldowns = (rules or {}).get("cooldowns") or {}
+    last = max(order.values(), default=0) + 1
+    specs = []
+    for route in sorted(serving):
+        spec = deployment(group_name(name, routes[route]["modality"], primary, free_route=FREE_GROUP), name, route,
+                          routes[route], order.get(route, last), 1, by_route[route], free_only=True,
+                          cooldown=cooldowns.get(route, PUBLIC_COOLDOWN))
+        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{routes[route]['upstream_id']}"
+        specs.append(spec)
+    return specs
+
+
+def assert_free_groups(specs):
+    """Fail the sync when a deployment in a free/* group is not zero-cost (or is not only in "free").
+
+    The group is the cost boundary: a key is granted a model name, not a deployment, so one paid copy
+    in a free/* group bills every key that holds the name. Zero cost means an explicit zero input and
+    output price on the deployment, not an unknown one, and no budget (a budget is a price).
+    """
+    for spec in specs:
+        if not spec["name"].startswith(FREE_GROUP + "/"):
+            continue
+        params, info = spec["litellm_params"], spec["model_info"]
+        problems = []
+        if params.get("input_cost_per_token") != 0 or params.get("output_cost_per_token") != 0:
+            problems.append("its recorded cost is not an explicit zero")
+        if "max_budget" in params:
+            problems.append("it carries a budget, so it has a price")
+        if info.get("access_groups") != [FREE_ACCESS_GROUP]:
+            problems.append("its access groups are not exactly the free group")
+        if spec["route"] not in FREE_GROUP_ROUTES:
+            problems.append("its route is not a free route")
+        if problems:
+            raise RuntimeError(f"{info.get('id')} may not join {spec['name']}: " + "; ".join(problems))
 
 
 def render_models(deployments):
@@ -655,6 +887,201 @@ def render_models(deployments):
         ]
     }
     return f"{MODELS_HEADER}\n{MODELS_NOTE}\n{json.dumps(document, indent=2)}\n"
+
+
+# The cost class of a callable model name, by its prefix. A tier step declares its class and
+# validate_tiers() checks the declaration against this table, so a paid step cannot be written down
+# as free: "free/" names only ever resolve to zero-cost deployments (assert_free_groups).
+STEP_CLASS_PREFIXES = {"free/": "free", "vibe-tier/": "vibe", "opencode-go-tier/": "go"}
+# A paid tier step is never a route wildcard (vibe/*, opencode-go/*): LiteLLM enforces no budget on a
+# wildcard, so a tier call through one would bypass the route's cap. It is "<route>-tier/<upstream id>", a
+# deployment that is a copy of the route's own budgeted deployment with the SAME model_info.id, because
+# LiteLLM keeps spend per deployment id: a tier call and a direct call draw on one budget. The copy's
+# access group is "<route>-tier", so a key reaches it by holding that group and never by `vibe/*`.
+TIER_ROUTES = {"vibe-tier": "vibe", "opencode-go-tier": "opencode-go"}
+TIERS_BEGIN = "  # BEGIN tiers"
+TIERS_NOTE = " (rendered from catalog/routing.json by `python3 catalog/sync.py --render-tiers`; do not edit by hand)"
+TIERS_END = "  # END tiers"
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.yaml")
+
+
+def step_class(model):
+    """The cost class a callable model name belongs to, or None when no prefix names one."""
+    for prefix, cost in STEP_CLASS_PREFIXES.items():
+        if model.startswith(prefix):
+            return cost
+    return None
+
+
+def tier_chains(rules):
+    """Every tier as its flat, ordered list of steps ({"model", "cost"}), a nested tier expanded in place.
+
+    A step is {"model": <callable name>, "cost": <class>} or {"tier": <other tier>}, which splices that
+    tier's own steps in at that position. A model already in the chain keeps its first place, so a
+    ladder that loops back (tier-go-cheap naming tier-vibe) cannot repeat a model, and a tier that
+    names itself through others is rejected.
+    """
+    groups = (rules or {}).get("tier_groups") or {}
+
+    def expand(name, trail):
+        if name not in groups:
+            raise RuntimeError(f"tier {name} is not defined in the routing rules")
+        if name in trail:
+            raise RuntimeError("tier cycle: " + " -> ".join([*trail, name]))
+        steps = []
+        for step in groups[name].get("steps") or []:
+            steps.extend(expand(step["tier"], [*trail, name]) if "tier" in step else [step])
+        return steps
+
+    chains = {}
+    for name in groups:
+        seen, chain = set(), []
+        for step in expand(name, []):
+            if step["model"] not in seen:
+                seen.add(step["model"])
+                chain.append(step)
+        chains[name] = chain
+    return chains
+
+
+def validate_tiers(rules):
+    """Check the tier definitions; raise RuntimeError naming the first thing wrong.
+
+    Each step's declared cost class must be the class its name's prefix gives; no step may cost more than
+    its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
+    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
+    a tier name is no planned model group (assert_no_tier_shadow(), against the real plan); and each tier's key_models cover every step, because a
+    key reaches a name only by holding it or its access group ("free", "vibe-tier", "opencode-go-tier")
+    and a fallback the key does not hold is skipped.
+    """
+    rules = rules or {}
+    classes = list(rules.get("tier_cost_classes") or [])
+    opt_in = set(rules.get("opt_in_only") or [])
+    groups = rules.get("tier_groups") or {}
+    for name, chain in tier_chains(rules).items():
+        if not name.startswith("tier-"):
+            raise RuntimeError(f"tier {name} must be named tier-<name>")
+        ceiling = groups[name].get("ceiling")
+        if ceiling not in classes:
+            raise RuntimeError(f"tier {name} has no valid ceiling")
+        keys = groups[name].get("key_models") or []
+        if not chain or name not in keys:
+            raise RuntimeError(f"tier {name} needs steps, and its key_models must name it")
+        for step in chain:
+            model, cost = step["model"], step.get("cost")
+            if cost not in classes or cost != step_class(model):
+                raise RuntimeError(f"tier {name}: step {model} declares cost {cost}, its name is class {step_class(model)}")
+            if classes.index(cost) > classes.index(ceiling):
+                raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
+            if canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
+                raise RuntimeError(f"tier {name}: {model} is opt-in only and may not be in a tier chain")
+            if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
+                       for key in keys):
+                raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
+
+
+def assert_no_tier_shadow(specs, rules):
+    """Fail the sync when a planned model group is named like a tier.
+
+    model_group_alias would shadow the group, and a key granted that name would be rerouted down the tier's chain.
+    """
+    clash = sorted({spec["name"] for spec in specs} & set((rules or {}).get("tier_groups") or {}))
+    if clash:
+        raise RuntimeError("a model group is named like a tier: " + ", ".join(clash))
+
+
+def tier_router_settings(rules):
+    """The router settings that make the tiers callable: {"model_group_alias", "fallbacks"}.
+
+    A tier name is an alias of its first step's group, and the rest of its chain is the ordered
+    fallback list under the tier's own name (LiteLLM looks fallbacks up by the requested name,
+    alias included; tests/test_tiers.py runs it). No default_fallbacks, ever: one stray entry would
+    send every free group to a paid tier.
+    """
+    validate_tiers(rules)
+    chains = tier_chains(rules)
+    return {
+        "model_group_alias": {name: chain[0]["model"] for name, chain in chains.items()},
+        "fallbacks": [{name: [step["model"] for step in chain[1:]]} for name, chain in chains.items() if len(chain) > 1],
+    }
+
+
+def render_tier_block(rules):
+    """The lines config/config.yaml holds inside router_settings, from the tier definitions."""
+    settings = tier_router_settings(rules)
+    lines = [TIERS_BEGIN + TIERS_NOTE, "  model_group_alias:"]
+    lines += [f"    {json.dumps(name)}: {json.dumps(target)}" for name, target in settings["model_group_alias"].items()]
+    lines.append("  fallbacks:")
+    lines += [f"    - {json.dumps(entry)}" for entry in settings["fallbacks"]]
+    lines.append(TIERS_END)
+    return "\n".join(lines)
+
+
+def splice_tier_block(config_text, rules):
+    """config.yaml's text with the rendered tier block in place of the marked one."""
+    start, end = config_text.find(TIERS_BEGIN), config_text.find(TIERS_END)
+    if start < 0 or end < start:
+        raise RuntimeError("config.yaml has no tiers block between its BEGIN and END markers")
+    return config_text[:start] + render_tier_block(rules) + config_text[end + len(TIERS_END):]
+
+
+def tier_copies(specs, rules):
+    """The budgeted deployment each paid tier step is served by: a copy of the route's own deployment.
+
+    A step "vibe-tier/<id>" or "opencode-go-tier/<id>" is the route's canonical deployment of that
+    upstream id, renamed to the step and given the access group "<prefix>". It keeps its model_info.id,
+    budget and cooldown, so the spend of a tier call and of a direct call share one counter.
+    A step whose model the plan has no canonical deployment for gets no copy: the name is then unknown to
+    the router, which skips the step. It is never served by a wildcard, which carries no budget.
+    """
+    copies, seen = [], set()
+    for chain in tier_chains(rules).values():
+        for step in chain:
+            prefix, _, upstream_id = step["model"].partition("/")
+            route = TIER_ROUTES.get(prefix)
+            if not route or step["model"] in seen:
+                continue
+            seen.add(step["model"])
+            for spec in specs:
+                if (spec["route"], spec["upstream_id"]) == (route, upstream_id) and spec["model_info"]["access_groups"] == [CANONICAL_ACCESS_GROUP]:
+                    copy = copy_module.deepcopy(spec)
+                    copy["name"] = step["model"]
+                    copy["order"], copy["weight"] = 1, 1
+                    copy["litellm_params"]["order"], copy["litellm_params"]["weight"] = 1, 1
+                    copy["model_info"]["access_groups"] = [prefix]
+                    copy["model_info"].pop("allowed_fails_policy", None)
+                    copies.append(copy)
+                    break
+    return copies
+
+
+def assert_tier_copies(specs, rules):
+    """Fail the sync when a tier copy is not the budgeted deployment of its route (same id, same cap)."""
+    budgets = (rules or {}).get("budgets") or {}
+    by_id = {spec["model_info"]["id"]: spec for spec in specs if spec["name"].split("/", 1)[0] not in TIER_ROUTES}
+    for spec in specs:
+        prefix = spec["name"].split("/", 1)[0]
+        if prefix not in TIER_ROUTES:
+            continue
+        route, params = TIER_ROUTES[prefix], spec["litellm_params"]
+        origin = by_id.get(spec["model_info"]["id"])
+        budget = budgets.get(route) or {}
+        problems = []
+        if spec["route"] != route or origin is None:
+            problems.append("it is not a copy of a deployment of its route")
+        if not budget or (params.get("max_budget"), params.get("budget_duration")) != (budget.get("max_budget"), budget.get("budget_duration")):
+            problems.append("it does not carry the route's budget")
+        if origin is not None and origin["litellm_params"].get("max_budget") != params.get("max_budget"):
+            problems.append("its budget differs from the deployment it shares an id with")
+        if problems:
+            raise RuntimeError(f"{spec['model_info']['id']} may not serve {spec['name']}: " + "; ".join(problems))
+
+
+def missing_tier_steps(deployments, rules):
+    """Steps of the tiers whose group the plan does not (yet) hold: a free/<canonical> group, or a paid
+    step's budgeted copy. The router skips an unknown step and the next one serves; the run says so."""
+    names = {spec["name"] for spec in deployments}
+    return sorted({step["model"] for chain in tier_chains(rules).values() for step in chain if step["model"] not in names})
 
 
 def record_groups(deployments):
@@ -724,7 +1151,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     queue = []
     for entry in ROUTES:
         route = entry["route"]
-        if not (env.get(entry["key_env"]) or ""):
+        if not (env.get(entry["key_env"]) or "") and not (entry.get("anonymous") and route_base(entry, env)):
             # A route whose key is not written yet is skipped silently: the sync must run before the
             # owner adds it. Its last entries stay, stale, until a run can list it again.
             old = (previous.get("providers") or {}).get(route)
@@ -734,7 +1161,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
             continue
         try:
-            listed = list_models(entry, env, http)
+            listed = list_models(entry, env, http, rules)
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -750,7 +1177,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            for field in ("canonical_id", "api", "api_base"):
+            for field in ("canonical_id", "api", "api_base", "price"):
                 if item.get(field):
                     meta[field] = item[field]
             if old:
@@ -1001,7 +1428,14 @@ def main(argv=None, env=None, http=None, now=None):
     ap.add_argument("--output", default="model-catalog.json", help="where the catalogue is written when it is not published")
     ap.add_argument("--max-age", default="24h")
     ap.add_argument("--max-probes", type=int, default=250)
+    ap.add_argument("--render-tiers", action="store_true", help="rewrite the tiers block of config/config.yaml from routing.json and exit")
     args = ap.parse_args(argv)
+    if args.render_tiers:
+        with open(CONFIG_PATH) as handle:
+            updated = splice_tier_block(handle.read(), load_rules())
+        with open(CONFIG_PATH, "w") as handle:
+            handle.write(updated)
+        return 0
     env = os.environ if env is None else env
     http = http or make_http()
     now = now or datetime.datetime.now(datetime.timezone.utc)
@@ -1025,7 +1459,15 @@ def main(argv=None, env=None, http=None, now=None):
         print(f"catalog: {line}", file=sys.stderr)
     # The deployments the probes justify, as plain LiteLLM config in git, and the groups the
     # overview renders: both come from the same plan, so the page and the file cannot disagree.
-    deployments = plan_groups(catalogue, rules)
+    try:
+        deployments = plan_groups(catalogue, rules)
+        validate_tiers(rules)
+    except RuntimeError as error:
+        # A free group with a paid copy, or a tier chain that breaks its own rules, fails the run.
+        print(f"catalog: {error}", file=sys.stderr)
+        return 1
+    for step in missing_tier_steps(deployments, rules):
+        print(f"catalog: tier step {step} has no group in this plan; the router skips it", file=sys.stderr)
     catalogue["groups"] = record_groups(deployments)
     # A run that listed nothing at all is a failed run, so the scheduled Process shows red.
     failed = stats["listed"] == 0

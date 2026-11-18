@@ -17,13 +17,26 @@
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
+  "free_exclusions": [{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}],
   "budgets": {
     "vibe": {"max_budget": 255, "budget_duration": "30d"},
     "vibe-study": {"max_budget": 127, "budget_duration": "30d"},
     "vibe-api": {"max_budget": 25, "budget_duration": "30d"},
     "vibe-study-api": {"max_budget": 12, "budget_duration": "30d"},
     "anthropic": {"max_budget": 90, "budget_duration": "30d"},
-    "opencode-go": {"max_budget": 15, "budget_duration": "30d"}
+    "opencode-go": {"max_budget": 15, "budget_duration": "30d"},
+    "inferbase": {"max_budget": 0.5, "budget_duration": "1d"}
+  },
+  "free_ids": {
+    "groq": ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
+    "cloudflare": [],
+    "zai": ["glm-4.7-flash", "glm-4.5-flash", "glm-4.6v-flash"],
+    "axforge": [],
+    "inferbase": []
+  },
+  "free_order": {
+    "openrouter": 1, "requesty": 2, "kilo": 3, "nvidia": 4, "ovh": 4,
+    "groq": 5, "zai": 5, "routeway": 6, "cloudflare": 6, "naga": 7, "opencode-go": 8
   },
   "cooldowns": {
     "vibe": 3600,
@@ -33,7 +46,75 @@
     "opencode-go": 900,
     "google": 120,
     "anthropic": 300,
-    "openrouter": 120
+    "openrouter": 120,
+    "groq": 120,
+    "cloudflare": 120,
+    "nvidia": 120,
+    "zai": 120,
+    "kilo": 120,
+    "ovh": 120,
+    "requesty": 3600,
+    "axforge": 120,
+    "naga": 3600,
+    "routeway": 3600,
+    "inferbase": 120
+  },
+  "opt_in_only": ["glm-5.3", "kimi-k3.1-pro", "gpt-6-luna"],
+  "tier_cost_classes": ["free", "vibe", "go"],
+  "tier_groups": {
+    "tier-free": {
+      "ceiling": "free",
+      "key_models": ["free", "tier-free"],
+      "steps": [
+        {"model": "free/hy4-flash-free", "cost": "free"},
+        {"model": "free/longcat-2.5-free", "cost": "free"},
+        {"model": "free/beam-free", "cost": "free"},
+        {"model": "free/glm-4.7-flash", "cost": "free"},
+        {"model": "free/qwen3.8-27b", "cost": "free"}
+      ]
+    },
+    "tier-vibe": {
+      "ceiling": "go",
+      "key_models": ["tier-vibe", "vibe-tier", "opencode-go-tier"],
+      "steps": [
+        {"model": "vibe-tier/deepseek-v4-1-flash-1017", "cost": "vibe"},
+        {"model": "vibe-tier/zai-glm-5-3-flash", "cost": "vibe"},
+        {"model": "vibe-tier/mistral-small-2603", "cost": "vibe"},
+        {"tier": "tier-go-cheap"}
+      ]
+    },
+    "tier-go-cheap": {
+      "ceiling": "go",
+      "key_models": ["tier-go-cheap", "opencode-go-tier"],
+      "steps": [
+        {"model": "opencode-go-tier/deepseek-v4.1-flash", "cost": "go"},
+        {"model": "opencode-go-tier/glm-5.3-flash", "cost": "go"},
+        {"model": "opencode-go-tier/mimo-v2.6-flash", "cost": "go"}
+      ]
+    },
+    "tier-strong-open": {
+      "ceiling": "go",
+      "key_models": ["tier-strong-open", "vibe-tier", "opencode-go-tier"],
+      "steps": [
+        {"model": "opencode-go-tier/qwen4-max", "cost": "go"},
+        {"tier": "tier-vibe"}
+      ]
+    },
+    "tier-review": {
+      "ceiling": "go",
+      "key_models": ["free", "tier-review", "vibe-tier", "opencode-go-tier"],
+      "steps": [
+        {"model": "free/nemotron-3-ultra-550b-a55b", "cost": "free"},
+        {"model": "free/gemma-4-31b", "cost": "free"},
+        {"model": "free/glm-4.7-flash", "cost": "free"},
+        {"model": "free/gpt-oss-120b", "cost": "free"},
+        {"model": "vibe-tier/deepseek-v4-1-flash-1017", "cost": "vibe"},
+        {"model": "vibe-tier/zai-glm-5-3-flash", "cost": "vibe"},
+        {"model": "opencode-go-tier/qwen3.8-flash", "cost": "go"},
+        {"model": "opencode-go-tier/minimax-m3.1-flash", "cost": "go"},
+        {"model": "opencode-go-tier/mimo-v2.6-flash", "cost": "go"}
+      ]
+    }
   },
   "policies": {
     "anthropic": {"BadRequestErrorAllowedFails": 2}

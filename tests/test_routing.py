@@ -82,6 +82,14 @@ def entry(route):
     return next(e for e in sync.ROUTES if e["route"] == route)
 
 
+def per_route_plan(cat, rules):
+    """The plan without the shared free/<canonical> groups: these tests are about the per-route groups.
+
+    tests/test_free_groups.py covers the shared groups.
+    """
+    return [spec for spec in sync.plan_groups(cat, rules) if not spec["name"].startswith("free/")]
+
+
 def catalogue(*models):
     """A catalogue from (route, upstream id, status, metadata) tuples, one provider per route."""
     providers = {}
@@ -143,7 +151,7 @@ class Plan(unittest.TestCase):
             ("opencode-go", "mistral-large", "usable", {}),
             ("openrouter", "mistralai/mistral-large:free", "usable", {"free": True}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         # vibe serves the model, so opencode-go and the general API key are backups and not in the
         # group; the free deployment is in its own group, never in the canonical one.
         self.assertEqual([(s["name"], s["route"], s["order"], s["weight"]) for s in specs], [
@@ -159,21 +167,21 @@ class Plan(unittest.TestCase):
             ("vibe-study-api", "glm-5.3", "usable", {}),
             ("opencode-go", "glm-5.3", "usable", {}),
         )
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in per_route_plan(cat, RULES)],
                          [("vibe", 1, 2), ("vibe-study", 1, 1)])
 
     def test_the_general_api_keys_serve_only_what_no_other_route_serves(self):
         # The general Mistral API keys are for the models only they carry (audio, OCR, embeddings and the
         # rest of the broad list): a model OpenCode Go or a plan serves never falls back onto them.
         go = catalogue(("opencode-go", "glm-5.3", "usable", {}), ("vibe-api", "glm-5.3", "usable", {}))
-        self.assertEqual([(s["route"], s["order"]) for s in sync.plan_groups(go, RULES)], [("opencode-go", 1)])
+        self.assertEqual([(s["route"], s["order"]) for s in per_route_plan(go, RULES)], [("opencode-go", 1)])
         only = catalogue(("vibe-api", "magistral-medium", "usable", {}), ("vibe-study-api", "magistral-medium", "usable", {}))
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(only, RULES)],
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in per_route_plan(only, RULES)],
                          [("vibe-api", 1, 2), ("vibe-study-api", 1, 1)])
 
     def test_a_model_only_opencode_go_serves_is_order_one(self):
         cat = catalogue(("opencode-go", "glm-5.3", "usable", {}))
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, RULES)],
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in per_route_plan(cat, RULES)],
                          [("opencode-go", 1, 1)])
 
     def test_a_canonical_id_puts_opencode_go_in_the_same_group(self):
@@ -181,7 +189,7 @@ class Plan(unittest.TestCase):
             ("vibe", "glm-5.3", "usable", {}),
             ("opencode-go", "glm-5.3-flash", "usable", {"canonical_id": "zhipuai/glm-5.3"}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"]) for s in specs], [("glm-5.3", "vibe")])
 
     def test_a_non_chat_model_is_deployed_only_on_an_api_only_route(self):
@@ -191,7 +199,7 @@ class Plan(unittest.TestCase):
             ("vibe-api", "mistral-ocr-latest", "not-chat", {"modality": "ocr"}),
             ("vibe-api", "mistral-moderation-latest", "not-chat", {"modality": "moderation"}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["model_info"].get("mode")) for s in specs],
                          [("mistral-embed", "vibe-api", "embedding"), ("mistral-ocr", "vibe-api", "ocr")])
 
@@ -200,7 +208,7 @@ class Plan(unittest.TestCase):
             ("vibe", "bge-m3", "usable", {"modality": "chat"}),
             ("vibe-api", "bge-m3", "not-chat", {"modality": "embedding"}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["model_info"].get("mode")) for s in specs],
                          [("bge-m3", "vibe", None), ("bge-m3:embedding", "vibe-api", "embedding")])
 
@@ -210,12 +218,12 @@ class Plan(unittest.TestCase):
             ("openrouter", "anthropic/claude-sonnet-4-5:free", "usable", {"free": True}),
             ("vibe", "claude-sonnet-4-5", "usable", {}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs], [("claude-sonnet-4-5", "anthropic", 1)])
 
     def test_claude_is_gated_behind_the_anthropic_access_group_never_canonical(self):
         cat = catalogue(("anthropic", "claude-sonnet-4-5-20250929", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs], [
             ("claude-sonnet-4-5", "anthropic", ["anthropic"]),
             ("glm-4.6", "vibe", ["canonical"]),
@@ -224,7 +232,7 @@ class Plan(unittest.TestCase):
     def test_a_gated_route_leaves_a_model_another_route_serves(self):
         rules = dict(RULES, exclusive=[])
         cat = catalogue(("anthropic", "glm-4.6", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
-        specs = sync.plan_groups(cat, rules)
+        specs = per_route_plan(cat, rules)
         self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs],
                          [("glm-4.6", "vibe", ["canonical"])])
 
@@ -236,7 +244,7 @@ class Plan(unittest.TestCase):
 
     def test_a_gated_group_is_recorded_with_its_access_group_and_not_as_public(self):
         cat = catalogue(("anthropic", "claude-sonnet-4-5", "usable", {}), ("vibe", "glm-4.6", "usable", {}))
-        groups = sync.record_groups(sync.plan_groups(cat, RULES))
+        groups = sync.record_groups(per_route_plan(cat, RULES))
         self.assertEqual(groups["claude-sonnet-4-5"]["public"], False)
         self.assertEqual(groups["claude-sonnet-4-5"]["access_groups"], ["anthropic"])
         self.assertNotIn("access_groups", groups["glm-4.6"])
@@ -246,7 +254,7 @@ class Plan(unittest.TestCase):
             ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
             ("openrouter", "z-ai/glm-4.6", "usable", {"free": False}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["route"], s["upstream_id"]) for s in specs], [("openrouter", "z-ai/glm-4.6:free")])
         # Public work only, so a free endpoint that trains on the prompt is allowed (owner, 2026-11-15):
         # most free endpoints exist only with training on. No fallback to a paid provider.
@@ -258,7 +266,7 @@ class Plan(unittest.TestCase):
             ("opencode-go", "beam-free", "usable", {"free": True, "canonical_id": "acme/beam-1.0"}),
             ("opencode-go", "glm-4.6", "usable", {}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "opencode-go", 1, ["canonical"]),
             ("opencode-go-free/beam-1.0", "opencode-go", 1, ["opencode-go-free-public", "free"]),
@@ -273,7 +281,7 @@ class Plan(unittest.TestCase):
             ("opencode-go", "glm-4.6-free", "usable", {"free": True, "canonical_id": "z/glm-4.6"}),
             ("vibe", "glm-4.6", "usable", {}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "vibe", ["canonical"]),
             ("opencode-go-free/glm-4.6", "opencode-go", ["opencode-go-free-public", "free"]),
@@ -289,7 +297,7 @@ class Plan(unittest.TestCase):
         rules = dict(RULES, tiers=[[["local", 2]], [["vibe", 1]]])
         cat = catalogue(("local", "glm-4.6", "usable", {"free": True}), ("vibe", "glm-4.6", "usable", {}))
         # local keeps its tier's weight: a free deployment would be order 1 at weight 1
-        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in sync.plan_groups(cat, rules)],
+        self.assertEqual([(s["route"], s["order"], s["weight"]) for s in per_route_plan(cat, rules)],
                          [("local", 1, 2), ("vibe", 2, 1)])
 
     def test_a_free_route_is_public_only_and_never_in_canonical(self):
@@ -298,7 +306,7 @@ class Plan(unittest.TestCase):
             ("opencode-go", "glm-4.6", "usable", {}),
             ("google", "glm-4.6", "usable", {}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("glm-4.6", "opencode-go", 1, ["canonical"]),
             ("google-free/glm-4.6", "google", 1, ["free"]),
@@ -321,8 +329,9 @@ class Plan(unittest.TestCase):
                 self.assertTrue(spec["name"].startswith(spec["route"] + "/"))
 
     def test_each_free_route_has_its_own_access_group(self):
-        self.assertEqual(sync.FREE_ONLY, {"openrouter"})
-        self.assertEqual(sync.FREE_ACCESS_GROUPS, {"openrouter": "openrouter-free-public"})
+        wave1 = {"groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase"}
+        self.assertEqual(sync.FREE_ONLY, {"openrouter"} | wave1)
+        self.assertEqual(sync.FREE_ACCESS_GROUPS, {route: f"{route}-free-public" for route in sync.FREE_ONLY})
         groups = set(sync.FREE_ACCESS_GROUPS.values())
         self.assertEqual(len(groups), len(sync.FREE_ACCESS_GROUPS))
         self.assertNotIn(sync.CANONICAL_ACCESS_GROUP, groups)
@@ -331,13 +340,13 @@ class Plan(unittest.TestCase):
     def test_the_free_groups_are_recorded_as_public(self):
         cat = catalogue(("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
                         ("vibe", "glm-4.6", "usable", {}))
-        groups = sync.record_groups(sync.plan_groups(cat, RULES))
+        groups = sync.record_groups(per_route_plan(cat, RULES))
         self.assertEqual({name: entry["public"] for name, entry in groups.items()},
                          {"glm-4.6": False, "openrouter/glm-4.6": True})
 
     def test_google_is_only_in_a_public_group(self):
         cat = catalogue(("google", "gemini-2.5-pro", "usable", {}), ("vibe", "gemini-2.5-pro", "usable", {}))
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"], s["model_info"]["access_groups"]) for s in specs], [
             ("gemini-2.5-pro", "vibe", 1, ["canonical"]),
             ("google-free/gemini-2.5-pro", "google", 1, ["free"]),
@@ -352,7 +361,7 @@ class Plan(unittest.TestCase):
 
     def test_a_model_only_google_serves_has_only_the_public_group(self):
         cat = catalogue(("google", "gemini-2.5-pro", "usable", {}))
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         self.assertEqual([(s["name"], s["route"], s["order"]) for s in specs],
                          [("google-free/gemini-2.5-pro", "google", 1), ("public/gemini-2.5-pro", "google", 1)])
         self.assertEqual(specs[1]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
@@ -365,7 +374,7 @@ class Plan(unittest.TestCase):
             ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
             ("openrouter", "z-ai/glm-5:free", "blocked", {"free": True}),
         )
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         free = [s for s in specs if sync.FREE_ACCESS_GROUP in s["model_info"]["access_groups"]]
         self.assertEqual([(s["name"], s["route"]) for s in free],
                          [("google-free/gemini-2.5-pro", "google"), ("openrouter/glm-4.6", "openrouter")])
@@ -383,19 +392,19 @@ class Plan(unittest.TestCase):
 
     def test_a_single_deployment_group_with_a_cooldown_cools_down(self):
         cat = catalogue(("vibe", "devstral", "usable", {}))
-        spec = sync.plan_groups(cat, RULES)[0]
+        spec = per_route_plan(cat, RULES)[0]
         self.assertEqual(spec["litellm_params"]["cooldown_time"], 5)
         self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
         # two deployments: the router falls back to the next order level instead
         cat = catalogue(("vibe", "devstral", "usable", {}), ("vibe-study", "devstral", "usable", {}))
-        for spec in sync.plan_groups(cat, RULES):
+        for spec in per_route_plan(cat, RULES):
             self.assertNotIn("allowed_fails_policy", spec["model_info"])
         # no cooldown in the rules: nothing to cool down
-        self.assertNotIn("allowed_fails_policy", sync.plan_groups(cat, dict(RULES, cooldowns={}))[0]["model_info"])
+        self.assertNotIn("allowed_fails_policy", per_route_plan(cat, dict(RULES, cooldowns={}))[0]["model_info"])
 
     def test_opencode_go_deployments_carry_the_session_header_and_others_do_not(self):
         cat = catalogue(("opencode-go", "glm-x", "usable", {}), ("anthropic", "claude-y", "usable", {}))
-        plan = {d["route"]: d for d in sync.plan_groups(cat, RULES)}
+        plan = {d["route"]: d for d in per_route_plan(cat, RULES)}
         self.assertEqual(plan["opencode-go"]["litellm_params"]["extra_headers"], {"x-opencode-session": "litellm-proxy"})
         self.assertNotIn("extra_headers", plan["anthropic"]["litellm_params"])
 
@@ -412,13 +421,13 @@ class Plan(unittest.TestCase):
     def test_a_route_policy_from_the_rules_is_added(self):
         rules = dict(RULES, policies={"anthropic": {"BadRequestErrorAllowedFails": 2}}, cooldowns={"anthropic": 300})
         cat = catalogue(("anthropic", "claude-sonnet-4-5", "usable", {}))
-        plan = sync.plan_groups(cat, rules)
+        plan = per_route_plan(cat, rules)
         self.assertEqual(plan[0]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0, "BadRequestErrorAllowedFails": 2})
         self.assertEqual(plan[0]["litellm_params"]["cooldown_time"], 300)
 
     def test_budgets_and_cooldowns_are_copied_from_the_rules(self):
         cat = catalogue(("vibe-api", "mistral-large", "usable", {}))
-        spec = sync.plan_groups(cat, RULES)[0]
+        spec = per_route_plan(cat, RULES)[0]
         self.assertEqual(spec["litellm_params"], {
             "model": "mistral/mistral-large",
             "litellm_credential_name": "vibe-api",
@@ -438,19 +447,19 @@ class Plan(unittest.TestCase):
 
     def test_a_transient_state_keeps_the_deployment(self):
         cat = catalogue(("vibe", "mistral-large", "error", {"was_usable": True}))
-        self.assertEqual([s["route"] for s in sync.plan_groups(cat, RULES)], ["vibe"])
+        self.assertEqual([s["route"] for s in per_route_plan(cat, RULES)], ["vibe"])
         cat = catalogue(("vibe", "mistral-large", "blocked", {"was_usable": True, "failing_probes": 2}))
-        self.assertEqual(sync.plan_groups(cat, RULES), [])
+        self.assertEqual(per_route_plan(cat, RULES), [])
 
     def test_a_model_absent_once_keeps_its_deployment(self):
         cat = catalogue(("vibe", "mistral-large", "usable", {"absent_runs": 1}))
-        self.assertEqual([s["route"] for s in sync.plan_groups(cat, RULES)], ["vibe"])
+        self.assertEqual([s["route"] for s in per_route_plan(cat, RULES)], ["vibe"])
         cat = catalogue(("vibe", "mistral-large", "usable", {"absent_runs": 2}))
-        self.assertEqual(sync.plan_groups(cat, RULES), [])
+        self.assertEqual(per_route_plan(cat, RULES), [])
 
     def test_two_ids_of_one_route_keep_the_shortest(self):
         cat = catalogue(("vibe", "mistral-large-latest", "usable", {}), ("vibe", "mistral-large-2411", "usable", {}))
-        self.assertEqual([s["upstream_id"] for s in sync.plan_groups(cat, RULES)], ["mistral-large-2411"])
+        self.assertEqual([s["upstream_id"] for s in per_route_plan(cat, RULES)], ["mistral-large-2411"])
 
     def test_every_deployment_id_is_unique(self):
         cat = catalogue(
@@ -459,7 +468,7 @@ class Plan(unittest.TestCase):
             ("vibe", "mistral-large", "usable", {}),
             ("vibe-api", "mistral-large", "usable", {}),
         )
-        ids = [s["model_info"]["id"] for s in sync.plan_groups(cat, RULES)]
+        ids = [s["model_info"]["id"] for s in per_route_plan(cat, RULES)]
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_the_plan_is_deterministic(self):
@@ -472,8 +481,8 @@ class Plan(unittest.TestCase):
             ("openrouter", "z-ai/glm-4.6:free", "usable", {"free": True}),
             ("opencode-go", "glm-4.6", "usable", {}),
         )
-        first = sync.plan_groups(cat, RULES)
-        second = sync.plan_groups(json.loads(json.dumps(cat)), RULES)
+        first = per_route_plan(cat, RULES)
+        second = per_route_plan(json.loads(json.dumps(cat)), RULES)
         self.assertEqual(json.dumps(first), json.dumps(second))
         keys = [(s["name"], s["order"], s["route"]) for s in first]
         self.assertEqual(keys, sorted(keys))
@@ -488,7 +497,7 @@ class Plan(unittest.TestCase):
         self.assertEqual(sync.near_duplicates(cat, RULES), [])
         cat = catalogue(("vibe", "glm-5.3", "usable", {}), ("opencode-go", "zai-glm-5.3", "usable", {}))
         self.assertEqual(sync.near_duplicates(cat, RULES), [["opencode-go/zai-glm-5.3", "vibe/glm-5.3"]])
-        self.assertEqual(sorted({s["name"] for s in sync.plan_groups(cat, RULES)}), ["glm-5.3", "zai-glm-5.3"])
+        self.assertEqual(sorted({s["name"] for s in per_route_plan(cat, RULES)}), ["glm-5.3", "zai-glm-5.3"])
 
 
 class Routes(unittest.TestCase):
@@ -562,7 +571,7 @@ class Routes(unittest.TestCase):
 
     def test_the_sync_plans_the_whole_catalogue_without_a_proxy(self):
         cat, _ = sync.build(ENV, Http(), {}, NOW)
-        specs = sync.plan_groups(cat, RULES)
+        specs = per_route_plan(cat, RULES)
         names = {s["name"] for s in specs}
         # Gemini is served only by Google's free tier, so it has only its public group.
         for name in ("mistral-large", "public/gemini-2.5-pro", "claude-sonnet-4-5", "openrouter/glm-4.6", "glm-5.3"):
@@ -579,6 +588,214 @@ class Routes(unittest.TestCase):
         bodies = json.dumps(specs)
         for secret in ("k-vibe", "k-general", "k-gemini", "k-anthropic"):
             self.assertNotIn(secret, bodies)
+
+
+class FreeRoutesWave1(unittest.TestCase):
+    """The first-wave free-only routes (agent-kit#916): public work only, never canonical, never paid."""
+
+    ROUTES = ("groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase")
+    RULES = dict(RULES, budgets={"inferbase": {"max_budget": 0.5, "budget_duration": "1d"}}, cooldowns={"naga": 3600})
+
+    def plan(self, *models):
+        return per_route_plan(catalogue(*models), self.RULES)
+        return sync.plan_groups(catalogue(*models), self.RULES)
+
+    def test_a_paid_id_is_never_deployed_on_a_free_route(self):
+        models = [(route, "paid-model", "usable", {"free": False}) for route in self.ROUTES]
+        self.assertEqual(self.plan(*models), [])
+        # The free id beside it is deployed, and only that one.
+        models += [(route, "free-model", "usable", {"free": True}) for route in self.ROUTES]
+        specs = self.plan(*models)
+        self.assertEqual({spec["upstream_id"] for spec in specs}, {"free-model"})
+        self.assertEqual({spec["route"] for spec in specs}, set(self.ROUTES))
+
+    def test_no_deployment_lands_in_canonical_or_a_paid_group(self):
+        specs = self.plan(*[(route, "free-model", "usable", {"free": True}) for route in self.ROUTES],
+                          ("vibe", "free-model", "usable", {}), ("vibe-api", "free-model", "usable", {}))
+        for spec in specs:
+            if spec["route"] in self.ROUTES:
+                self.assertEqual(spec["model_info"]["access_groups"], [f"{spec['route']}-free-public", "free"])
+                self.assertEqual(spec["name"], f"{spec['route']}/free-model")
+                self.assertNotIn("canonical", spec["model_info"]["access_groups"])
+            else:
+                self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
+        # Each free group holds one deployment: nothing paid to fall over to, and a 429 cools it down.
+        names = [spec["name"] for spec in specs]
+        for spec in specs:
+            if spec["route"] in self.ROUTES:
+                self.assertEqual(names.count(spec["name"]), 1)
+                self.assertIn("cooldown_time", spec["litellm_params"])
+                self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
+
+    def test_free_deployments_cost_zero_per_token_except_inferbase_which_has_a_budget(self):
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        for route, spec in specs.items():
+            params = spec["litellm_params"]
+            if route == "inferbase":
+                self.assertNotIn("input_cost_per_token", params)
+                self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
+            else:
+                self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0))
+                self.assertNotIn("max_budget", params)
+        self.assertEqual(specs["naga"]["litellm_params"]["cooldown_time"], 3600)
+        self.assertEqual(specs["groq"]["litellm_params"]["cooldown_time"], sync.PUBLIC_COOLDOWN)
+
+    def test_prefixes_and_credentials(self):
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        prefixes = {"groq": "groq", "cloudflare": "cloudflare", "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai",
+                    "ovh": "ovhcloud", "requesty": "openai", "axforge": "openai", "naga": "openai", "routeway": "openai",
+                    "inferbase": "openai"}
+        for route, prefix in prefixes.items():
+            self.assertEqual(specs[route]["litellm_params"]["model"], f"{prefix}/m")
+            self.assertEqual(specs[route]["litellm_params"]["litellm_credential_name"], route)
+
+    def test_every_route_has_limits_cooldowns_and_the_real_rules_agree(self):
+        rules = sync.load_rules()
+        for route in self.ROUTES:
+            self.assertIn(route, sync.DEFAULT_ROUTE_LIMITS)
+            self.assertIn(route, rules["cooldowns"])
+        # Free routes are outside the tiers, so no rule makes one a fallback of a paid group.
+        tiered = {route for tier in rules["tiers"] for route, _ in tier}
+        self.assertFalse(tiered & set(self.ROUTES))
+        self.assertEqual(rules["budgets"]["inferbase"], {"max_budget": 0.5, "budget_duration": "1d"})
+        for route in ("requesty", "naga", "routeway"):
+            self.assertEqual(rules["cooldowns"][route], 3600)
+
+    def test_the_real_static_free_lists_are_what_they_are(self):
+        free_ids = sync.load_rules()["free_ids"]
+        self.assertEqual(free_ids["groq"], ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"])
+        self.assertEqual(free_ids["zai"], ["glm-4.7-flash", "glm-4.5-flash", "glm-4.6v-flash"])
+        # Empty on purpose: the spec names no free Cloudflare or Inferbase id, and AxForge bills after 3M
+        # tokens a month. Each deploys nothing until the owner fills its list.
+        for route in ("cloudflare", "inferbase", "axforge"):
+            self.assertEqual(free_ids[route], [], route)
+
+    def test_probe_limits_stay_under_half_of_each_daily_cap_at_an_hourly_sync(self):
+        project = (ROOT / "deploy" / "litellm.project.yml").read_text()
+        self.assertIn('schedule: "17 * * * *"', project)  # hourly: 24 runs a day
+        daily_caps = {"groq": 1000, "requesty": 200, "naga": 100, "routeway": 200, "inferbase": 100}
+        for route, cap in daily_caps.items():
+            self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
+        # OVH allows 2 a minute per IP per model, and its probes are serial: never more than 2 a run.
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["ovh"], 2)
+        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["axforge"], 0)
+
+    def test_inferbase_deploys_at_its_real_price_under_its_daily_budget(self):
+        specs = self.plan(("inferbase", "m", "usable", {"free": True, "price": {"input": 5e-7, "output": 2e-6}}))
+        params = specs[0]["litellm_params"]
+        self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (5e-7, 2e-6))
+        self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
+
+    def test_every_openai_prefixed_free_route_has_an_api_base(self):
+        config = (ROOT / "config" / "config.yaml").read_text()
+        openai_routes = [e["route"] for e in sync.ROUTES if e["route"] in sync.FREE_ONLY and sync.PREFIXES[e["kind"]] == "openai"]
+        self.assertEqual(set(openai_routes), {"kilo", "requesty", "axforge", "naga", "routeway", "inferbase"})
+        for route in openai_routes:
+            block = config.split(f"- credential_name: {route}\n", 1)[1].split("credential_info", 1)[0]
+            self.assertIn("api_base: os.environ/", block, route)
+        specs = self.plan(*[(route, "m", "usable", {"free": True, "price": {"input": 0, "output": 0}}) for route in openai_routes])
+        for spec in specs:
+            self.assertEqual(spec["litellm_params"]["litellm_credential_name"], spec["route"])
+            self.assertNotIn("api_base", spec["litellm_params"])  # the credential's base is the only one
+
+    def test_the_axforge_skip_and_static_list_mechanisms_with_a_synthetic_list(self):
+        env = dict(ENV, AXFORGE_API_BASE="https://ax/v1", GROQ_API_BASE="https://groq/v1", GROQ_API_KEY="k-groq")
+        lists = dict(LISTS, **{"https://groq/v1/models": {"data": [{"id": "openai/gpt-oss-120b"}, {"id": "llama-paid"}]}})
+        http = Http(lists)
+        rules = dict(RULES, free_ids={"groq": ["openai/gpt-oss-120b"], "axforge": ["qwen3.8-27b"]})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules=rules)
+        self.assertEqual(stats["route_errors"], [])
+        self.assertEqual(cat["providers"]["axforge"]["models"], [])
+        self.assertFalse([c for c in http.calls if "ax" in c[1].split("/")[2]])
+        # With a key, the static list is its free signal.
+        env["AXFORGE_API_KEY"] = "k-ax"
+        lists["https://ax/v1/models"] = {"data": [{"id": "qwen3.8-27b"}, {"id": "other"}]}
+        cat, stats = sync.build(env, Http(lists), {"providers": {}}, NOW, rules=rules)
+        self.assertEqual({m["id"]: m["metadata"]["free"] for m in cat["providers"]["axforge"]["models"]},
+                         {"axforge/qwen3.8-27b": True, "axforge/other": False})
+
+    def test_cloudflare_base_is_composed_from_the_account_id(self):
+        route = entry("cloudflare")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_ACCOUNT_ID": "abc"}),
+                         "https://api.cloudflare.com/client/v4/accounts/abc/ai/v1")
+        self.assertEqual(sync.route_base(route, {}), "")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_ACCOUNT_ID": "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"}), "")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_API_BASE": "https://cf/v1/"}), "https://cf/v1")
+
+class FreeExclusions(unittest.TestCase):
+    """The free tier never serves a model the 2026-12-01 re-route bills: the real routing.json decides."""
+
+    # Dated, preview, experimental and versioned ids of 2.5 Pro and 2.5 Flash: all excluded.
+    EXCLUDED = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05",
+                "gemini-2.5-flash-preview-09-2025", "gemini-2.5-pro-exp-03-25", "gemini-2.5-flash-001"]
+    # Every 2.5 Flash Lite variant, and other families, stays on the free tier.
+    ALLOWED = ["gemini-2.5-flash-lite", "gemini-2.5-flash-lite-preview-09-2025", "gemini-2.5-flash-lite-001",
+               "gemini-2.5-flash-lite-preview-06-17", "gemini-2.0-flash-001"]
+
+    def setUp(self):
+        self.rules = sync.load_rules(str(ROOT / "catalog" / "routing.json"))
+
+    def test_every_dated_preview_and_exp_2_5_pro_or_flash_is_in_no_free_group(self):
+        for name in self.EXCLUDED:
+            with self.subTest(name=name):
+                self.assertEqual(sync.plan_groups(catalogue(("google", name, "usable", {})), self.rules), [])
+
+    def test_a_paid_route_still_serves_an_excluded_model_with_no_free_group(self):
+        for name in self.EXCLUDED:
+            with self.subTest(name=name):
+                specs = sync.plan_groups(catalogue(("google", name, "usable", {}), ("vibe", name, "usable", {})),
+                                         self.rules)
+                self.assertEqual({s["route"] for s in specs}, {"vibe"})
+                self.assertFalse([s for s in specs if s["name"].startswith(("public/", "google-free/"))])
+                self.assertEqual(len(specs), 1)
+
+    def test_every_flash_lite_variant_stays_on_the_free_tier(self):
+        for name in self.ALLOWED:
+            with self.subTest(name=name):
+                canon = sync.canonical_name("google", name, self.rules)
+                specs = sync.plan_groups(catalogue(("google", name, "usable", {})), self.rules)
+                self.assertEqual(sorted((s["name"], s["route"]) for s in specs),
+                                 [(f"google-free/{canon}", "google"), (f"public/{canon}", "google")])
+                free = [s for s in specs if s["name"].startswith("google-free/")]
+                self.assertEqual(free[0]["model_info"]["access_groups"], ["free"])
+
+    def test_a_public_group_keeps_its_other_public_routes_when_only_google_is_excluded(self):
+        # Hypothetical: a second public route serves the excluded model. Only the google copy goes;
+        # the other public route keeps its public group.
+        rules = dict(self.rules, public_routes=["google", "vibe"])
+        specs = sync.plan_groups(catalogue(("google", "gemini-2.5-pro", "usable", {}),
+                                           ("vibe", "gemini-2.5-pro", "usable", {})), rules)
+        self.assertFalse([s for s in specs if s["route"] == "google"])
+        self.assertIn(("public/gemini-2.5-pro", "vibe"), [(s["name"], s["route"]) for s in specs])
+
+    def test_a_rule_without_a_match_is_refused_rather_than_excluding_everything(self):
+        for rule in ({"routes": ["google"]}, {"match": "", "routes": ["google"]}):
+            with self.subTest(rule=rule):
+                rules = dict(self.rules, free_exclusions=[rule])
+                with self.assertRaisesRegex(RuntimeError, "match"):
+                    sync.plan_groups(catalogue(("google", "gemini-4-hydrogen", "usable", {})), rules)
+
+    def test_a_rule_with_an_invalid_regex_is_refused(self):
+        rules = dict(self.rules, free_exclusions=[{"match": "^gemini-2.5-(pro", "routes": ["google"]}])
+        with self.assertRaisesRegex(RuntimeError, "not a valid regex"):
+            sync.plan_groups(catalogue(), rules)
+
+    def test_a_rule_without_routes_is_refused(self):
+        rules = dict(self.rules, free_exclusions=[{"match": "^gemini-2\\.5-pro$"}])
+        with self.assertRaisesRegex(RuntimeError, "routes"):
+            sync.plan_groups(catalogue(), rules)
+
+    def test_loading_a_malformed_routing_file_fails_at_load(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "routing.json")
+            with open(path, "w") as handle:
+                json.dump({"free_exclusions": [{"routes": ["google"]}]}, handle)
+            with self.assertRaisesRegex(RuntimeError, "match"):
+                sync.load_rules(path)
+
+    def test_the_real_routing_file_loads_and_is_valid(self):
+        self.assertTrue(self.rules["free_exclusions"])
+        sync.check_free_exclusions(self.rules)
 
 
 if __name__ == "__main__":

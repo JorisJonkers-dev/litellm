@@ -54,6 +54,42 @@ credential_list:
   - credential_name: local
     credential_values: { api_key: os.environ/LOCAL_LLM_API_KEY, api_base: os.environ/LOCAL_LLM_API_BASE }
     credential_info: {}
+  # Free-only routes (agent-kit#916): no wildcard, only generated free deployments reach them.
+  - credential_name: groq
+    credential_values: { api_key: os.environ/GROQ_API_KEY, api_base: os.environ/GROQ_API_BASE }
+    credential_info: {}
+  # Cloudflare's base holds the account id, which LiteLLM's provider takes from CLOUDFLARE_ACCOUNT_ID.
+  - credential_name: cloudflare
+    credential_values: { api_key: os.environ/CLOUDFLARE_API_KEY }
+    credential_info: {}
+  - credential_name: nvidia
+    credential_values: { api_key: os.environ/NVIDIA_NIM_API_KEY, api_base: os.environ/NVIDIA_NIM_API_BASE }
+    credential_info: {}
+  - credential_name: zai
+    credential_values: { api_key: os.environ/ZAI_API_KEY, api_base: os.environ/ZAI_API_BASE }
+    credential_info: {}
+  # Kilo and OVHcloud need no account; LiteLLM wants some key, so they carry a placeholder, never sent by the sync.
+  - credential_name: kilo
+    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/KILO_API_BASE }
+    credential_info: {}
+  - credential_name: ovh
+    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/OVHCLOUD_API_BASE }
+    credential_info: {}
+  - credential_name: requesty
+    credential_values: { api_key: os.environ/REQUESTY_API_KEY, api_base: os.environ/REQUESTY_API_BASE }
+    credential_info: {}
+  - credential_name: axforge
+    credential_values: { api_key: os.environ/AXFORGE_API_KEY, api_base: os.environ/AXFORGE_API_BASE }
+    credential_info: {}
+  - credential_name: naga
+    credential_values: { api_key: os.environ/NAGA_API_KEY, api_base: os.environ/NAGA_API_BASE }
+    credential_info: {}
+  - credential_name: routeway
+    credential_values: { api_key: os.environ/ROUTEWAY_API_KEY, api_base: os.environ/ROUTEWAY_API_BASE }
+    credential_info: {}
+  - credential_name: inferbase
+    credential_values: { api_key: os.environ/INFERBASE_API_KEY, api_base: os.environ/INFERBASE_API_BASE }
+    credential_info: {}
   # Google and Anthropic are addressed by LiteLLM itself, so their credential carries the key only.
   - credential_name: google
     credential_values: { api_key: os.environ/GEMINI_API_KEY }
@@ -133,7 +169,29 @@ router_settings:
   # deployment in a group of two or more, and a group of exactly one carries an explicit
   # RateLimitErrorAllowedFails policy so it cools too. No rate limits are set.
   optional_pre_call_checks: [router_budget_limiting]
+  # num_retries stays above 0: inside a free/<canonical> group a 429 cools the copy that answered it
+  # (its own cooldown_time), and the retry is what lands on the next free copy.
   num_retries: 2
+  # Tier names (tier-free, tier-vibe, tier-go-cheap, tier-strong-open, tier-review): each is an alias of
+  # its first step, and its other steps are its ordered fallbacks. The tiers are defined in
+  # catalog/routing.json (tier_groups) and this block is rendered from them. There is no
+  # default_fallbacks, and no fallbacks entry for a free/* group: nothing reachable from a free
+  # group ends at a paid deployment. enforce_fallback_model_access (on by default) skips a step the
+  # calling key does not hold, which is how a key's models list stops a chain.
+  # BEGIN tiers (rendered from catalog/routing.json by `python3 catalog/sync.py --render-tiers`; do not edit by hand)
+  model_group_alias:
+    "tier-free": "free/hy4-flash-free"
+    "tier-vibe": "vibe-tier/deepseek-v4-1-flash-1017"
+    "tier-go-cheap": "opencode-go-tier/deepseek-v4.1-flash"
+    "tier-strong-open": "opencode-go-tier/qwen4-max"
+    "tier-review": "free/nemotron-3-ultra-550b-a55b"
+  fallbacks:
+    - {"tier-free": ["free/longcat-2.5-free", "free/beam-free", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
+    - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-strong-open": ["vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-review": ["free/gemma-4-31b", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+  # END tiers
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
