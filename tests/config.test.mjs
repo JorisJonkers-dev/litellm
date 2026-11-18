@@ -83,6 +83,7 @@ test('no free-route deployment is in canonical, each is in its own route group a
       assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
       continue
     }
+    if (deployment.model_name.startsWith('free/')) continue // the shared free group, checked below
     if (deployment.model_name.startsWith('opencode-go-free/')) continue // its own test below
     if (!(route in groups)) {
       assert.ok(!found.includes('free') && !found.some((group) => group.endsWith('-free-public') && !['opencode-go-free-public', 'google-free-public'].includes(group)),
@@ -102,11 +103,18 @@ test('no free-route deployment is in canonical, each is in its own route group a
     byName[deployment.model_name].add(JSON.stringify(deployment.model_info.access_groups))
   }
   for (const [name, found] of Object.entries(byName)) assert.equal(found.size, 1, name)
-  // Every deployment in the free group is alone in its name: nothing paid to fall over to.
+  // A per-route free group is alone in its name. The shared free/<canonical> group holds several free
+  // copies, and every one is zero-cost, so there is nothing paid to fall over to.
   const count = {}
   for (const deployment of DEPLOYMENTS) count[deployment.model_name] = (count[deployment.model_name] ?? 0) + 1
   for (const deployment of DEPLOYMENTS) {
-    if (deployment.model_info.access_groups.includes('free')) assert.equal(count[deployment.model_name], 1, deployment.model_name)
+    if (!deployment.model_info.access_groups.includes('free')) continue
+    if (deployment.model_name.startsWith('free/')) {
+      assert.deepEqual(deployment.model_info.access_groups, ['free'], deployment.model_info.id)
+      assert.equal(deployment.litellm_params.input_cost_per_token, 0, deployment.model_info.id)
+      assert.equal(deployment.litellm_params.output_cost_per_token, 0, deployment.model_info.id)
+      assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
+    } else assert.equal(count[deployment.model_name], 1, deployment.model_name)
   }
 })
 
@@ -125,6 +133,7 @@ test('every anthropic deployment is gated behind the anthropic access group, nev
 
 test('every opencode-go free id is public only, in its own opencode-go-free group', () => {
   for (const deployment of DEPLOYMENTS) {
+    if (deployment.model_name.startsWith('free/')) continue // the shared free group has its own access group
     const free = deployment.model_info?.route === 'opencode-go' && deployment.litellm_params.model.endsWith('-free')
     assert.equal(deployment.model_info.access_groups.includes('opencode-go-free-public'), free, deployment.model_info.id)
     if (free) {
@@ -467,4 +476,15 @@ test('the UI redirects to the SSO sign-in and the API docs are off', () => {
   assert.match(env, /^NO_REDOC=true$/m)
   assert.match(env, /^NO_OPENAPI=true$/m)
   assert.match(CONFIG, /disable_env_credential_login: true/)
+})
+
+test('the tier names are router aliases with fallbacks, and there is no default_fallbacks', () => {
+  const live = CONFIG.split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n')
+  assert.doesNotMatch(live, /default_fallbacks/)
+  for (const tier of ['tier-free', 'tier-vibe', 'tier-go-cheap', 'tier-strong-open', 'tier-review']) {
+    assert.match(live, new RegExp(`^    "${tier}": "`, 'm'), tier)
+    assert.match(live, new RegExp(`^    - \\{"${tier}": \\[`, 'm'), tier)
+  }
+  // No fallbacks entry starts from a free/* group: nothing reachable from one ends at a paid deployment.
+  assert.doesNotMatch(live, /^\s+- \{"free\//m)
 })
