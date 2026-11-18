@@ -41,6 +41,11 @@ serves non-Mistral models too, and where it serves one it wins. Only exact canon
 equality merges two upstream models; a near duplicate is reported in catalogue.possible_duplicates
 and never merged.
 
+Free groups: beside each free route's own "<route>/<canonical>" group, every zero-cost copy of a
+canonical model (matched by canonical_name(), whatever the provider calls it) is also in one shared
+"free/<canonical>" group, ordered by allowance, each copy with its own cooldown, so a 429 falls
+through to the next free copy. assert_free_groups() fails the run when a copy in it is not zero-cost.
+
 Probe cost bound: each probe is one minimal request (about 8 input tokens + 16 output tokens), and
 a provider that refuses a small max_tokens is retried once with its own minimum, so a run costs at
 most (models probed) x (about 8 input + 16 output tokens), doubled in the worst case. The models
@@ -150,6 +155,13 @@ FREE_ACCESS_GROUPS = {entry["route"]: f"{entry['route']}-free-public" for entry 
 # free share is a dollar allowance, so its deployments keep their price and the route's budget caps it.
 FREE_PRICED = frozenset({"inferbase"})
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
+# The routes whose deployments may join a shared "free/<canonical>" group (agent-kit#916, litellm#60):
+# the free-only routes that record a zero cost, plus the free ids of a paid route (FREE_ID_ROUTES).
+# A route that bills against a dollar allowance (FREE_PRICED) is never in it. The sync asserts the
+# zero cost of every deployment in the group (assert_free_groups), so a route added here by mistake
+# fails the run instead of putting a paid copy behind a free key.
+FREE_GROUP_ROUTES = None  # set below, once FREE_PRICED and FREE_ID_ROUTES exist
+FREE_GROUP = "free"
 # A gated route is never in `canonical` either: a key reaches its deployments only by holding the
 # route's own access group, and no workstation key holds it (agent-kit withholds the same routes).
 # Claude is never used through the proxy by a key minted for general work; a dedicated key holding
@@ -162,6 +174,7 @@ GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # own free access group, alone, with no budget. The "<route>-free" prefix keeps the name clear of
 # the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
 FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
+FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES)
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -592,7 +605,7 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
-    if route in FREE_ONLY and route not in FREE_PRICED:
+    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")):
         params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
     elif route in FREE_PRICED and chosen.get("price"):
         params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
@@ -717,6 +730,7 @@ def plan_groups(catalogue, rules):
             group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
             specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
                                     cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+        specs.extend(free_group(name, routes, primary, (free | free_ids) & FREE_GROUP_ROUTES, by_route, rules))
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
         levels = sorted({rank.get(route, unranked)[0] for route in normal})
         order_of = {level: index + 1 for index, level in enumerate(levels)}
@@ -758,7 +772,57 @@ def plan_groups(catalogue, rules):
         extra = (rules.get("policies") or {}).get(spec["route"])
         if extra:
             spec["model_info"]["allowed_fails_policy"] = {**spec["model_info"].get("allowed_fails_policy", {}), **extra}
+    assert_free_groups(specs)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
+
+
+def free_group(name, routes, primary, serving, by_route, rules):
+    """The shared "free/<canonical>" group: every zero-cost copy of one canonical model.
+
+    The per-route groups ("<route>/<canonical>") stay, for a key that holds one route's access
+    group; this group is the one a 429 falls through. Its deployments are ordered by allowance
+    (rules["free_order"]: the route with the biggest allowance first; a route the rules do not
+    name comes last) and cool down on their own (litellm_params.cooldown_time), so a rate-limited
+    copy is skipped for its cooldown and the next free copy serves. The copy has its own
+    model_info.id, because LiteLLM keeps cooldown state per deployment id. Which models are "the
+    same" is decided by canonical_name() alone: the ids differ per provider, and an id the
+    stripping does not unify is named in rules["aliases"] (sync reports near duplicates).
+    """
+    order = (rules or {}).get("free_order") or {}
+    cooldowns = (rules or {}).get("cooldowns") or {}
+    last = max(order.values(), default=0) + 1
+    specs = []
+    for route in sorted(serving):
+        spec = deployment(group_name(name, routes[route]["modality"], primary, free_route=FREE_GROUP), name, route,
+                          routes[route], order.get(route, last), 1, by_route[route], free_only=True,
+                          cooldown=cooldowns.get(route, PUBLIC_COOLDOWN))
+        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{routes[route]['upstream_id']}"
+        specs.append(spec)
+    return specs
+
+
+def assert_free_groups(specs):
+    """Fail the sync when a deployment in a free/* group is not zero-cost (or is not only in "free").
+
+    The group is the cost boundary: a key is granted a model name, not a deployment, so one paid copy
+    in a free/* group bills every key that holds the name. Zero cost means an explicit zero input and
+    output price on the deployment, not an unknown one, and no budget (a budget is a price).
+    """
+    for spec in specs:
+        if not spec["name"].startswith(FREE_GROUP + "/"):
+            continue
+        params, info = spec["litellm_params"], spec["model_info"]
+        problems = []
+        if params.get("input_cost_per_token") != 0 or params.get("output_cost_per_token") != 0:
+            problems.append("its recorded cost is not an explicit zero")
+        if "max_budget" in params:
+            problems.append("it carries a budget, so it has a price")
+        if info.get("access_groups") != [FREE_ACCESS_GROUP]:
+            problems.append("its access groups are not exactly the free group")
+        if spec["route"] not in FREE_GROUP_ROUTES:
+            problems.append("its route is not a free route")
+        if problems:
+            raise RuntimeError(f"{info.get('id')} may not join {spec['name']}: " + "; ".join(problems))
 
 
 def render_models(deployments):
@@ -1140,7 +1204,12 @@ def main(argv=None, env=None, http=None, now=None):
         print(f"catalog: {line}", file=sys.stderr)
     # The deployments the probes justify, as plain LiteLLM config in git, and the groups the
     # overview renders: both come from the same plan, so the page and the file cannot disagree.
-    deployments = plan_groups(catalogue, rules)
+    try:
+        deployments = plan_groups(catalogue, rules)
+    except RuntimeError as error:
+        # A free group with a paid copy fails the run.
+        print(f"catalog: {error}", file=sys.stderr)
+        return 1
     catalogue["groups"] = record_groups(deployments)
     # A run that listed nothing at all is a failed run, so the scheduled Process shows red.
     failed = stats["listed"] == 0
