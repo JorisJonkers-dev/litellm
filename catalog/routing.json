@@ -17,6 +17,7 @@
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
+  "free_exclusions": [{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}],
   "budgets": {
     "vibe": {"max_budget": 255, "budget_duration": "30d"},
     "vibe-study": {"max_budget": 127, "budget_duration": "30d"},
