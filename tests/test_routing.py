@@ -330,7 +330,9 @@ class Plan(unittest.TestCase):
 
     def test_each_free_route_has_its_own_access_group(self):
         wave1 = {"groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase"}
-        self.assertEqual(sync.FREE_ONLY, {"openrouter"} | wave1)
+        wave2 = {"bazaarlink", "electronhub", "unorouter", "cohere", "airforce", "plugsky", "poe", "vercel", "watsonx", "novita",
+                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara"}
+        self.assertEqual(sync.FREE_ONLY, {"openrouter"} | wave1 | wave2)
         self.assertEqual(sync.FREE_ACCESS_GROUPS, {route: f"{route}-free-public" for route in sync.FREE_ONLY})
         groups = set(sync.FREE_ACCESS_GROUPS.values())
         self.assertEqual(len(groups), len(sync.FREE_ACCESS_GROUPS))
@@ -690,7 +692,8 @@ class FreeRoutesWave1(unittest.TestCase):
     def test_every_openai_prefixed_free_route_has_an_api_base(self):
         config = (ROOT / "config" / "config.yaml").read_text()
         openai_routes = [e["route"] for e in sync.ROUTES if e["route"] in sync.FREE_ONLY and sync.PREFIXES[e["kind"]] == "openai"]
-        self.assertEqual(set(openai_routes), {"kilo", "requesty", "axforge", "naga", "routeway", "inferbase"})
+        self.assertEqual(set(openai_routes), {"kilo", "requesty", "axforge", "naga", "routeway", "inferbase", "bazaarlink", "electronhub",
+                                              "unorouter", "airforce", "plugsky", "typhoon", "sealion", "gonka", "longcat"})
         for route in openai_routes:
             block = config.split(f"- credential_name: {route}\n", 1)[1].split("credential_info", 1)[0]
             self.assertIn("api_base: os.environ/", block, route)
@@ -722,6 +725,98 @@ class FreeRoutesWave1(unittest.TestCase):
         self.assertEqual(sync.route_base(route, {}), "")
         self.assertEqual(sync.route_base(route, {"CLOUDFLARE_ACCOUNT_ID": "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"}), "")
         self.assertEqual(sync.route_base(route, {"CLOUDFLARE_API_BASE": "https://cf/v1/"}), "https://cf/v1")
+
+
+class FreeRoutesWave2(unittest.TestCase):
+    """The second-wave free-only routes (litellm#64): public work only, never canonical, never paid."""
+
+    ROUTES = ("bazaarlink", "electronhub", "unorouter", "cohere", "airforce", "plugsky", "poe", "vercel", "watsonx", "novita",
+              "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
+    PREFIXES = {"bazaarlink": "openai", "electronhub": "openai", "unorouter": "openai", "cohere": "cohere_chat", "airforce": "openai",
+                "plugsky": "openai", "poe": "poe", "vercel": "vercel_ai_gateway", "watsonx": "watsonx", "novita": "novita",
+                "together": "together_ai", "typhoon": "openai", "sealion": "openai", "gonka": "openai", "longcat": "openai",
+                "neosantara": "neosantara"}
+
+    def plan(self, *models):
+        return sync.plan_groups(catalogue(*models), dict(RULES, cooldowns={"airforce": 3600}))
+
+    def test_a_paid_id_is_never_deployed_and_a_free_one_is_in_its_own_group_plus_free(self):
+        paid = [(route, "paid-model", "usable", {"free": False}) for route in self.ROUTES]
+        self.assertEqual(self.plan(*paid), [])
+        specs = self.plan(*paid, *[(route, "m", "usable", {"free": True}) for route in self.ROUTES], ("vibe", "m", "usable", {}))
+        shared = [s for s in specs if s["name"].startswith("free/")]
+        self.assertTrue(shared)
+        for spec in shared:  # the shared free/<canonical> group: free copies only, the access group free alone
+            self.assertEqual(spec["model_info"]["access_groups"], ["free"])
+            self.assertEqual(spec["litellm_params"]["input_cost_per_token"], 0)
+        for spec in [s for s in specs if not s["name"].startswith("free/")]:
+            if spec["route"] in self.ROUTES:
+                self.assertEqual(spec["model_info"]["access_groups"], [f"{spec['route']}-free-public", "free"])
+                self.assertEqual(spec["name"], f"{spec['route']}/m")
+                params = spec["litellm_params"]
+                self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0))
+                self.assertNotIn("max_budget", params)
+                self.assertEqual(params["model"], f"{self.PREFIXES[spec['route']]}/m")
+                self.assertEqual(params["litellm_credential_name"], spec["route"])
+            else:
+                self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
+        self.assertEqual({s["route"] for s in specs if not s["name"].startswith("free/")} - {"vibe"}, set(self.ROUTES))
+        self.assertEqual(next(s for s in specs if s["name"] == "airforce/m")["litellm_params"]["cooldown_time"], 3600)
+
+    def test_every_route_has_a_limit_a_cooldown_a_candidate_list_where_static_and_stays_out_of_the_tiers(self):
+        rules = sync.load_rules()
+        for route in self.ROUTES:
+            self.assertIn(route, sync.DEFAULT_ROUTE_LIMITS)
+            self.assertIn(route, rules["cooldowns"])
+            kind = entry(route)["kind"]
+            self.assertEqual(kind in sync.STATIC_KINDS, route in rules["free_ids"], route)
+        self.assertFalse({route for tier in rules["tiers"] for route, _ in tier} & set(self.ROUTES))
+        for route in ("bazaarlink", "cohere", "airforce", "plugsky"):
+            self.assertEqual(rules["cooldowns"][route], 3600, route)
+        self.assertEqual({r for r in self.ROUTES if entry(r).get("anonymous")}, {"unorouter"})
+
+    def test_the_real_static_lists_name_only_what_the_spec_names(self):
+        free_ids = sync.load_rules()["free_ids"]
+        self.assertEqual(free_ids["together"], ["Prism-ML/Ternary-Bonsai-27B"])
+        self.assertEqual(free_ids["typhoon"], ["typhoon-v2.5-30b-a3b-instruct"])
+        self.assertEqual(free_ids["neosantara"], ["gemini-3.1-flash-lite"])
+        # No free id is named for these: the scan lists what each provider offers and the owner approves.
+        for route in ("bazaarlink", "cohere", "plugsky", "poe", "watsonx", "sealion", "gonka", "longcat"):
+            self.assertEqual(free_ids[route], [], route)
+
+    def test_probe_limits_stay_under_half_of_each_daily_cap_at_an_hourly_sync(self):
+        daily = {"bazaarlink": 60, "airforce": 1000, "plugsky": 500}
+        for route, cap in daily.items():
+            self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
+        # No cap is published for Electron Hub and Poe's points are unknown: keep the worst case to 48 and 24 a day.
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["electronhub"] * 24, 48)
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["poe"] * 24, 24)
+        # Cohere's cap is 1,000 calls a month: one probe per run is 720 a month, so it probes nothing.
+        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["cohere"], 0)
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["airforce"], 1)  # 1 request a minute
+
+    def test_no_base_is_invented_where_the_spec_names_none(self):
+        envs = [(ROOT / "deploy" / "env" / name / "base.env").read_text() for name in ("litellm", "litellm-catalog")]
+        for text in envs:
+            for base in ("COHERE_API_BASE", "WATSONX_API_BASE"):
+                self.assertNotIn(base + "=", text)
+            self.assertIn("BAZAARLINK_API_BASE=REPLACE_WITH_BAZAARLINK_API_BASE\n", text)
+        route = entry("bazaarlink")
+        self.assertEqual(sync.route_base(route, {}), "")
+        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "")
+        with self.assertRaises(RuntimeError):
+            sync.list_models(route, {"BAZAARLINK_API_KEY": "k"}, Http({}), {})
+
+    def test_the_provider_prefixes_exist_in_the_pinned_litellm(self):
+        # LiteLLM 1.109.1 (the image's pin) knows each native prefix; checked where litellm is importable.
+        try:
+            import litellm
+        except ImportError:
+            self.skipTest("litellm is only importable in the image")
+        for route, prefix in self.PREFIXES.items():
+            self.assertIn(prefix, {str(getattr(p, "value", p)) for p in litellm.provider_list}, route)
+            self.assertEqual(sync.PREFIXES[entry(route)["kind"]], prefix)
+
 
 class FreeExclusions(unittest.TestCase):
     """The free tier never serves a model the 2026-12-01 re-route bills: the real routing.json decides."""

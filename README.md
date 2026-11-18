@@ -84,7 +84,7 @@ Canonical names come from one explicit mapping: normalisation (lower-case, vendo
 
 ## Deployment
 
-`deploy/litellm.project.yml` is the deploy-kit Project Intent: Project `litellm` in `litellm-system` at `litellm.jorisjonkers.dev`, with its environment in `deploy/env/litellm/base.env` and its secrets at `secret/data/platform/litellm` (`master_key`, `salt_key`, `vibe_api_key`, `vibe_study_api_key`, `vibe_api_general_key`, `vibe_study_api_general_key`, `opencode_go_api_key`, `openrouter_api_key`, `google_api_key`, `anthropic_api_key`, `catalog_publish_token`, `catalog_pr_token`). The catalogue Process gets the provider keys and both tokens; the proxy gets the provider keys only. CI validates both with the deploy-kit release `tools/deploy-kit` pins:
+`deploy/litellm.project.yml` is the deploy-kit Project Intent: Project `litellm` in `litellm-system` at `litellm.jorisjonkers.dev`, with its environment in `deploy/env/litellm/base.env` and its secrets at `secret/data/platform/litellm` (`master_key`, `salt_key`, `vibe_api_key`, `vibe_study_api_key`, `vibe_api_general_key`, `vibe_study_api_general_key`, `opencode_go_api_key`, `openrouter_api_key`, `google_api_key`, `anthropic_api_key`, `catalog_publish_token`, `catalog_pr_token`, and the optional free-provider keys of both waves, e.g. `groq_api_key` and `neosantara_api_key`; see `deploy/litellm.project.yml`). The catalogue Process gets the provider keys and both tokens; the proxy gets the provider keys only. CI validates both with the deploy-kit release `tools/deploy-kit` pins:
 
 ```bash
 cd tools/deploy-kit && NODE_AUTH_TOKEN="$(gh auth token)" npm ci --ignore-scripts

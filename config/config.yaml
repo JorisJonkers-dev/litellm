@@ -90,6 +90,56 @@ credential_list:
   - credential_name: inferbase
     credential_values: { api_key: os.environ/INFERBASE_API_KEY, api_base: os.environ/INFERBASE_API_BASE }
     credential_info: {}
+  # Second-wave free-only routes (agent-kit#916, litellm#64): no wildcard, only generated free deployments reach them.
+  # Cohere and watsonx carry the key only: the spec gives no base for either.
+  - credential_name: bazaarlink
+    credential_values: { api_key: os.environ/BAZAARLINK_API_KEY, api_base: os.environ/BAZAARLINK_API_BASE }
+    credential_info: {}
+  - credential_name: electronhub
+    credential_values: { api_key: os.environ/ELECTRONHUB_API_KEY, api_base: os.environ/ELECTRONHUB_API_BASE }
+    credential_info: {}
+  - credential_name: unorouter
+    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/UNOROUTER_API_BASE }
+    credential_info: {}
+  - credential_name: cohere
+    credential_values: { api_key: os.environ/COHERE_API_KEY }
+    credential_info: {}
+  - credential_name: airforce
+    credential_values: { api_key: os.environ/AIRFORCE_API_KEY, api_base: os.environ/AIRFORCE_API_BASE }
+    credential_info: {}
+  - credential_name: plugsky
+    credential_values: { api_key: os.environ/PLUGSKY_API_KEY, api_base: os.environ/PLUGSKY_API_BASE }
+    credential_info: {}
+  - credential_name: poe
+    credential_values: { api_key: os.environ/POE_API_KEY, api_base: os.environ/POE_API_BASE }
+    credential_info: {}
+  - credential_name: vercel
+    credential_values: { api_key: os.environ/VERCEL_AI_GATEWAY_API_KEY, api_base: os.environ/VERCEL_AI_GATEWAY_API_BASE }
+    credential_info: {}
+  - credential_name: watsonx
+    credential_values: { api_key: os.environ/WATSONX_API_KEY }
+    credential_info: {}
+  - credential_name: novita
+    credential_values: { api_key: os.environ/NOVITA_API_KEY, api_base: os.environ/NOVITA_API_BASE }
+    credential_info: {}
+  - credential_name: together
+    credential_values: { api_key: os.environ/TOGETHER_API_KEY, api_base: os.environ/TOGETHER_API_BASE }
+    credential_info: {}
+  - credential_name: typhoon
+    credential_values: { api_key: os.environ/TYPHOON_API_KEY, api_base: os.environ/TYPHOON_API_BASE }
+    credential_info: {}
+  - credential_name: sealion
+    credential_values: { api_key: os.environ/SEALION_API_KEY, api_base: os.environ/SEALION_API_BASE }
+    credential_info: {}
+  - credential_name: gonka
+    credential_values: { api_key: os.environ/GONKA_API_KEY, api_base: os.environ/GONKA_API_BASE }
+    credential_info: {}
+  - credential_name: longcat
+    credential_values: { api_key: os.environ/LONGCAT_API_KEY, api_base: os.environ/LONGCAT_API_BASE }
+    credential_info: {}
+  - credential_name: neosantara
+    credential_values: { api_key: os.environ/NEOSANTARA_API_KEY, api_base: os.environ/NEOSANTARA_API_BASE }
+    credential_info: {}
   # Google and Anthropic are addressed by LiteLLM itself, so their credential carries the key only.
   - credential_name: google
     credential_values: { api_key: os.environ/GEMINI_API_KEY }
@@ -191,7 +241,7 @@ router_settings:
     - {"tier-free": ["free/longcat-2.5-free", "free/beam-free", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
     - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
-    - {"tier-strong-open": ["vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-strong-open": ["vibe-tier/zai-glm-5-3", "opencode-go-tier/kimi-k3.1-pro", "opencode-go-tier/gpt-6-luna", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-review": ["free/gemma-4-31b", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
   # END tiers
 

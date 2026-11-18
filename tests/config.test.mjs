@@ -26,9 +26,21 @@ const ROUTER = CONFIG.slice(CONFIG.indexOf('router_settings:'), CONFIG.indexOf('
 const GENERATED = readFileSync(`${ROOT}/config/models.generated.yaml`, 'utf8')
   .split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n')
 const DEPLOYMENTS = JSON.parse(GENERATED).model_list
+// The second wave (litellm#64): UnoRouter is anonymous, so it has no Vault field.
+const WAVE2_ROUTES = [
+  'bazaarlink', 'electronhub', 'unorouter', 'cohere', 'airforce', 'plugsky', 'poe', 'vercel', 'watsonx', 'novita', 'together',
+  'typhoon', 'sealion', 'gonka', 'longcat', 'neosantara',
+]
+const WAVE2_FIELDS = {
+  bazaarlink: 'bazaarlink_api_key', electronhub: 'electronhub_api_key', cohere: 'cohere_api_key', airforce: 'airforce_api_key',
+  plugsky: 'plugsky_api_key', poe: 'poe_api_key', vercel: 'vercel_ai_gateway_api_key', watsonx: 'watsonx_api_key',
+  novita: 'novita_api_key', together: 'together_api_key', typhoon: 'typhoon_api_key', sealion: 'sealion_api_key',
+  gonka: 'gonka_api_key', longcat: 'longcat_api_key', neosantara: 'neosantara_api_key',
+}
 // The free-only routes of agent-kit#916 beside openrouter: each has its own credential and access group.
 const FREE_ROUTES = [
   'openrouter', 'groq', 'cloudflare', 'nvidia', 'zai', 'kilo', 'ovh', 'requesty', 'axforge', 'naga', 'routeway', 'inferbase',
+  ...WAVE2_ROUTES,
 ]
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 // The proxy Process's own grant, not the catalogue Process's.
@@ -158,6 +170,7 @@ test('every credential has a name, values and the required credential_info', () 
   assert.deepEqual(CREDENTIALS, [
     'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'opencode-go', 'openrouter', 'local',
     'groq', 'cloudflare', 'nvidia', 'zai', 'kilo', 'ovh', 'requesty', 'axforge', 'naga', 'routeway', 'inferbase',
+    ...WAVE2_ROUTES,
     'google', 'anthropic',
   ])
   assert.equal((CREDENTIAL_BLOCK.match(/^ {4}credential_info: \{\}$/gm) ?? []).length, CREDENTIALS.length)
@@ -188,7 +201,7 @@ test('every free-only route has a credential and no wildcard, and a key is a Vau
   }
   const fields = { groq: 'groq_api_key', cloudflare: 'cloudflare_api_key', nvidia: 'nvidia_nim_api_key', zai: 'zai_api_key',
     requesty: 'requesty_api_key', axforge: 'axforge_api_key', naga: 'naga_api_key', routeway: 'routeway_api_key',
-    inferbase: 'inferbase_api_key' }
+    inferbase: 'inferbase_api_key', ...WAVE2_FIELDS }
   for (const field of Object.values(fields)) {
     assert.match(PROXY_SECRETS, new RegExp(`\\b${field}\\b`), field)
     assert.match(CATALOG, new RegExp(`\\b${field}\\b`), field)
@@ -206,6 +219,24 @@ test('every free-only route has a credential and no wildcard, and a key is a Vau
   // The anonymous routes carry a placeholder key, not a Vault field.
   assert.deepEqual(CREDENTIAL_VALUES.kilo.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
   assert.deepEqual(CREDENTIAL_VALUES.ovh.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
+  assert.deepEqual(CREDENTIAL_VALUES.unorouter.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
+})
+
+test('the second-wave routes: optional Vault fields, a base only where the spec names one, free-only deployments', () => {
+  for (const [route, field] of Object.entries(WAVE2_FIELDS)) {
+    for (const file of ['litellm', 'litellm-catalog']) {
+      const env = readFileSync(`${ROOT}/deploy/env/${file}/base.env`, 'utf8')
+      assert.match(env, new RegExp(`^${field.replace(/_api_key$/, '').toUpperCase()}_API_KEY=\\$\\{secret:secret/data/platform/litellm#${field}\\}$`, 'm'), `${file} ${route}`)
+    }
+  }
+  assert.equal(Object.keys(WAVE2_FIELDS).length, WAVE2_ROUTES.length - 1) // every route but UnoRouter has a key
+  // The spec names no base for BazaarLink, Cohere and watsonx: BazaarLink's is a placeholder, the others have none, so each stays inert.
+  for (const file of ['litellm', 'litellm-catalog']) {
+    const env = readFileSync(`${ROOT}/deploy/env/${file}/base.env`, 'utf8')
+    assert.match(env, /^BAZAARLINK_API_BASE=REPLACE_WITH_BAZAARLINK_API_BASE$/m, file)
+    for (const name of ['COHERE', 'WATSONX']) assert.doesNotMatch(env, new RegExp(`^${name}_API_BASE=`, 'm'), `${file} ${name}`)
+  }
+  for (const route of ['cohere', 'watsonx']) assert.deepEqual(Object.keys(CREDENTIAL_VALUES[route]), ['api_key'], route)
 })
 
 test('every deployment names a credential that exists', () => {
@@ -367,6 +398,9 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     naga: 3600,
     routeway: 3600,
     inferbase: 120,
+    // Second wave: 3600 for a daily cap (BazaarLink, Cohere, Api.Airforce, Plugsky), 120 otherwise.
+    bazaarlink: 3600, electronhub: 120, unorouter: 120, cohere: 3600, airforce: 3600, plugsky: 3600, poe: 120, vercel: 120,
+    watsonx: 120, novita: 120, together: 120, typhoon: 120, sealion: 120, gonka: 120, longcat: 120, neosantara: 120,
   })
   for (const [route, seconds] of Object.entries(rules.cooldowns)) {
     assert.ok(Number.isInteger(seconds) && seconds > 0, route)

@@ -862,6 +862,91 @@ class FreeSignals(unittest.TestCase):
         self.assertEqual((cat["providers"]["requesty"]["models"], stats["route_errors"]), ([], []))
         self.assertEqual(http.calls, [])
 
+    def test_second_wave_signals_fail_closed(self):
+        free, _ = self.listed("electronhub", [{"id": "m:free"}, {"id": "m"}])
+        self.assertEqual(free, {"m:free": True, "m": False})
+        free, _ = self.listed("unorouter", [{"id": "m:free"}, {"id": "m"}])
+        self.assertEqual(free, {"m:free": True, "m": False})
+        free, _ = self.listed("airforce", [{"id": "a", "tier": "free"}, {"id": "b", "tier": "pro"}, {"id": "c"}])
+        self.assertEqual(free, {"a": True, "b": False, "c": False})
+        zero = {"input": "0", "output": "0"}
+        items = [{"id": "str-zero", "pricing": zero}, {"id": "num-zero", "pricing": {"input": 0, "output": 0.0}},
+                 {"id": "paid-output", "pricing": {"input": "0", "output": "0.000001"}}, {"id": "no-pricing"},
+                 {"id": "empty-pricing", "pricing": {}}, {"id": "empty-strings", "pricing": {"input": "", "output": ""}},
+                 {"id": "null", "pricing": {"input": None, "output": None}}, {"id": "input-only", "pricing": {"input": 0}},
+                 {"id": "bool", "pricing": {"input": False, "output": False}}, {"id": "flat", "input_price": 0, "output_price": 0},
+                 {"id": "prompt-names", "pricing": {"prompt": "0", "completion": "0"}}]
+        free, _ = self.listed("vercel", items)
+        self.assertEqual({k for k, v in free.items() if v}, {"str-zero", "num-zero"})
+        # Novita: the flat per-million fields of the item, both explicitly zero; nothing else is read.
+        free, _ = self.listed("novita", [{"id": "a", "input_token_price_per_m": 0, "output_token_price_per_m": 0},
+                                         {"id": "b", "input_token_price_per_m": 0, "output_token_price_per_m": 5},
+                                         {"id": "c", "input_token_price_per_m": 0}, {"id": "d"},
+                                         {"id": "e", "input_token_price_per_m": "", "output_token_price_per_m": ""},
+                                         {"id": "f", "pricing": {"input": 0, "output": 0}}])
+        self.assertEqual(free, {"a": True, "b": False, "c": False, "d": False, "e": False, "f": False})
+
+    def test_an_approved_id_on_a_pay_per_token_host_is_refused_when_the_listing_prices_it(self):
+        rules = {"free_ids": {"together": ["t"], "typhoon": ["t"], "neosantara": ["t"]}}
+        for route in ("together", "typhoon", "neosantara"):
+            for label, item in (("input", {"pricing": {"input": 0.88, "output": 0}}), ("output only", {"pricing": {"output": 0.1}}),
+                                ("prompt", {"pricing": {"prompt": "0.000001"}}), ("flat", {"input_price": 1}),
+                                ("garbage", {"pricing": {"input": "n/a"}})):
+                free, _ = self.listed(route, [dict(item, id="t")], rules)
+                self.assertEqual(free, {"t": False}, (route, label))
+            for item in ({}, {"pricing": {"input": 0, "output": 0}}):  # no price, or an explicit zero: the approved list decides
+                free, _ = self.listed(route, [dict(item, id="t")], rules)
+                self.assertEqual(free, {"t": True}, route)
+
+    def test_a_bare_list_is_accepted_for_together_only_and_a_malformed_listing_is_a_route_error(self):
+        for route in ("electronhub", "poe", "plugsky", "vercel"):
+            entry_ = next(e for e in sync.ROUTES if e["route"] == route)
+            for body in ([{"id": "m:free"}], {"models": []}, "oops", None):
+                http = Http(lists={f"https://{route}/v1/models": body})
+                with self.assertRaises(RuntimeError, msg=(route, body)):
+                    sync.list_models(entry_, {entry_["base_env"]: f"https://{route}/v1"}, http, {})
+                with self.assertRaises(RuntimeError, msg=(route, body)):
+                    sync.scan_candidates(entry_, {entry_["base_env"]: f"https://{route}/v1"}, http, {})
+
+    def test_second_wave_static_routes_deploy_only_approved_ids_and_a_priced_id_is_refused(self):
+        rules = {"free_ids": {"together": ["Prism-ML/Ternary-Bonsai-27B", "x/priced"], "plugsky": []}}
+        data = [{"id": "Prism-ML/Ternary-Bonsai-27B"}, {"id": "other"}, {"id": "x/priced", "pricing": {"input": 0.88, "output": 0.88}}]
+        free, _ = self.listed("together", data, rules)
+        self.assertEqual(free, {"Prism-ML/Ternary-Bonsai-27B": True, "other": False, "x/priced": False})
+        free, _ = self.listed("plugsky", [{"id": "micro"}], rules)
+        self.assertEqual(free, {"micro": False})  # an empty list deploys nothing
+
+    def test_together_lists_a_bare_array(self):
+        env = {"TOGETHER_API_BASE": "https://together/v1"}
+        http = Http(lists={"https://together/v1/models": [{"id": "Prism-ML/Ternary-Bonsai-27B"}, {"id": "paid"}]})
+        rules = {"free_ids": {"together": ["Prism-ML/Ternary-Bonsai-27B"]}}
+        found = sync.list_models(next(e for e in sync.ROUTES if e["route"] == "together"), env, http, rules)
+        self.assertEqual({m["id"]: m["free"] for m in found}, {"Prism-ML/Ternary-Bonsai-27B": True, "paid": False})
+        candidates = sync.scan_candidates(next(e for e in sync.ROUTES if e["route"] == "together"), env, http, rules)
+        self.assertEqual({c["id"]: c["approved"] for c in candidates}, {"Prism-ML/Ternary-Bonsai-27B": True, "paid": False})
+
+    def test_the_candidate_scan_shows_what_an_empty_static_route_lists_and_deploys_nothing(self):
+        env = {"PLUGSKY_API_BASE": "https://plugsky/v1", "PLUGSKY_API_KEY": "k"}
+        http = Http(lists={"https://plugsky/v1/models": {"data": [{"id": "micro", "pricing": {"input": 0, "output": 0}}, {"id": "lite"}]}})
+        rules = {"free_ids": {"plugsky": []}}
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules=rules)
+        items = {i["id"]: i for i in cat["free_candidates"]["plugsky"]}
+        self.assertEqual((items["micro"]["approved"], items["micro"]["suggested"], items["lite"]["suggested"]), (False, True, False))
+        self.assertEqual(http.probed_ids(), [])
+        self.assertEqual(sync.plan_groups(cat, dict(RULES, free_ids=rules["free_ids"])), [])
+
+    def test_unorouter_is_anonymous_and_a_keyed_second_wave_route_is_skipped_without_its_key(self):
+        env = {"UNOROUTER_API_BASE": "https://uno/v1"}
+        http = Http(lists={"https://uno/v1/models": {"data": [{"id": "a:free"}, {"id": "paid"}]}})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        self.assertEqual(stats["route_errors"], [])
+        self.assertEqual(http.probed_ids(), ["a:free"])
+        for call in http.calls:
+            self.assertNotIn("Authorization", call[2])
+        http = Http(lists={})
+        cat, stats = sync.build({"ELECTRONHUB_API_BASE": "https://eh/v1"}, http, {"providers": {}}, NOW, rules={})
+        self.assertEqual((cat["providers"]["electronhub"]["models"], stats["route_errors"], http.calls), ([], [], []))
+
 
 if __name__ == "__main__":
     unittest.main()

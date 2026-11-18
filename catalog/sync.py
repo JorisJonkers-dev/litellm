@@ -105,6 +105,31 @@ ROUTES = [
     {"route": "naga", "base_env": "NAGA_API_BASE", "key_env": "NAGA_API_KEY", "kind": "naga"},
     {"route": "routeway", "base_env": "ROUTEWAY_API_BASE", "key_env": "ROUTEWAY_API_KEY", "kind": "routeway"},
     {"route": "inferbase", "base_env": "INFERBASE_API_BASE", "key_env": "INFERBASE_API_KEY", "kind": "inferbase"},
+    # Second wave (agent-kit#916, litellm#64). Bases come from the spec, or from the default base of LiteLLM
+    # 1.109.1's own provider where the spec names none (poe, vercel, together, neosantara). A route whose base
+    # the spec does not give (bazaarlink, cohere, watsonx) has none in the env files (BazaarLink's is the
+    # placeholder REPLACE_WITH_BAZAARLINK_API_BASE): with a key it is a route error, never a guess, and it
+    # deploys nothing until the owner sets the base.
+    # No free signal in the listing: the free ids are the static list in routing.json (empty until approved,
+    # so the candidate scan shows what the provider lists). Cohere and watsonx are not OpenAI-style lists.
+    {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink"},
+    {"route": "cohere", "base_env": "COHERE_API_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
+    {"route": "plugsky", "base_env": "PLUGSKY_API_BASE", "key_env": "PLUGSKY_API_KEY", "kind": "plugsky"},
+    {"route": "poe", "base_env": "POE_API_BASE", "key_env": "POE_API_KEY", "kind": "poe"},
+    {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx"},
+    {"route": "together", "base_env": "TOGETHER_API_BASE", "key_env": "TOGETHER_API_KEY", "kind": "together"},
+    {"route": "typhoon", "base_env": "TYPHOON_API_BASE", "key_env": "TYPHOON_API_KEY", "kind": "typhoon"},
+    {"route": "sealion", "base_env": "SEALION_API_BASE", "key_env": "SEALION_API_KEY", "kind": "sealion"},
+    {"route": "gonka", "base_env": "GONKA_API_BASE", "key_env": "GONKA_API_KEY", "kind": "gonka"},
+    {"route": "longcat", "base_env": "LONGCAT_API_BASE", "key_env": "LONGCAT_API_KEY", "kind": "longcat"},
+    {"route": "neosantara", "base_env": "NEOSANTARA_API_BASE", "key_env": "NEOSANTARA_API_KEY", "kind": "neosantara"},
+    # Fail-closed free signals in the listing itself: a `:free` suffix (Electron Hub, UnoRouter), `tier == "free"`
+    # (Api.Airforce) or a zero price (Vercel, Novita). UnoRouter's free models need no key: anonymous.
+    {"route": "electronhub", "base_env": "ELECTRONHUB_API_BASE", "key_env": "ELECTRONHUB_API_KEY", "kind": "electronhub"},
+    {"route": "unorouter", "base_env": "UNOROUTER_API_BASE", "key_env": "UNOROUTER_API_KEY", "kind": "unorouter", "anonymous": True},
+    {"route": "airforce", "base_env": "AIRFORCE_API_BASE", "key_env": "AIRFORCE_API_KEY", "kind": "airforce"},
+    {"route": "vercel", "base_env": "VERCEL_AI_GATEWAY_API_BASE", "key_env": "VERCEL_AI_GATEWAY_API_KEY", "kind": "vercel"},
+    {"route": "novita", "base_env": "NOVITA_API_BASE", "key_env": "NOVITA_API_KEY", "kind": "novita"},
 ]
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
@@ -121,12 +146,25 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 #   ovh          2 x 24 =  48    at 2 a minute per IP per model: two serial probes of different models
 #   kilo        30 per run, 200 an hour per IP shared with real traffic
 #   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
+#   Second wave (same arithmetic, limit x 24 at most half the cap):
+#   bazaarlink   1 x 24 =  24    of 60 weighted units a day      airforce    1 x 24 = 24   of 1,000 a day (1 a minute: one serial probe)
+#   electronhub  2 x 24 =  48    (no cap published: at most 48 a day, and a healthy id is probed once a day) unorouter   2 x 24 = 48   (queue-throttled, about 1 a minute per model; per IP)
+#   plugsky      4 x 24 =  96    of 500 a day                    sealion     2 x 24 = 48   (10 a minute)
+#   novita       2 x 24 =  48    (a few $0 ids)                  vercel      4 x 24 = 96   (zero-priced ids only; the free credit is not spent by a $0 id)
+#   poe          1 x 24 =  24    (500 RPM; daily points not known, but its free list is empty, so no id is probed) together, typhoon, neosantara, longcat, gonka: 1 x 24 = 24 (one id each, or a small allowance)
+#   watsonx      1 x 24 =  24 probes of about 24 tokens: 0.6K of 300K tokens a month
+#   cohere       0: its cap is 1,000 calls a MONTH, so one probe per run is 720 a month at worst (a failing probe retries every run),
+#                over half. It probes nothing until the owner raises this knowingly; a healthy id is 30 a month.
 DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
-                        "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2}
+                        "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2,
+                        "bazaarlink": 1, "cohere": 0, "plugsky": 4, "poe": 1, "watsonx": 1, "together": 1, "typhoon": 1,
+                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 2, "unorouter": 2,
+                        "airforce": 1, "vercel": 4, "novita": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
-STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase")
+STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
+                "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -140,12 +178,17 @@ PROBE_RETRY_CEILING = 256
 PREFIXES = {"mistral": "mistral", "openai": "openai", "opencode-go": "opencode_go", "openrouter": "openrouter",
             "google": "gemini", "anthropic": "anthropic", "groq": "groq", "cloudflare": "cloudflare",
             "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai", "ovh": "ovhcloud", "requesty": "openai",
-            "axforge": "openai", "naga": "openai", "routeway": "openai", "inferbase": "openai"}
+            "axforge": "openai", "naga": "openai", "routeway": "openai", "inferbase": "openai",
+            "bazaarlink": "openai", "cohere": "cohere_chat", "plugsky": "openai", "poe": "poe", "watsonx": "watsonx",
+            "together": "together_ai", "typhoon": "openai", "sealion": "openai", "gonka": "openai", "longcat": "openai",
+            "neosantara": "neosantara", "electronhub": "openai", "unorouter": "openai", "airforce": "openai",
+            "vercel": "vercel_ai_gateway", "novita": "novita"}
 # The API families OpenCode Go names per model ("api" in its /models), in the order one is chosen.
 GO_FAMILIES = ("chat-completions", "responses", "messages", "generate-content")
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
 FREE_KINDS = ("openrouter", "groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga",
-              "routeway", "inferbase")
+              "routeway", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx", "together", "typhoon", "sealion",
+              "gonka", "longcat", "neosantara", "electronhub", "unorouter", "airforce", "vercel", "novita")
 FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
 # A free-only route is public work only: a free-tier provider may train on the prompts, so its
 # deployments are never in `canonical` (the group every key holds). Each one gets its own
@@ -318,9 +361,23 @@ def is_free_price(pricing):
 def zero_price(*prices):
     """Whether every price is present and zero: a missing price is not free."""
     try:
-        return all(price is not None and float(price) == 0 for price in prices)
+        # A bool is not a price (float(False) == 0.0), and an empty string is not a zero.
+        return all(price is not None and not isinstance(price, bool) and float(price) == 0 for price in prices)
     except (TypeError, ValueError):
         return False
+
+
+def priced_above_zero(item):
+    """Whether a listing reports ANY price field that is not an explicit zero.
+
+    Looks at every spelling of an input or output price (pricing.prompt/completion/input/output, input_price,
+    output_price), each on its own, so a listing that prices only one side, or one in an odd format, still
+    counts as priced. An item with no price field at all is not priced (the caller's list is then the signal).
+    """
+    pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+    values = [pricing[name] for name in ("prompt", "completion", "input", "output") if name in pricing]
+    values += [item[name] for name in ("input_price", "output_price") if name in item]
+    return any(not zero_price(value) for value in values)
 
 
 def listed_prices(item):
@@ -348,7 +405,9 @@ def route_base(entry, env):
         # base.env ships a REPLACE_WITH_... placeholder until the owner writes the real id.
         parts = {name: "" if value.startswith("REPLACE_WITH") else value for name, value in parts.items()}
         return template.format(**parts) if all(parts.values()) else ""
-    return (env.get(entry["base_env"]) or "").rstrip("/")
+    value = (env.get(entry["base_env"]) or "").rstrip("/")
+    # A REPLACE_WITH_... value is a placeholder the owner has not filled (BazaarLink's base): no base.
+    return "" if value.startswith("REPLACE_WITH") else value
 
 
 def modality(kind, item):
@@ -369,12 +428,24 @@ def modality(kind, item):
     return "embedding" if "embed" in model_id else "chat"
 
 
+BARE_LIST_KINDS = ("together",)
+
+
+def listing_items(body, kind=None):
+    """The items of a model listing: {"data": [...]} (OpenAI-style), or a bare list for the kinds that answer one
+    (Together only); anything else is None, which the caller reports as a route error, never as zero models."""
+    if isinstance(body, dict) and isinstance(body.get("data"), list):
+        return body["data"]
+    return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
+
+
 def list_models(entry, env, http, rules=None):
     """The models the provider lists for this route: id, name, context length, free, chat, modality.
 
     A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
-    `:free` suffix (Naga, Routeway), everything listed (NVIDIA), or an id in routing.json's
-    `free_ids` for a plan-wide free tier (Groq, Cloudflare, Z.ai, AxForge, Inferbase).
+    `:free` suffix (Naga, Routeway, Electron Hub, UnoRouter), `tier == "free"` (Api.Airforce), a zero
+    price (Vercel, Novita), everything listed (NVIDIA), or an id in routing.json's `free_ids` for a
+    plan-wide free tier or a listing with no signal (Groq, Cloudflare, Z.ai, AxForge, Inferbase, Cohere, ...).
     """
     base = route_base(entry, env).rstrip("/")
     if not base:
@@ -392,10 +463,11 @@ def list_models(entry, env, http, rules=None):
         user_status, user_body = http("GET", f"{base}/models/user", headers, None)
         if user_status == 200 and isinstance(user_body, dict) and isinstance(user_body.get("data"), list):
             status, body = user_status, user_body
-    if status != 200 or not isinstance(body, dict) or not isinstance(body.get("data"), list):
+    items = listing_items(body, kind)
+    if status != 200 or items is None:
         raise RuntimeError(f"{entry['route']}: the model list answered {status}")
     found = {}
-    for item in body["data"]:
+    for item in items:
         if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
             continue
         # Google's OpenAI-compatible list names ids "models/<id>"; the id is what a caller sends.
@@ -433,8 +505,19 @@ def list_models(entry, env, http, rules=None):
         elif kind == "ovh":
             pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
             out["free"] = zero_price(pricing.get("prompt"), pricing.get("completion"))
-        elif kind in ("naga", "routeway"):
+        elif kind in ("naga", "routeway", "electronhub", "unorouter"):
             out["free"] = model_id.endswith(":free")
+        elif kind == "airforce":
+            out["free"] = item.get("tier") == "free"
+        elif kind == "vercel":
+            # Zero-priced ids only; a missing price is not free. The ids' free credit is not drawn by a $0 id.
+            # Explicit zero for BOTH pricing.input and pricing.output (a number or a numeric string); a missing,
+            # empty or unparsable price is not free. No fallback to other field spellings.
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = zero_price(pricing.get("input"), pricing.get("output"))
+        elif kind == "novita":
+            # The spec names the flat per-million fields of the item; only those, both required to be zero.
+            out["free"] = zero_price(item.get("input_token_price_per_m"), item.get("output_token_price_per_m"))
         elif kind == "nvidia":
             out["free"] = True
         elif kind in STATIC_KINDS:
@@ -449,7 +532,9 @@ def list_models(entry, env, http, rules=None):
                 if price is not None:
                     out["price"] = {"input": price[0], "output": price[1]}
             else:
-                out["free"] = model_id in free_ids and not (price and any(price))
+                # Pay-per-token hosts name one approved free id (Together, Typhoon, Neosantara): a listing that
+                # prices it anywhere above zero, on either side, refuses it.
+                out["free"] = model_id in free_ids and not priced_above_zero(item)
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -556,9 +641,10 @@ def scan_candidates(entry, env, http, rules):
                 break
     else:
         status, body = http("GET", f"{base}/models", headers, None)
-        if status != 200 or not isinstance(body, dict) or not isinstance(body.get("data"), list):
+        items = listing_items(body, kind)
+        if status != 200 or items is None:
             raise RuntimeError(f"{route}: the model list answered {status}")
-        for item in body["data"]:
+        for item in items:
             if isinstance(item, dict) and item.get("id") and not item.get("archived"):
                 found[str(item["id"])] = listing_signals(kind, item)
     out = []
@@ -1088,6 +1174,13 @@ TIERS_END = "  # END tiers"
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.yaml")
 
 
+# The one tier whose chain may hold an opt_in_only model: it is the opt-in escalation tier.
+OPT_IN_TIER = "tier-strong-open"
+# The access group of the opt-in tier copies. They are NOT in the shared vibe-tier / opencode-go-tier groups, which
+# every other tier key holds: only the tier-strong-open key holds this one, so no other key can call an opt-in model.
+OPT_IN_ACCESS_GROUP = "strong-open-tier"
+
+
 def step_class(model):
     """The cost class a callable model name belongs to, or None when no prefix names one."""
     for prefix, cost in STEP_CLASS_PREFIXES.items():
@@ -1132,7 +1225,8 @@ def validate_tiers(rules):
 
     Each step's declared cost class must be the class its name's prefix gives; no step may cost more than
     its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
-    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
+    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain but
+    tier-strong-open's, which is itself the opt-in escalation tier (owner, 2026-11-18);
     a tier name is no planned model group (assert_no_tier_shadow(), against the real plan); and each tier's key_models cover every step, because a
     key reaches a name only by holding it or its access group ("free", "vibe-tier", "opencode-go-tier")
     and a fallback the key does not hold is skipped.
@@ -1156,11 +1250,19 @@ def validate_tiers(rules):
                 raise RuntimeError(f"tier {name}: step {model} declares cost {cost}, its name is class {step_class(model)}")
             if classes.index(cost) > classes.index(ceiling):
                 raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
-            if canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
-                raise RuntimeError(f"tier {name}: {model} is opt-in only and may not be in a tier chain")
-            if not any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
-                       for key in keys):
+            if name != OPT_IN_TIER and canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
+                raise RuntimeError(f"tier {name}: {model} is opt-in only and may be in {OPT_IN_TIER} alone")
+            opt_in_step = canonical_name(None, model.split("/", 1)[1], rules) in opt_in
+            if opt_in_step:
+                # An opt-in copy is in its own access group, not the shared one of its prefix.
+                reached = any(model == key or key == OPT_IN_ACCESS_GROUP for key in keys)
+            else:
+                reached = any(model == key or key == model.split("/", 1)[0] or (key == FREE_ACCESS_GROUP and cost == "free")
+                              for key in keys)
+            if not reached:
                 raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
+        if name != OPT_IN_TIER and OPT_IN_ACCESS_GROUP in keys:
+            raise RuntimeError(f"tier {name}: key_models hold {OPT_IN_ACCESS_GROUP}, which only {OPT_IN_TIER} may")
 
 
 def assert_no_tier_shadow(specs, rules):
@@ -1231,7 +1333,8 @@ def tier_copies(specs, rules):
                     copy["name"] = step["model"]
                     copy["order"], copy["weight"] = 1, 1
                     copy["litellm_params"]["order"], copy["litellm_params"]["weight"] = 1, 1
-                    copy["model_info"]["access_groups"] = [prefix]
+                    opt_in = canonical_name(None, upstream_id, rules) in set(rules.get("opt_in_only") or [])
+                    copy["model_info"]["access_groups"] = [OPT_IN_ACCESS_GROUP if opt_in else prefix]
                     copy["model_info"].pop("allowed_fails_policy", None)
                     copies.append(copy)
                     break
