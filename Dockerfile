@@ -13,6 +13,8 @@ FROM ghcr.io/berriai/litellm-non_root:v1.109.1@sha256:e9e15fe17b66fc8cda6ff7e189
 COPY config/config.yaml /app/config.yaml
 # The config's `include` resolves next to it, so the generated deployments land in /app too.
 COPY config/models.generated.yaml /app/models.generated.yaml
+# The telemetry callback config.yaml's `callbacks` names (module.instance, next to the config).
+COPY config/tier_telemetry.py /app/tier_telemetry.py
 COPY catalog/sync.py catalog/overview.py catalog/routing.json /app/catalog/
 
 # Numeric, so the images lock can record the uid and gid (nobody). The process's writablePaths

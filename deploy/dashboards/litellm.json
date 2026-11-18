@@ -470,6 +470,35 @@
         "overrides": []
       },
       "description": "Each agent key belongs to its route's team, which holds the budget; the team resets every budget_duration."
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Requested tier served by (per hour)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "expr": "sum by(requested_group,api_provider,priced,fallback)(increase(litellm_tier_served_total{api_key_alias=~\"$key\"}[1h]))",
+          "legendFormat": "{{requested_group}} by {{api_provider}} priced={{priced}} fallback={{fallback}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "description": "The tier a caller asked for against the provider that answered. A free tier (tier-free, free/*) with priced=true is a paid leak and fires LiteLLMFreeTierPaidLeak."
     }
   ]
 }

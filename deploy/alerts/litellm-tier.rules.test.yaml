@@ -1,0 +1,55 @@
+# promtool test rules deploy/alerts/litellm-tier.rules.test.yaml
+rule_files:
+  - litellm-tier.rules.yaml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # A free request served by a priced deployment from minute 6: a leak.
+      - series: 'litellm_tier_served_total{requested_group="tier-free", api_key_alias="free@host", api_provider="mistral", model_id="vibe/mistral-small", priced="true", fallback="true"}'
+        values: '0x5 1 2 3 3 3'
+      # The free tier answered by free deployments only: never alerts.
+      - series: 'litellm_tier_served_total{requested_group="free/*", api_key_alias="free@host", api_provider="openrouter", model_id="free/openrouter/x", priced="false", fallback="false"}'
+        values: '0+5x11'
+      # A paid tier answered by a priced deployment: not a leak.
+      - series: 'litellm_tier_served_total{requested_group="tier-go-cheap", api_key_alias="agent@host", api_provider="opencode_go", model_id="go/x", priced="true", fallback="false"}'
+        values: '0+5x11'
+      # The public key's paid fallback is by design.
+      - series: 'litellm_tier_served_total{requested_group="canonical", api_key_alias="public@host", api_provider="mistral", model_id="m", priced="true", fallback="true"}'
+        values: '0+5x11'
+      # A free key reaching a priced deployment through an ordinary model name is still a leak.
+      - series: 'litellm_tier_served_total{requested_group="canonical", api_key_alias="openrouter@host", api_provider="mistral", model_id="m2", priced="true", fallback="false"}'
+        values: '0x5 1 2 2 2'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: LiteLLMFreeTierPaidLeak
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              requested_group: tier-free
+              api_key_alias: free@host
+              api_provider: mistral
+              model_id: vibe/mistral-small
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, vibe/mistral-small)"
+              description: >-
+                A request to tier-free from key free@host was answered by
+                the priced deployment vibe/mistral-small at mistral. A free tier must fail
+                or fall through to another free deployment, never bill: check the group's members and fallbacks
+                in the generated config.
+          - exp_labels:
+              severity: warning
+              requested_group: canonical
+              api_key_alias: openrouter@host
+              api_provider: mistral
+              model_id: m2
+            exp_annotations:
+              summary: "A free-tier request was served by a priced deployment (mistral, m2)"
+              description: >-
+                A request to canonical from key openrouter@host was answered by
+                the priced deployment m2 at mistral. A free tier must fail
+                or fall through to another free deployment, never bill: check the group's members and fallbacks
+                in the generated config.

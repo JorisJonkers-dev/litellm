@@ -180,7 +180,9 @@ test('upstream keys and bases are environment names, never values', () => {
 test('telemetry is metadata only', () => {
   assert.match(CONFIG, /turn_off_message_logging: true/)
   assert.match(CONFIG, /store_prompts_in_spend_logs: false/)
-  assert.match(CONFIG, /callbacks: \["prometheus", "otel"\]/)
+  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry"\]/)
+  // The callback module is named relative to the config, so the image carries it beside it.
+  assert.match(readFileSync(`${ROOT}/Dockerfile`, 'utf8'), /^COPY config\/tier_telemetry\.py \/app\/tier_telemetry\.py$/m)
   // No metric label can carry a person or an address.
   const labels = [...CONFIG.matchAll(/include_labels: \[([^\]]*)\]/g)].flatMap((m) => m[1].split(',').map((l) => l.trim()))
   for (const forbidden of ['user', 'user_email', 'end_user', 'client_ip', 'user_agent', 'team', 'hashed_api_key', 'api_base']) {
@@ -353,7 +355,8 @@ test('the Project declares the scrape, the dashboard and the catalogue sync', ()
 test('the dashboard has a uid and queries only metrics the config enables', () => {
   const dash = JSON.parse(readFileSync(`${ROOT}/deploy/dashboards/litellm.json`, 'utf8'))
   assert.equal(dash.uid, 'litellm')
-  const enabled = new Set(CONFIG.match(/litellm_\w+/g))
+  // The prometheus callback's series are named in the config; the tier telemetry callback's own in its module.
+  const enabled = new Set([...CONFIG.match(/litellm_\w+/g), ...readFileSync(`${ROOT}/config/tier_telemetry.py`, 'utf8').match(/^METRIC = "(litellm_\w+)"/m).slice(1)])
   const used = new Set(JSON.stringify(dash).match(/litellm_\w+/g))
   for (const metric of used) {
     const base = metric.replace(/_total$|_bucket$/, '')

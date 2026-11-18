@@ -94,7 +94,9 @@ litellm_settings:
   # blanks prompts and responses in every logging callback, the OTel spans included.
   turn_off_message_logging: true
   # Prometheus (open source in this release) and OpenTelemetry traces.
-  callbacks: ["prometheus", "otel"]
+  # tier_telemetry.py (shipped beside this file) adds litellm_tier_served_total: requested tier
+  # against the serving deployment, priced or not, fallback or not; and the same record in the spend log.
+  callbacks: ["prometheus", "otel", "tier_telemetry.tier_telemetry"]
   # Only these series are emitted, with these labels: no user, e-mail, client address or agent.
   # model_id and api_provider name the deployment that served a request, so a canonical model's
   # fallback is visible per request (the spend log already stores both).
