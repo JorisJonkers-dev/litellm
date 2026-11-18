@@ -26,6 +26,10 @@ const ROUTER = CONFIG.slice(CONFIG.indexOf('router_settings:'), CONFIG.indexOf('
 const GENERATED = readFileSync(`${ROOT}/config/models.generated.yaml`, 'utf8')
   .split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n')
 const DEPLOYMENTS = JSON.parse(GENERATED).model_list
+// The free-only routes of agent-kit#916 beside openrouter: each has its own credential and access group.
+const FREE_ROUTES = [
+  'openrouter', 'groq', 'cloudflare', 'nvidia', 'zai', 'kilo', 'ovh', 'requesty', 'axforge', 'naga', 'routeway', 'inferbase',
+]
 const PROJECT = readFileSync(`${ROOT}/deploy/litellm.project.yml`, 'utf8')
 // The proxy Process's own grant, not the catalogue Process's.
 const PROXY_SECRETS = PROJECT.slice(PROJECT.indexOf('secrets:'), PROJECT.indexOf('placement:'))
@@ -68,7 +72,7 @@ test('no Zen route, no catch-all wildcard and no paid OpenRouter wildcard', () =
 })
 
 test('no free-route deployment is in canonical, each is in its own route group and the free group', () => {
-  const groups = { openrouter: ['openrouter-free-public', 'free'] }
+  const groups = Object.fromEntries(FREE_ROUTES.map((route) => [route, [`${route}-free-public`, 'free']]))
   for (const deployment of DEPLOYMENTS) {
     const route = deployment.model_info?.route
     const found = deployment.model_info.access_groups
@@ -81,12 +85,15 @@ test('no free-route deployment is in canonical, each is in its own route group a
     }
     if (deployment.model_name.startsWith('opencode-go-free/')) continue // its own test below
     if (!(route in groups)) {
-      assert.ok(!found.includes('free') && !found.includes('openrouter-free-public'), deployment.model_info.id)
+      assert.ok(!found.includes('free') && !found.some((group) => group.endsWith('-free-public') && !['opencode-go-free-public', 'google-free-public'].includes(group)),
+        deployment.model_info.id)
       continue
     }
     assert.deepEqual(found, groups[route], deployment.model_info.id)
     assert.ok(deployment.model_name.startsWith(`${route}/`), deployment.model_name)
-    assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
+    // Only Inferbase has a budget: its $0.50 a day free share.
+    if (route === 'inferbase') assert.equal(deployment.litellm_params.max_budget, 0.5, deployment.model_info.id)
+    else assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
   }
   // A model name never mixes access groups: LiteLLM grants a key a name, not a deployment.
   const byName = {}
@@ -140,7 +147,9 @@ test('the config includes the generated deployments', () => {
 
 test('every credential has a name, values and the required credential_info', () => {
   assert.deepEqual(CREDENTIALS, [
-    'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'opencode-go', 'openrouter', 'local', 'google', 'anthropic',
+    'vibe', 'vibe-study', 'vibe-api', 'vibe-study-api', 'opencode-go', 'openrouter', 'local',
+    'groq', 'cloudflare', 'nvidia', 'zai', 'kilo', 'ovh', 'requesty', 'axforge', 'naga', 'routeway', 'inferbase',
+    'google', 'anthropic',
   ])
   assert.equal((CREDENTIAL_BLOCK.match(/^ {4}credential_info: \{\}$/gm) ?? []).length, CREDENTIALS.length)
   assert.deepEqual(Object.keys(CREDENTIAL_VALUES), CREDENTIALS)
@@ -161,6 +170,33 @@ test('the Mistral accounts carry a key and a base, Google, Anthropic and OpenCod
   for (const route of ['vibe-study', 'openrouter', 'local']) {
     assert.ok(CREDENTIAL_VALUES[route].api_key && CREDENTIAL_VALUES[route].api_base, route)
   }
+})
+
+test('every free-only route has a credential and no wildcard, and a key is a Vault field', () => {
+  for (const route of FREE_ROUTES) {
+    assert.ok(CREDENTIALS.includes(route), route)
+    assert.ok(!ROUTES.some((name) => name.startsWith(`${route}/`)), route)
+  }
+  const fields = { groq: 'groq_api_key', cloudflare: 'cloudflare_api_key', nvidia: 'nvidia_nim_api_key', zai: 'zai_api_key',
+    requesty: 'requesty_api_key', axforge: 'axforge_api_key', naga: 'naga_api_key', routeway: 'routeway_api_key',
+    inferbase: 'inferbase_api_key' }
+  for (const field of Object.values(fields)) {
+    assert.match(PROXY_SECRETS, new RegExp(`\\b${field}\\b`), field)
+    assert.match(CATALOG, new RegExp(`\\b${field}\\b`), field)
+  }
+  // Each is an optional key in both grants: a Process starts whether the Vault field is there or not.
+  for (const field of Object.values(fields)) {
+    for (const [scope, text] of [['proxy', PROXY_SECRETS], ['catalog', CATALOG]]) {
+      assert.match(text, new RegExp(`- name: ${field}\\n +optional: true\\n`), `${scope} ${field}`)
+    }
+  }
+  // The keys every route needs stay plain names, so a missing one still stops the Process.
+  for (const field of ['master_key', 'salt_key', 'vibe_api_key', 'openrouter_api_key', 'anthropic_api_key', 'local_llm_api_key']) {
+    assert.match(PROXY_SECRETS, new RegExp(`^ +- ${field}$`, 'm'), field)
+  }
+  // The anonymous routes carry a placeholder key, not a Vault field.
+  assert.deepEqual(CREDENTIAL_VALUES.kilo.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
+  assert.deepEqual(CREDENTIAL_VALUES.ovh.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
 })
 
 test('every deployment names a credential that exists', () => {
@@ -231,7 +267,7 @@ test('the local route calls the GPU workstation gate with the key only this proj
     assert.match(env, /^LOCAL_LLM_API_KEY=\$\{secret:secret\/data\/platform\/litellm#local_llm_api_key\}$/m, file)
   }
   // Both Processes read the key, so both grants name it.
-  assert.equal((PROJECT.match(/keys: \[[^\]]*\blocal_llm_api_key\b/g) ?? []).length, 2)
+  assert.equal((PROJECT.match(/^ +- local_llm_api_key$/gm) ?? []).length, 2)
 })
 
 test('no model is stored in the proxy database', () => {
@@ -294,6 +330,8 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     'vibe-study-api': { max_budget: 12, budget_duration: '30d' },
     anthropic: { max_budget: 90, budget_duration: '30d' },
     'opencode-go': { max_budget: 15, budget_duration: '30d' },
+    // Inferbase's free share is $0.50 a day: the route can never bill past it.
+    inferbase: { max_budget: 0.5, budget_duration: '1d' },
   })
   // Google is a free tier: a budget would only take it out of the pick.
   assert.equal(rules.budgets.google, undefined)
@@ -306,6 +344,17 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     google: 120,
     anthropic: 300,
     openrouter: 120,
+    groq: 120,
+    cloudflare: 120,
+    nvidia: 120,
+    zai: 120,
+    kilo: 120,
+    ovh: 120,
+    requesty: 3600,
+    axforge: 120,
+    naga: 3600,
+    routeway: 3600,
+    inferbase: 120,
   })
   for (const [route, seconds] of Object.entries(rules.cooldowns)) {
     assert.ok(Number.isInteger(seconds) && seconds > 0, route)
@@ -382,7 +431,7 @@ test('the admin UI is on and signs in through auth-api OIDC only', () => {
   // The immutable subject identifies a user, never the renameable username.
   assert.match(env, /^GENERIC_USER_ID_ATTRIBUTE=sub$/m)
   assert.doesNotMatch(env, /^GENERIC_CLIENT_STATE=/m)
-  assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /keys: \[[^\]]*\boidc_client_secret\b/)
+  assert.match(PROXY_SECRETS.replace(/^\s*#.*$/gm, ''), /^ +- oidc_client_secret$/m)
 })
 
 test('only ROLE_ADMIN is a proxy admin, everyone else is a viewer the UI refuses', () => {

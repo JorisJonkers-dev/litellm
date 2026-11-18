@@ -321,8 +321,9 @@ class Plan(unittest.TestCase):
                 self.assertTrue(spec["name"].startswith(spec["route"] + "/"))
 
     def test_each_free_route_has_its_own_access_group(self):
-        self.assertEqual(sync.FREE_ONLY, {"openrouter"})
-        self.assertEqual(sync.FREE_ACCESS_GROUPS, {"openrouter": "openrouter-free-public"})
+        wave1 = {"groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase"}
+        self.assertEqual(sync.FREE_ONLY, {"openrouter"} | wave1)
+        self.assertEqual(sync.FREE_ACCESS_GROUPS, {route: f"{route}-free-public" for route in sync.FREE_ONLY})
         groups = set(sync.FREE_ACCESS_GROUPS.values())
         self.assertEqual(len(groups), len(sync.FREE_ACCESS_GROUPS))
         self.assertNotIn(sync.CANONICAL_ACCESS_GROUP, groups)
@@ -581,6 +582,136 @@ class Routes(unittest.TestCase):
             self.assertNotIn(secret, bodies)
 
 
+class FreeRoutesWave1(unittest.TestCase):
+    """The first-wave free-only routes (agent-kit#916): public work only, never canonical, never paid."""
+
+    ROUTES = ("groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase")
+    RULES = dict(RULES, budgets={"inferbase": {"max_budget": 0.5, "budget_duration": "1d"}}, cooldowns={"naga": 3600})
+
+    def plan(self, *models):
+        return sync.plan_groups(catalogue(*models), self.RULES)
+
+    def test_a_paid_id_is_never_deployed_on_a_free_route(self):
+        models = [(route, "paid-model", "usable", {"free": False}) for route in self.ROUTES]
+        self.assertEqual(self.plan(*models), [])
+        # The free id beside it is deployed, and only that one.
+        models += [(route, "free-model", "usable", {"free": True}) for route in self.ROUTES]
+        specs = self.plan(*models)
+        self.assertEqual({spec["upstream_id"] for spec in specs}, {"free-model"})
+        self.assertEqual({spec["route"] for spec in specs}, set(self.ROUTES))
+
+    def test_no_deployment_lands_in_canonical_or_a_paid_group(self):
+        specs = self.plan(*[(route, "free-model", "usable", {"free": True}) for route in self.ROUTES],
+                          ("vibe", "free-model", "usable", {}), ("vibe-api", "free-model", "usable", {}))
+        for spec in specs:
+            if spec["route"] in self.ROUTES:
+                self.assertEqual(spec["model_info"]["access_groups"], [f"{spec['route']}-free-public", "free"])
+                self.assertEqual(spec["name"], f"{spec['route']}/free-model")
+                self.assertNotIn("canonical", spec["model_info"]["access_groups"])
+            else:
+                self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
+        # Each free group holds one deployment: nothing paid to fall over to, and a 429 cools it down.
+        names = [spec["name"] for spec in specs]
+        for spec in specs:
+            if spec["route"] in self.ROUTES:
+                self.assertEqual(names.count(spec["name"]), 1)
+                self.assertIn("cooldown_time", spec["litellm_params"])
+                self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
+
+    def test_free_deployments_cost_zero_per_token_except_inferbase_which_has_a_budget(self):
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        for route, spec in specs.items():
+            params = spec["litellm_params"]
+            if route == "inferbase":
+                self.assertNotIn("input_cost_per_token", params)
+                self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
+            else:
+                self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0))
+                self.assertNotIn("max_budget", params)
+        self.assertEqual(specs["naga"]["litellm_params"]["cooldown_time"], 3600)
+        self.assertEqual(specs["groq"]["litellm_params"]["cooldown_time"], sync.PUBLIC_COOLDOWN)
+
+    def test_prefixes_and_credentials(self):
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        prefixes = {"groq": "groq", "cloudflare": "cloudflare", "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai",
+                    "ovh": "ovhcloud", "requesty": "openai", "axforge": "openai", "naga": "openai", "routeway": "openai",
+                    "inferbase": "openai"}
+        for route, prefix in prefixes.items():
+            self.assertEqual(specs[route]["litellm_params"]["model"], f"{prefix}/m")
+            self.assertEqual(specs[route]["litellm_params"]["litellm_credential_name"], route)
+
+    def test_every_route_has_limits_cooldowns_and_the_real_rules_agree(self):
+        rules = sync.load_rules()
+        for route in self.ROUTES:
+            self.assertIn(route, sync.DEFAULT_ROUTE_LIMITS)
+            self.assertIn(route, rules["cooldowns"])
+        # Free routes are outside the tiers, so no rule makes one a fallback of a paid group.
+        tiered = {route for tier in rules["tiers"] for route, _ in tier}
+        self.assertFalse(tiered & set(self.ROUTES))
+        self.assertEqual(rules["budgets"]["inferbase"], {"max_budget": 0.5, "budget_duration": "1d"})
+        for route in ("requesty", "naga", "routeway"):
+            self.assertEqual(rules["cooldowns"][route], 3600)
+
+    def test_the_real_static_free_lists_are_what_they_are(self):
+        free_ids = sync.load_rules()["free_ids"]
+        self.assertEqual(free_ids["groq"], ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"])
+        self.assertEqual(free_ids["zai"], ["glm-4.7-flash", "glm-4.5-flash", "glm-4.6v-flash"])
+        # Empty on purpose: the spec names no free Cloudflare or Inferbase id, and AxForge bills after 3M
+        # tokens a month. Each deploys nothing until the owner fills its list.
+        for route in ("cloudflare", "inferbase", "axforge"):
+            self.assertEqual(free_ids[route], [], route)
+
+    def test_probe_limits_stay_under_half_of_each_daily_cap_at_an_hourly_sync(self):
+        project = (ROOT / "deploy" / "litellm.project.yml").read_text()
+        self.assertIn('schedule: "17 * * * *"', project)  # hourly: 24 runs a day
+        daily_caps = {"groq": 1000, "requesty": 200, "naga": 100, "routeway": 200, "inferbase": 100}
+        for route, cap in daily_caps.items():
+            self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
+        # OVH allows 2 a minute per IP per model, and its probes are serial: never more than 2 a run.
+        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["ovh"], 2)
+        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["axforge"], 0)
+
+    def test_inferbase_deploys_at_its_real_price_under_its_daily_budget(self):
+        specs = self.plan(("inferbase", "m", "usable", {"free": True, "price": {"input": 5e-7, "output": 2e-6}}))
+        params = specs[0]["litellm_params"]
+        self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (5e-7, 2e-6))
+        self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
+
+    def test_every_openai_prefixed_free_route_has_an_api_base(self):
+        config = (ROOT / "config" / "config.yaml").read_text()
+        openai_routes = [e["route"] for e in sync.ROUTES if e["route"] in sync.FREE_ONLY and sync.PREFIXES[e["kind"]] == "openai"]
+        self.assertEqual(set(openai_routes), {"kilo", "requesty", "axforge", "naga", "routeway", "inferbase"})
+        for route in openai_routes:
+            block = config.split(f"- credential_name: {route}\n", 1)[1].split("credential_info", 1)[0]
+            self.assertIn("api_base: os.environ/", block, route)
+        specs = self.plan(*[(route, "m", "usable", {"free": True, "price": {"input": 0, "output": 0}}) for route in openai_routes])
+        for spec in specs:
+            self.assertEqual(spec["litellm_params"]["litellm_credential_name"], spec["route"])
+            self.assertNotIn("api_base", spec["litellm_params"])  # the credential's base is the only one
+
+    def test_the_axforge_skip_and_static_list_mechanisms_with_a_synthetic_list(self):
+        env = dict(ENV, AXFORGE_API_BASE="https://ax/v1", GROQ_API_BASE="https://groq/v1", GROQ_API_KEY="k-groq")
+        lists = dict(LISTS, **{"https://groq/v1/models": {"data": [{"id": "openai/gpt-oss-120b"}, {"id": "llama-paid"}]}})
+        http = Http(lists)
+        rules = dict(RULES, free_ids={"groq": ["openai/gpt-oss-120b"], "axforge": ["qwen3.8-27b"]})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules=rules)
+        self.assertEqual(stats["route_errors"], [])
+        self.assertEqual(cat["providers"]["axforge"]["models"], [])
+        self.assertFalse([c for c in http.calls if "ax" in c[1].split("/")[2]])
+        # With a key, the static list is its free signal.
+        env["AXFORGE_API_KEY"] = "k-ax"
+        lists["https://ax/v1/models"] = {"data": [{"id": "qwen3.8-27b"}, {"id": "other"}]}
+        cat, stats = sync.build(env, Http(lists), {"providers": {}}, NOW, rules=rules)
+        self.assertEqual({m["id"]: m["metadata"]["free"] for m in cat["providers"]["axforge"]["models"]},
+                         {"axforge/qwen3.8-27b": True, "axforge/other": False})
+
+    def test_cloudflare_base_is_composed_from_the_account_id(self):
+        route = entry("cloudflare")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_ACCOUNT_ID": "abc"}),
+                         "https://api.cloudflare.com/client/v4/accounts/abc/ai/v1")
+        self.assertEqual(sync.route_base(route, {}), "")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_ACCOUNT_ID": "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"}), "")
+        self.assertEqual(sync.route_base(route, {"CLOUDFLARE_API_BASE": "https://cf/v1/"}), "https://cf/v1")
 
 class FreeExclusions(unittest.TestCase):
     """The free tier never serves a model the 2026-12-01 re-route bills: the real routing.json decides."""

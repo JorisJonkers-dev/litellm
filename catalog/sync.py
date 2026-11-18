@@ -75,14 +75,49 @@ ROUTES = [
     {"route": "local", "base_env": "LOCAL_LLM_API_BASE", "key_env": "LOCAL_LLM_API_KEY", "kind": "openai"},
     {"route": "google", "base_env": "GOOGLE_API_BASE", "key_env": "GEMINI_API_KEY", "kind": "google"},
     {"route": "anthropic", "base_env": "ANTHROPIC_API_BASE", "key_env": "ANTHROPIC_API_KEY", "kind": "anthropic"},
+    # Free-only routes (agent-kit#916): a paid id is never deployed on these. Their free signal is the
+    # kind (see list_models): a plan-wide free tier lists its free ids in routing.json (`free_ids`).
+    {"route": "groq", "base_env": "GROQ_API_BASE", "key_env": "GROQ_API_KEY", "kind": "groq"},
+    # The account id is part of Cloudflare's base, so the base is composed from CLOUDFLARE_ACCOUNT_ID.
+    {"route": "cloudflare", "base_env": "CLOUDFLARE_API_BASE", "key_env": "CLOUDFLARE_API_KEY", "kind": "cloudflare",
+     "base_template": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"},
+    {"route": "nvidia", "base_env": "NVIDIA_NIM_API_BASE", "key_env": "NVIDIA_NIM_API_KEY", "kind": "nvidia"},
+    {"route": "zai", "base_env": "ZAI_API_BASE", "key_env": "ZAI_API_KEY", "kind": "zai"},
+    # Anonymous routes have no key: listed and probed without an Authorization header. Their key_env is
+    # never set, so only "anonymous" lets them past the missing-key skip.
+    {"route": "kilo", "base_env": "KILO_API_BASE", "key_env": "KILO_API_KEY", "kind": "kilo", "anonymous": True},
+    {"route": "ovh", "base_env": "OVHCLOUD_API_BASE", "key_env": "OVHCLOUD_API_KEY", "kind": "ovh", "anonymous": True},
+    {"route": "requesty", "base_env": "REQUESTY_API_BASE", "key_env": "REQUESTY_API_KEY", "kind": "requesty"},
+    # AxForge is not registered yet: its key is empty, so the sync skips the route like any keyless one.
+    # It is also OFF by data: routing.json's free_ids.axforge is empty, because the site's "3M free
+    # serverless tokens every 30 days" is followed by billing, and a zero recorded cost with no budget
+    # would hide that spend. It deploys nothing until the owner has checked billing and filled the list.
+    {"route": "axforge", "base_env": "AXFORGE_API_BASE", "key_env": "AXFORGE_API_KEY", "kind": "axforge"},
+    {"route": "naga", "base_env": "NAGA_API_BASE", "key_env": "NAGA_API_KEY", "kind": "naga"},
+    {"route": "routeway", "base_env": "ROUTEWAY_API_BASE", "key_env": "ROUTEWAY_API_KEY", "kind": "routeway"},
+    {"route": "inferbase", "base_env": "INFERBASE_API_BASE", "key_env": "INFERBASE_API_KEY", "kind": "inferbase"},
 ]
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
-DEFAULT_ROUTE_LIMITS = {"openrouter": 30}
+# A limit is per RUN. The catalogue Process runs hourly (deploy/litellm.project.yml, "17 * * * *"), so
+# at worst (a model whose probe errors is retried every run) a route is probed limit x 24 times a day;
+# a healthy model is probed once per --max-age. Each limit keeps that worst case at or under half the
+# provider's daily cap, so real traffic keeps the rest:
+#   groq        10 x 24 = 240    of 1,000 a day          zai        10 x 24 = 240   (1 concurrent; probes are serial)
+#   requesty     4 x 24 =  96    of 200 a day (all free models together, 20 a minute)
+#   naga         2 x 24 =  48    of 100 a day            routeway    4 x 24 =  96   of 200 a day
+#   inferbase    2 x 24 =  48    of 100 managed a day    cloudflare  5 x 24 = 120   (10,000 neurons a day; a probe is a few)
+#   ovh          2 x 24 =  48    at 2 a minute per IP per model: two serial probes of different models
+#   kilo        30 per run, 200 an hour per IP shared with real traffic
+#   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
+DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
+                        "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
+# Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
+STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase")
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -94,11 +129,14 @@ PROBE_MINIMUM = re.compile(r">= (\d+)")
 PROBE_RETRY_CEILING = 256
 # The LiteLLM provider prefix per route kind: what the proxy hands the upstream id to.
 PREFIXES = {"mistral": "mistral", "openai": "openai", "opencode-go": "opencode_go", "openrouter": "openrouter",
-            "google": "gemini", "anthropic": "anthropic"}
+            "google": "gemini", "anthropic": "anthropic", "groq": "groq", "cloudflare": "cloudflare",
+            "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai", "ovh": "ovhcloud", "requesty": "openai",
+            "axforge": "openai", "naga": "openai", "routeway": "openai", "inferbase": "openai"}
 # The API families OpenCode Go names per model ("api" in its /models), in the order one is chosen.
 GO_FAMILIES = ("chat-completions", "responses", "messages", "generate-content")
 # Kinds whose route is free only: a paid id is never deployed, so the route cannot cost anything.
-FREE_KINDS = ("openrouter",)
+FREE_KINDS = ("openrouter", "groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga",
+              "routeway", "inferbase")
 FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FREE_KINDS)
 # A free-only route is public work only: a free-tier provider may train on the prompts, so its
 # deployments are never in `canonical` (the group every key holds). Each one gets its own
@@ -107,7 +145,10 @@ FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FRE
 # shared group would let every free key reach every free provider, and LiteLLM grants access per
 # model name, so two routes in one name would leak each other's deployments. This is code, not a rule in routing.json, so no rules
 # edit can put a free deployment back in `canonical`.
-FREE_ACCESS_GROUPS = {"openrouter": "openrouter-free-public"}
+FREE_ACCESS_GROUPS = {entry["route"]: f"{entry['route']}-free-public" for entry in ROUTES if entry["kind"] in FREE_KINDS}
+# A free deployment the price map does not know records a real cost of 0, not an unknown. Inferbase's
+# free share is a dollar allowance, so its deployments keep their price and the route's budget caps it.
+FREE_PRICED = frozenset({"inferbase"})
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # A gated route is never in `canonical` either: a key reaches its deployments only by holding the
 # route's own access group, and no workstation key holds it (agent-kit withholds the same routes).
@@ -257,6 +298,42 @@ def is_free_price(pricing):
         return False
 
 
+def zero_price(*prices):
+    """Whether every price is present and zero: a missing price is not free."""
+    try:
+        return all(price is not None and float(price) == 0 for price in prices)
+    except (TypeError, ValueError):
+        return False
+
+
+def listed_prices(item):
+    """The (input, output) price a listing reports, or None: pricing.prompt/completion, pricing.input/output
+    or input_price/output_price. Units are the provider's own (per token for the OpenAI-style lists)."""
+    pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+    for source, names in ((pricing, ("prompt", "completion")), (pricing, ("input", "output")),
+                          (item, ("input_price", "output_price"))):
+        try:
+            pair = tuple(float(source[name]) for name in names)
+        except (KeyError, TypeError, ValueError):
+            continue
+        return pair
+    return None
+
+
+def route_base(entry, env):
+    """The provider base of one route: its env value, or the route's template filled from the env.
+
+    A template whose parts are unset is no base, so the route is a route error, never a bad URL.
+    """
+    template = entry.get("base_template")
+    if template and not env.get(entry["base_env"]):
+        parts = {name: env.get(name) or "" for name in re.findall(r"{(\w+)}", template)}
+        # base.env ships a REPLACE_WITH_... placeholder until the owner writes the real id.
+        parts = {name: "" if value.startswith("REPLACE_WITH") else value for name, value in parts.items()}
+        return template.format(**parts) if all(parts.values()) else ""
+    return (env.get(entry["base_env"]) or "").rstrip("/")
+
+
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -275,11 +352,17 @@ def modality(kind, item):
     return "embedding" if "embed" in model_id else "chat"
 
 
-def list_models(entry, env, http):
-    """The models the provider lists for this route: id, name, context length, free, chat, modality."""
-    base = (env.get(entry["base_env"]) or "").rstrip("/")
+def list_models(entry, env, http, rules=None):
+    """The models the provider lists for this route: id, name, context length, free, chat, modality.
+
+    A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
+    `:free` suffix (Naga, Routeway), everything listed (NVIDIA), or an id in routing.json's
+    `free_ids` for a plan-wide free tier (Groq, Cloudflare, Z.ai, AxForge, Inferbase).
+    """
+    base = route_base(entry, env).rstrip("/")
     if not base:
         raise RuntimeError(f"{entry['base_env']} is not set")
+    free_ids = set(((rules or {}).get("free_ids") or {}).get(entry["route"]) or [])
     key = env.get(entry["key_env"]) or ""
     kind = entry["kind"]
     if kind == "anthropic":
@@ -324,6 +407,32 @@ def list_models(entry, env, http):
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
+        elif kind == "kilo":
+            out["context_length"] = item.get("context_length")
+            out["free"] = item.get("isFree") is True
+        elif kind == "requesty":
+            out["context_length"] = item.get("context_window") or item.get("context_length")
+            out["free"] = zero_price(item.get("input_price"), item.get("output_price"))
+        elif kind == "ovh":
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = zero_price(pricing.get("prompt"), pricing.get("completion"))
+        elif kind in ("naga", "routeway"):
+            out["free"] = model_id.endswith(":free")
+        elif kind == "nvidia":
+            out["free"] = True
+        elif kind in STATIC_KINDS:
+            # The plan is free, so the list is the signal; a listing that prices the id above zero
+            # overrides it (fail closed): the plan is not free for that model.
+            price = listed_prices(item)
+            if kind == "inferbase":
+                # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
+                # deployment needs the real per-token price for the route's budget to fire; an id the
+                # listing does not price is not deployed.
+                out["free"] = model_id in free_ids and price is not None
+                if price is not None:
+                    out["price"] = {"input": price[0], "output": price[1]}
+            else:
+                out["free"] = model_id in free_ids and not (price and any(price))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -359,7 +468,7 @@ def probe(entry, upstream_id, env, http, meta=None):
     An OpenCode Go model is probed in the family and at the base its listing named (`meta`).
     """
     meta = meta or {}
-    base = (env.get(entry["base_env"]) or "").rstrip("/")
+    base = route_base(entry, env).rstrip("/")
     if not base:
         return "error", f"{entry['base_env']} is not set"
     key = env.get(entry["key_env"]) or ""
@@ -512,6 +621,10 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
+    if route in FREE_ONLY and route not in FREE_PRICED:
+        params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
+    elif route in FREE_PRICED and chosen.get("price"):
+        params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
     if budget:
         params.update(budget)
     if cooldown:
@@ -604,7 +717,8 @@ def plan_groups(catalogue, rules):
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
             if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
-                groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free"))}
+                groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
+                                      "price": meta.get("price")}
     specs = []
     for name, routes in sorted(groups.items()):
         serving = set(routes)
@@ -641,7 +755,8 @@ def plan_groups(catalogue, rules):
         for route in sorted(free):
             # Its own group, alone: public work only, and nothing paid behind it.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
-                                    routes[route], 1, 1, by_route[route], cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+                                    routes[route], 1, 1, by_route[route], budget=budgets.get(route),
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
         for route in sorted(free_ids):
             # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
             group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
@@ -769,7 +884,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     queue = []
     for entry in ROUTES:
         route = entry["route"]
-        if not (env.get(entry["key_env"]) or ""):
+        if not (env.get(entry["key_env"]) or "") and not (entry.get("anonymous") and route_base(entry, env)):
             # A route whose key is not written yet is skipped silently: the sync must run before the
             # owner adds it. Its last entries stay, stale, until a run can list it again.
             old = (previous.get("providers") or {}).get(route)
@@ -779,7 +894,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
             continue
         try:
-            listed = list_models(entry, env, http)
+            listed = list_models(entry, env, http, rules)
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -795,7 +910,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            for field in ("canonical_id", "api", "api_base"):
+            for field in ("canonical_id", "api", "api_base", "price"):
                 if item.get(field):
                     meta[field] = item[field]
             if old:
