@@ -20,6 +20,8 @@ LiteLLM for the JorisJonkers-dev estate: `ghcr.io/jorisjonkers-dev/litellm`, the
 | `google` | Google AI Studio, free tier | `google_api_key` | free tier |
 | `anthropic` | Anthropic | `anthropic_api_key` | pay per token |
 
+Planned routes: [docs/free-inference.md](docs/free-inference.md) lists every free inference source worth using (permanent or renewing tiers only), with accounts, limits, how each plugs into this proxy, whether LiteLLM tracks it, and whether it needs a harness of its own.
+
 The four Mistral accounts are listed and probed separately because their model sets differ. A route whose key is unset or empty is skipped silently, so the sync runs before every key is written.
 
 **Credentials.** `credential_list` holds one entry per account: `credential_name` (the route), `credential_values` (`api_key` and, except for Google and Anthropic, `api_base`) and the required `credential_info: {}`. Every value is an environment name (`os.environ/<NAME>`), never a value. A deployment names its entry with `litellm_params.litellm_credential_name`. LiteLLM sends **no credentials at all** when that name does not resolve, so `tests/config.test.mjs` fails on a dangling name in either config file: that check is the guard against a silently unauthenticated deployment. Google and Anthropic are addressed by LiteLLM itself, so their credentials carry the key only.
