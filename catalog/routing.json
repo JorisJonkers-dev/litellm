@@ -58,6 +58,63 @@
     "routeway": 3600,
     "inferbase": 120
   },
+  "opt_in_only": ["glm-5.3", "kimi-k3.1-pro", "gpt-6-luna"],
+  "tier_cost_classes": ["free", "vibe", "go"],
+  "tier_groups": {
+    "tier-free": {
+      "ceiling": "free",
+      "key_models": ["free", "tier-free"],
+      "steps": [
+        {"model": "free/hy4-flash-free", "cost": "free"},
+        {"model": "free/longcat-2.5-free", "cost": "free"},
+        {"model": "free/beam-free", "cost": "free"},
+        {"model": "free/glm-4.7-flash", "cost": "free"},
+        {"model": "free/qwen3.8-27b", "cost": "free"}
+      ]
+    },
+    "tier-vibe": {
+      "ceiling": "go",
+      "key_models": ["tier-vibe", "vibe/*", "opencode-go/*"],
+      "steps": [
+        {"model": "vibe/deepseek-v4-1-flash-1017", "cost": "vibe"},
+        {"model": "vibe/zai-glm-5-3-flash", "cost": "vibe"},
+        {"model": "vibe/mistral-small-latest", "cost": "vibe"},
+        {"tier": "tier-go-cheap"}
+      ]
+    },
+    "tier-go-cheap": {
+      "ceiling": "go",
+      "key_models": ["tier-go-cheap", "opencode-go/*"],
+      "steps": [
+        {"model": "opencode-go/deepseek-v4.1-flash", "cost": "go"},
+        {"model": "opencode-go/glm-5.3-flash", "cost": "go"},
+        {"model": "opencode-go/mimo-v2.6-flash", "cost": "go"}
+      ]
+    },
+    "tier-strong-open": {
+      "ceiling": "go",
+      "key_models": ["tier-strong-open", "vibe/*", "opencode-go/*"],
+      "steps": [
+        {"model": "opencode-go/qwen4-max", "cost": "go"},
+        {"tier": "tier-vibe"}
+      ]
+    },
+    "tier-review": {
+      "ceiling": "go",
+      "key_models": ["free", "tier-review", "vibe/*", "opencode-go/*"],
+      "steps": [
+        {"model": "free/nemotron-3-ultra-550b-a55b", "cost": "free"},
+        {"model": "free/gemma-4-31b", "cost": "free"},
+        {"model": "free/glm-4.7-flash", "cost": "free"},
+        {"model": "free/gpt-oss-120b", "cost": "free"},
+        {"model": "vibe/deepseek-v4-1-flash-1017", "cost": "vibe"},
+        {"model": "vibe/zai-glm-5-3-flash", "cost": "vibe"},
+        {"model": "opencode-go/qwen3.8-flash", "cost": "go"},
+        {"model": "opencode-go/minimax-m3.1-flash", "cost": "go"},
+        {"model": "opencode-go/mimo-v2.6-flash", "cost": "go"}
+      ]
+    }
+  },
   "policies": {
     "anthropic": {"BadRequestErrorAllowedFails": 2}
   }

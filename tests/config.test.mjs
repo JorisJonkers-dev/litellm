@@ -477,3 +477,14 @@ test('the UI redirects to the SSO sign-in and the API docs are off', () => {
   assert.match(env, /^NO_OPENAPI=true$/m)
   assert.match(CONFIG, /disable_env_credential_login: true/)
 })
+
+test('the tier names are router aliases with fallbacks, and there is no default_fallbacks', () => {
+  const live = CONFIG.split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n')
+  assert.doesNotMatch(live, /default_fallbacks/)
+  for (const tier of ['tier-free', 'tier-vibe', 'tier-go-cheap', 'tier-strong-open', 'tier-review']) {
+    assert.match(live, new RegExp(`^    "${tier}": "`, 'm'), tier)
+    assert.match(live, new RegExp(`^    - \\{"${tier}": \\[`, 'm'), tier)
+  }
+  // No fallbacks entry starts from a free/* group: nothing reachable from one ends at a paid deployment.
+  assert.doesNotMatch(live, /^\s+- \{"free\//m)
+})

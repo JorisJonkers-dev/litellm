@@ -46,6 +46,9 @@ canonical model (matched by canonical_name(), whatever the provider calls it) is
 "free/<canonical>" group, ordered by allowance, each copy with its own cooldown, so a 429 falls
 through to the next free copy. assert_free_groups() fails the run when a copy in it is not zero-cost.
 
+Tier groups: catalog/routing.json's `tier_groups` define the callable tier-* names and their ordered
+steps; validate_tiers() checks them and `--render-tiers` renders them into config/config.yaml.
+
 Probe cost bound: each probe is one minimal request (about 8 input tokens + 16 output tokens), and
 a provider that refuses a small max_tokens is retried once with its own minimum, so a run costs at
 most (models probed) x (about 8 input + 16 output tokens), doubled in the worst case. The models
@@ -836,6 +839,137 @@ def render_models(deployments):
     return f"{MODELS_HEADER}\n{MODELS_NOTE}\n{json.dumps(document, indent=2)}\n"
 
 
+# The cost class of a callable model name, by its prefix. A tier step declares its class and
+# validate_tiers() checks the declaration against this table, so a paid step cannot be written down
+# as free: "free/" names only ever resolve to zero-cost deployments (assert_free_groups).
+STEP_CLASS_PREFIXES = {"free/": "free", "vibe/": "vibe", "vibe-study/": "vibe", "opencode-go/": "go"}
+TIERS_BEGIN = "  # BEGIN tiers"
+TIERS_NOTE = " (rendered from catalog/routing.json by `python3 catalog/sync.py --render-tiers`; do not edit by hand)"
+TIERS_END = "  # END tiers"
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.yaml")
+
+
+def step_class(model):
+    """The cost class a callable model name belongs to, or None when no prefix names one."""
+    for prefix, cost in STEP_CLASS_PREFIXES.items():
+        if model.startswith(prefix):
+            return cost
+    return None
+
+
+def tier_chains(rules):
+    """Every tier as its flat, ordered list of steps ({"model", "cost"}), a nested tier expanded in place.
+
+    A step is {"model": <callable name>, "cost": <class>} or {"tier": <other tier>}, which splices that
+    tier's own steps in at that position. A model already in the chain keeps its first place, so a
+    ladder that loops back (tier-go-cheap naming tier-vibe) cannot repeat a model, and a tier that
+    names itself through others is rejected.
+    """
+    groups = (rules or {}).get("tier_groups") or {}
+
+    def expand(name, trail):
+        if name not in groups:
+            raise RuntimeError(f"tier {name} is not defined in the routing rules")
+        if name in trail:
+            raise RuntimeError("tier cycle: " + " -> ".join([*trail, name]))
+        steps = []
+        for step in groups[name].get("steps") or []:
+            steps.extend(expand(step["tier"], [*trail, name]) if "tier" in step else [step])
+        return steps
+
+    chains = {}
+    for name in groups:
+        seen, chain = set(), []
+        for step in expand(name, []):
+            if step["model"] not in seen:
+                seen.add(step["model"])
+                chain.append(step)
+        chains[name] = chain
+    return chains
+
+
+def validate_tiers(rules):
+    """Check the tier definitions; raise RuntimeError naming the first thing wrong.
+
+    Each step's declared cost class must be the class its name's prefix gives; no step may cost more than
+    its tier's ceiling (so tier-free, ceiling "free", holds only free/* names and can never reach a
+    paid deployment); an opt-in-only model (rules["opt_in_only"], by canonical name) is in no chain;
+    a tier is no model_name of the catalogue; and each tier's key_models cover every step, because a
+    key reaches a name only by holding it (or its access group) and a fallback the key does not hold
+    is skipped.
+    """
+    rules = rules or {}
+    classes = list(rules.get("tier_cost_classes") or [])
+    opt_in = set(rules.get("opt_in_only") or [])
+    groups = rules.get("tier_groups") or {}
+    for name, chain in tier_chains(rules).items():
+        if not name.startswith("tier-"):
+            raise RuntimeError(f"tier {name} must be named tier-<name>")
+        ceiling = groups[name].get("ceiling")
+        if ceiling not in classes:
+            raise RuntimeError(f"tier {name} has no valid ceiling")
+        keys = groups[name].get("key_models") or []
+        if not chain or name not in keys:
+            raise RuntimeError(f"tier {name} needs steps, and its key_models must name it")
+        for step in chain:
+            model, cost = step["model"], step.get("cost")
+            if cost not in classes or cost != step_class(model):
+                raise RuntimeError(f"tier {name}: step {model} declares cost {cost}, its name is class {step_class(model)}")
+            if classes.index(cost) > classes.index(ceiling):
+                raise RuntimeError(f"tier {name}: step {model} ({cost}) is above the tier's ceiling {ceiling}")
+            if canonical_name(None, model.split("/", 1)[1], rules) in opt_in:
+                raise RuntimeError(f"tier {name}: {model} is opt-in only and may not be in a tier chain")
+            if not any(model == key or (key.endswith("/*") and model.startswith(key[:-1])) or
+                       (key == FREE_ACCESS_GROUP and cost == "free") for key in keys):
+                raise RuntimeError(f"tier {name}: key_models do not reach step {model}")
+
+
+def tier_router_settings(rules):
+    """The router settings that make the tiers callable: {"model_group_alias", "fallbacks"}.
+
+    A tier name is an alias of its first step's group, and the rest of its chain is the ordered
+    fallback list under the tier's own name (LiteLLM looks fallbacks up by the requested name,
+    alias included; tests/test_tiers.py runs it). No default_fallbacks, ever: one stray entry would
+    send every free group to a paid tier.
+    """
+    validate_tiers(rules)
+    chains = tier_chains(rules)
+    return {
+        "model_group_alias": {name: chain[0]["model"] for name, chain in chains.items()},
+        "fallbacks": [{name: [step["model"] for step in chain[1:]]} for name, chain in chains.items() if len(chain) > 1],
+    }
+
+
+def render_tier_block(rules):
+    """The lines config/config.yaml holds inside router_settings, from the tier definitions."""
+    settings = tier_router_settings(rules)
+    lines = [TIERS_BEGIN + TIERS_NOTE, "  model_group_alias:"]
+    lines += [f"    {json.dumps(name)}: {json.dumps(target)}" for name, target in settings["model_group_alias"].items()]
+    lines.append("  fallbacks:")
+    lines += [f"    - {json.dumps(entry)}" for entry in settings["fallbacks"]]
+    lines.append(TIERS_END)
+    return "\n".join(lines)
+
+
+def splice_tier_block(config_text, rules):
+    """config.yaml's text with the rendered tier block in place of the marked one."""
+    start, end = config_text.find(TIERS_BEGIN), config_text.find(TIERS_END)
+    if start < 0 or end < start:
+        raise RuntimeError("config.yaml has no tiers block between its BEGIN and END markers")
+    return config_text[:start] + render_tier_block(rules) + config_text[end + len(TIERS_END):]
+
+
+def missing_tier_steps(deployments, rules):
+    """Free steps of the tiers whose free/<canonical> group the plan does not (yet) hold.
+
+    Paid steps are wildcard names (vibe/*, opencode-go/*) the config always holds. A free step with
+    no group is skipped by the router (the next step serves), and listed here so the run says so.
+    """
+    names = {spec["name"] for spec in deployments}
+    return sorted({step["model"] for chain in tier_chains(rules).values() for step in chain
+                   if step["cost"] == "free" and step["model"] not in names})
+
+
 def record_groups(deployments):
     """The planned groups as the catalogue records them: name -> modality, public, deployments.
 
@@ -1180,7 +1314,14 @@ def main(argv=None, env=None, http=None, now=None):
     ap.add_argument("--output", default="model-catalog.json", help="where the catalogue is written when it is not published")
     ap.add_argument("--max-age", default="24h")
     ap.add_argument("--max-probes", type=int, default=250)
+    ap.add_argument("--render-tiers", action="store_true", help="rewrite the tiers block of config/config.yaml from routing.json and exit")
     args = ap.parse_args(argv)
+    if args.render_tiers:
+        with open(CONFIG_PATH) as handle:
+            updated = splice_tier_block(handle.read(), load_rules())
+        with open(CONFIG_PATH, "w") as handle:
+            handle.write(updated)
+        return 0
     env = os.environ if env is None else env
     http = http or make_http()
     now = now or datetime.datetime.now(datetime.timezone.utc)
@@ -1206,10 +1347,13 @@ def main(argv=None, env=None, http=None, now=None):
     # overview renders: both come from the same plan, so the page and the file cannot disagree.
     try:
         deployments = plan_groups(catalogue, rules)
+        validate_tiers(rules)
     except RuntimeError as error:
-        # A free group with a paid copy fails the run.
+        # A free group with a paid copy, or a tier chain that breaks its own rules, fails the run.
         print(f"catalog: {error}", file=sys.stderr)
         return 1
+    for step in missing_tier_steps(deployments, rules):
+        print(f"catalog: tier step {step} has no group in this plan; the router skips it", file=sys.stderr)
     catalogue["groups"] = record_groups(deployments)
     # A run that listed nothing at all is a failed run, so the scheduled Process shows red.
     failed = stats["listed"] == 0

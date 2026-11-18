@@ -27,3 +27,30 @@ A free model is served by several free routes, and a 429 on one should land on t
 - **Access.** A key holding the access group `free` reaches every `free/*` group, as it already reached the per-route ones.
 
 `tests/test_free_groups.py` covers the plan and the assertion. Its Router tests (a 429 cools only that copy, the next serves) load the plan into LiteLLM's own Router with the upstream mocked, and run only where `litellm` is importable, so run them in the image: `docker run --rm -v "$PWD":/repo --entrypoint python <image> -W ignore -m unittest discover -s /repo/tests -p 'test_free*.py'`.
+
+## Tier groups
+
+`catalog/routing.json` is the single policy source for the tiers (`tier_groups`); agent-kit renders from it and holds no policy of its own. A tier is a callable model name with an ordered chain:
+
+| Tier | Chain (cost class of each step) |
+| --- | --- |
+| `tier-free` | free only: Go free ids (`free/hy4-flash-free`, `free/longcat-2.5-free`, `free/beam-free`), then `free/glm-4.7-flash`, `free/qwen3.8-27b` |
+| `tier-vibe` | Vibe Flash first (vibe), then Vibe Mistral Small, then `tier-go-cheap` (go) |
+| `tier-go-cheap` | Go Flash models (go) |
+| `tier-strong-open` | escalation only: `opencode-go/qwen4-max` (go), then `tier-vibe` |
+| `tier-review` | free models from different labs, then Vibe Flash (vibe), then Go Flash (go) |
+
+The ladder is free, then Vibe, then Go. GLM-5.3, Kimi K3.1 Pro and GPT-6 Luna are opt-in only (`opt_in_only`): `validate_tiers()` refuses any chain that holds one, by canonical name, aliases included.
+
+- **Declarative shape.** `tier_groups.<tier>` has `ceiling` (the dearest cost class the tier may hold), `key_models` and `steps`. A step is `{"model", "cost"}` or `{"tier"}`, which splices that tier's steps in place (first occurrence of a model wins, so the ladder cannot loop). The cost class must match the name's prefix (`free/` free, `vibe/` and `vibe-study/` vibe, `opencode-go/` go), and no step may exceed the ceiling. `tier-free` has ceiling `free`, so it cannot reach a paid deployment; `tier-review` reaches Vibe and Go only through steps that say so.
+- **How it is rendered.** `config/config.yaml`'s `router_settings` holds a block between `# BEGIN tiers` and `# END tiers`: `model_group_alias` maps each tier to its first step, and `fallbacks` holds the rest in order. LiteLLM merges an included file's lists but replaces its mappings, so this block cannot live in `models.generated.yaml`. Regenerate it with `python3 catalog/sync.py --render-tiers`; a test fails if the file and `routing.json` disagree. The sync run also validates the tiers and names any free step whose `free/<canonical>` group the plan does not hold yet (the router skips a missing step and the next one serves).
+- **No `default_fallbacks`,** and no fallbacks entry keyed on a `free/*` group.
+- **Keys.** A key reaches a model name or access group it holds, and a tier name is neither (it is an alias), so a key lists the tier name beside what the chain needs. `enforce_fallback_model_access` is on in this LiteLLM, so a step the key does not hold is skipped: the key's list is what stops a chain, and it is the only thing that does. The lists, kept in `key_models` and tested against each chain:
+  - the existing `free` key: `["free", "tier-free"]` (it already holds `free`; add `tier-free`);
+  - `tier-vibe`: `["tier-vibe", "vibe/*", "opencode-go/*"]` (it ends in Go);
+  - `tier-go-cheap`: `["tier-go-cheap", "opencode-go/*"]`;
+  - `tier-strong-open`: `["tier-strong-open", "vibe/*", "opencode-go/*"]` (an escalation key, not a workstation key);
+  - `tier-review`: `["free", "tier-review", "vibe/*", "opencode-go/*"]`.
+  A key without `opencode-go/*` on `tier-vibe` stops at Vibe instead of falling to Go.
+
+`tests/test_tiers.py` loads the rendered block into LiteLLM's Router (mocked upstream, run in the image) and walks every chain, rate-limiting each step in turn.
