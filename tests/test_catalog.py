@@ -536,6 +536,8 @@ class Gh(Http):
         if url.startswith(base + "/git/refs/heads/") and method == "PATCH":
             self.refs[url.rsplit("/", 1)[1]] = body["sha"]
             return 200, {}
+        if url.startswith(base + "/pulls/") and method == "PATCH" and "body" in body:
+            return 200, {}
         if url.startswith(base + "/pulls/") and method == "PATCH":
             number = int(url.rsplit("/", 1)[1])
             self.pulls = [pull for pull in self.pulls if pull["number"] != number]
@@ -863,3 +865,81 @@ class FreeSignals(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CF_ACCOUNTS = "https://api.cloudflare.com/client/v4/accounts"
+CF_SEARCH = CF_ACCOUNTS + "/acc123/ai/models/search?per_page=100&page=1"
+CF_ENV = dict(ENV, CLOUDFLARE_API_KEY="k-cf", CLOUDFLARE_ACCOUNT_ID="REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID")
+CF_RULES = {"free_ids": {"cloudflare": ["@cf/a/approved"]}, "cooldowns": {}, "tiers": [[["vibe", 1]]]}
+CF_LISTS = dict(LISTS, **{
+    CF_ACCOUNTS: {"result": [{"id": "acc123", "name": "mine"}]},
+    CF_SEARCH: {"result": [
+        {"name": "@cf/a/approved", "task": {"name": "Text Generation"}, "properties": [{"property_id": "price", "value": [{"unit": "per M input tokens", "price": 0.1, "currency": "USD"}]}]},
+        {"name": "@cf/b/zero", "task": {"name": "Text Generation"}, "properties": [{"property_id": "price", "value": [{"unit": "per M input tokens", "price": 0, "currency": "USD"}]}, {"property_id": "context_window", "value": 8192}]},
+        {"name": "@cf/c/unknown", "task": {"name": "Text Generation"}}]},
+    "https://api.cloudflare.com/client/v4/accounts/acc123/ai/v1/models": {"data": [{"id": "@cf/a/approved"}, {"id": "@cf/b/zero"}]},
+    "https://ib/v1/models": {"data": [{"id": "x", "pricing": {"input": "0", "output": "0"}}, {"id": "y", "input_price": 1, "output_price": 2}]},
+})
+
+
+class FreeCandidates(unittest.TestCase):
+    def build(self, lists=None, env=None, rules=CF_RULES):
+        http = Http(lists=CF_LISTS if lists is None else lists)
+        cat, stats = sync.build(env or CF_ENV, http, {}, NOW, rules=rules)
+        return cat, stats, http
+
+    def test_candidates_are_listed_with_signals_and_never_deployed(self):
+        cat, _, _ = self.build()
+        items = {i["id"]: i for i in cat["free_candidates"]["cloudflare"]}
+        self.assertTrue(items["@cf/a/approved"]["approved"])
+        self.assertFalse(items["@cf/a/approved"]["suggested"])
+        self.assertFalse(items["@cf/b/zero"]["approved"])
+        self.assertTrue(items["@cf/b/zero"]["suggested"])
+        self.assertEqual(items["@cf/b/zero"]["signals"]["context_length"], 8192)
+        self.assertFalse(items["@cf/c/unknown"]["suggested"])
+        deployed = [d["model_info"]["id"] for d in sync.plan_groups(cat, CF_RULES)]
+        self.assertFalse([i for i in deployed if "@cf/b/zero" in i or "@cf/c/unknown" in i])
+        self.assertFalse(cat["providers"]["cloudflare"]["models"][0]["metadata"]["free"] and cat["providers"]["cloudflare"]["models"][1]["metadata"]["free"])
+        free = {m["id"]: m["metadata"]["free"] for m in cat["providers"]["cloudflare"]["models"]}
+        self.assertEqual(free, {"cloudflare/@cf/a/approved": True, "cloudflare/@cf/b/zero": False})
+
+    def test_the_account_is_discovered_from_the_token_when_the_env_is_a_placeholder(self):
+        _, _, http = self.build()
+        self.assertEqual(http.calls[0][:2], ("GET", CF_ACCOUNTS))
+        self.assertEqual(http.calls[0][2], {"Authorization": "Bearer k-cf"})
+        self.assertIn(("GET", CF_SEARCH), [c[:2] for c in http.calls])
+
+    def test_a_set_account_id_is_not_discovered(self):
+        _, _, http = self.build(env=dict(CF_ENV, CLOUDFLARE_ACCOUNT_ID="acc123"))
+        self.assertNotIn(CF_ACCOUNTS, [c[1] for c in http.calls])
+
+    def test_two_accounts_are_not_guessed(self):
+        lists = dict(CF_LISTS, **{CF_ACCOUNTS: {"result": [{"id": "a"}, {"id": "b"}]}})
+        cat, stats, _ = self.build(lists=lists)
+        self.assertEqual(cat["free_candidates"]["cloudflare"], [])
+        self.assertTrue(any("2 accounts" in e for e in stats["route_errors"]))
+
+    def test_a_listing_error_leaves_candidates_empty_without_failing(self):
+        lists = dict(CF_LISTS, **{CF_SEARCH: None})
+        cat, stats, _ = self.build(lists=lists)
+        self.assertEqual(cat["free_candidates"]["cloudflare"], [])
+        self.assertTrue(any("candidate scan" in e for e in stats["route_errors"]))
+        self.assertGreater(stats["listed"], 0)
+
+    def test_inferbase_records_listed_prices_and_a_keyless_route_is_skipped(self):
+        env = dict(CF_ENV, INFERBASE_API_BASE="https://ib/v1", INFERBASE_API_KEY="k-ib")
+        cat, _, _ = self.build(env=env)
+        ib = {i["id"]: i for i in cat["free_candidates"]["inferbase"]}
+        self.assertTrue(ib["x"]["suggested"])
+        self.assertEqual(ib["y"]["signals"]["input_price"], 1.0)
+        self.assertFalse(ib["y"]["suggested"])
+        self.assertNotIn("axforge", cat["free_candidates"])
+
+    def test_the_overview_and_the_pull_request_body_carry_the_section(self):
+        cat, _, _ = self.build()
+        self.assertIn("## Free-route candidates", overview.render(cat))
+        self.assertIn("@cf/b/zero", overview.render(cat))
+        body = sync.models_body("", "{}", cat["free_candidates"])
+        self.assertIn("### Free-route candidates", body)
+        self.assertIn("| @cf/b/zero | candidate |", body)
+        self.assertIn("deployments added:", sync.models_body("", "{}"))

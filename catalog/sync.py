@@ -459,6 +459,118 @@ def list_models(entry, env, http, rules=None):
         found[model_id] = out
     return list(found.values())
 
+CLOUDFLARE_ACCOUNTS = "https://api.cloudflare.com/client/v4/accounts"
+CANDIDATE_PAGES = 10
+
+
+def resolve_cloudflare_account(env, http, log=None):
+    """The env with CLOUDFLARE_ACCOUNT_ID filled in from the token when it is unset or the base.env placeholder.
+
+    `GET /client/v4/accounts` with the token lists the accounts it may read. Exactly one account is
+    used (and logged by id and name); none or several is an error, never a guess. Returns (env, error).
+    """
+    value = env.get("CLOUDFLARE_ACCOUNT_ID") or ""
+    key = env.get("CLOUDFLARE_API_KEY") or ""
+    if (value and not value.startswith("REPLACE_WITH")) or env.get("CLOUDFLARE_API_BASE") or not key:
+        return env, None
+    status, body = http("GET", CLOUDFLARE_ACCOUNTS, {"Authorization": f"Bearer {key}"}, None)
+    accounts = body.get("result") if status == 200 and isinstance(body, dict) else None
+    accounts = [a for a in (accounts or []) if isinstance(a, dict) and a.get("id")]
+    if status != 200 or not isinstance(body, dict):
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the account list answered {status}"
+    if len(accounts) != 1:
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the token sees {len(accounts)} accounts; set it"
+    if log:
+        log(f"catalog: cloudflare: CLOUDFLARE_ACCOUNT_ID is not set; using the token's one account {accounts[0]['id']} ({accounts[0].get('name', '')})")
+    return dict(env, CLOUDFLARE_ACCOUNT_ID=str(accounts[0]["id"])), None
+
+
+def cloudflare_signals(item):
+    """Workers AI search item -> (id, signals). `name` is the model id (`@cf/...`); `properties` is a
+    list of {property_id, value}: `price` is a list of {unit, price, currency}, `context_window` a number."""
+    props = {p.get("property_id"): p.get("value") for p in item.get("properties") or [] if isinstance(p, dict)}
+    signals = {}
+    prices = []
+    for entry in props.get("price") if isinstance(props.get("price"), list) else []:
+        if isinstance(entry, dict) and isinstance(entry.get("price"), (int, float)):
+            prices.append({"unit": str(entry.get("unit") or "")[:60], "price": entry["price"], "currency": str(entry.get("currency") or "")[:8]})
+    if prices:
+        signals["prices"] = prices
+        signals["zero_priced"] = all(p["price"] == 0 for p in prices)
+    for name in ("context_window", "beta"):
+        if props.get(name) is not None:
+            signals["context_length" if name == "context_window" else name] = props[name]
+    task = item.get("task") if isinstance(item.get("task"), dict) else {}
+    signals["modality"] = str(task.get("name") or "")[:40] or None
+    return str(item.get("name") or item.get("id") or ""), {k: v for k, v in signals.items() if v is not None}
+
+
+def listing_signals(kind, item):
+    """What a plain OpenAI-style listing says about price and freeness, whitelisted."""
+    signals = {}
+    price = listed_prices(item)
+    if price is not None:
+        signals["input_price"], signals["output_price"] = price
+        signals["zero_priced"] = not any(price)
+    for flag in ("isFree", "free", "is_free"):
+        if isinstance(item.get(flag), bool):
+            signals["free_flag"] = item[flag]
+    context_length = item.get("context_length") or item.get("context_window") or item.get("max_context_length")
+    if isinstance(context_length, int) and not isinstance(context_length, bool):
+        signals["context_length"] = context_length
+    signals["modality"] = modality(kind, item)
+    return signals
+
+
+def scan_candidates(entry, env, http, rules):
+    """Every id a static-list route's provider lists, with the signals the listing gives.
+
+    Returns [{id, approved, signals, suggested}], sorted by id. `approved` means the id is in
+    routing.json's `free_ids`; the rest are candidates for the owner and are never deployed (only
+    `list_models` and the plan read `free_ids`). `suggested` is a zero price or a free flag the
+    listing itself gives. Raises RuntimeError on a listing error; the caller keeps the route's
+    candidates empty.
+    """
+    route, kind = entry["route"], entry["kind"]
+    base = route_base(entry, env).rstrip("/")
+    if not base:
+        raise RuntimeError(f"{entry['base_env']} is not set")
+    key = env.get(entry["key_env"]) or ""
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    approved = set(((rules or {}).get("free_ids") or {}).get(route) or [])
+    found = {}
+    if kind == "cloudflare":
+        # The search endpoint carries pricing and properties; the OpenAI-style list does not.
+        account = base.split("/accounts/", 1)[1].split("/", 1)[0]
+        for page in range(1, CANDIDATE_PAGES + 1):
+            status, body = http("GET", f"{CLOUDFLARE_ACCOUNTS}/{account}/ai/models/search?per_page=100&page={page}", headers, None)
+            if status != 200 or not isinstance(body, dict) or not isinstance(body.get("result"), list):
+                raise RuntimeError(f"{route}: the model search answered {status}")
+            for item in body["result"]:
+                if isinstance(item, dict):
+                    model_id, signals = cloudflare_signals(item)
+                    if model_id:
+                        found[model_id] = signals
+            info = body.get("result_info") if isinstance(body.get("result_info"), dict) else {}
+            if not body["result"] or page >= int(info.get("total_pages") or 1):
+                break
+    else:
+        status, body = http("GET", f"{base}/models", headers, None)
+        if status != 200 or not isinstance(body, dict) or not isinstance(body.get("data"), list):
+            raise RuntimeError(f"{route}: the model list answered {status}")
+        for item in body["data"]:
+            if isinstance(item, dict) and item.get("id") and not item.get("archived"):
+                found[str(item["id"])] = listing_signals(kind, item)
+    out = []
+    for model_id in sorted(found):
+        signals = found[model_id]
+        suggested = signals.get("zero_priced") is True or signals.get("free_flag") is True
+        out.append({"id": model_id, "approved": model_id in approved, "signals": signals, "suggested": suggested})
+    # An approved id the provider no longer lists still shows, so the owner sees it went away.
+    for model_id in sorted(approved - set(found)):
+        out.append({"id": model_id, "approved": True, "signals": {"unlisted": True}, "suggested": False})
+    return out
+
 
 def go_request(base, upstream_id, key, family):
     """The probe request for one OpenCode Go model, in the API family Go serves it on."""
@@ -1217,9 +1329,16 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     limits = dict(DEFAULT_ROUTE_LIMITS if route_limits is None else route_limits)
     cache = previous_by_id(previous)
     by_route = {entry["route"]: entry for entry in ROUTES}
+    env, account_error = resolve_cloudflare_account(env, http, lambda line: print(line, file=sys.stderr))
+    if account_error:
+        stats_errors = [account_error]
+    else:
+        stats_errors = []
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     providers, stats = {}, {"listed": 0, "probed": 0, "route_errors": []}
+    candidates = {}
     queue = []
+    stats["route_errors"] += stats_errors
     for entry in ROUTES:
         route = entry["route"]
         if not (env.get(entry["key_env"]) or "") and not (entry.get("anonymous") and route_base(entry, env)):
@@ -1231,6 +1350,13 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             else:
                 providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
             continue
+        if entry["kind"] in STATIC_KINDS:
+            # Show the owner what this route lists, so an id can be approved in free_ids. Never deployed.
+            try:
+                candidates[route] = scan_candidates(entry, env, http, rules)
+            except Exception as error:
+                candidates[route] = []
+                stats["route_errors"].append(f"{route}: candidate scan: {error}"[:200])
         try:
             listed = list_models(entry, env, http, rules)
         except Exception as error:  # a route that cannot be listed keeps its last entries
@@ -1321,6 +1447,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     }
     # Reported, never merged: two spellings of one model on different routes are a person's call.
     catalogue["possible_duplicates"] = near_duplicates(catalogue, rules)
+    catalogue["free_candidates"] = candidates
     return catalogue, stats
 
 
@@ -1420,6 +1547,12 @@ def github_close_pr(repo, number, token, http):
     http("PATCH", f"{GITHUB}/repos/{repo}/pulls/{number}", github_headers(token), {"state": "closed"})
 
 
+def github_update_pr_body(repo, number, body, token, http):
+    """Best effort: the candidates section must not fail the run."""
+    if number:
+        http("PATCH", f"{GITHUB}/repos/{repo}/pulls/{number}", github_headers(token), {"body": body})
+
+
 def github_create_pr(repo, branch, token, http, title, body):
     status, answer = http("POST", f"{GITHUB}/repos/{repo}/pulls", github_headers(token),
                           {"title": title, "body": body, "head": branch, "base": "main"})
@@ -1445,17 +1578,23 @@ def deployment_ids(text):
     return {str((item.get("model_info") or {}).get("id")) for item in (document.get("model_list") or []) if isinstance(item, dict)}
 
 
-def models_body(current, text):
-    """The pull request body: what the run adds and removes, and nothing else."""
+def models_body(current, text, candidates=None):
+    """The pull request body: what the run adds and removes, then the free-route candidates."""
     before, after = deployment_ids(current), deployment_ids(text)
-    return (
+    body = (
         "The catalogue sync regenerated `config/models.generated.yaml` from the probed catalogue.\n\n"
         f"- deployments added: {len(after - before)}\n"
         f"- deployments removed: {len(before - after)}\n"
     )
+    if candidates is not None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from overview import candidates_section
+
+        body += "\n" + "\n".join(candidates_section(candidates, heading="###")) + "\n"
+    return body
 
 
-def publish_models(repo, token, text, http, env=None):
+def publish_models(repo, token, text, http, env=None, candidates=None):
     """Put the generated deployments on the bot branch and open its pull request.
 
     Returns False when the repository's main branch already holds this text: nothing is written,
@@ -1477,6 +1616,7 @@ def publish_models(repo, token, text, http, env=None):
         # An open pull request that already carries this text is left alone: no hourly churn.
         try:
             if github_get_text(repo, path, token, http, ref=branch)[0] == text:
+                github_update_pr_body(repo, github_open_pr(repo, branch, token, http), models_body(current, text, candidates), token, http)
                 return False
         except RuntimeError:
             pass
@@ -1484,7 +1624,9 @@ def publish_models(repo, token, text, http, env=None):
     github_put_text(repo, path, token, text, sha, http, MODELS_MESSAGE, branch=branch)
     number = github_open_pr(repo, branch, token, http)
     if number is None:
-        number = github_create_pr(repo, branch, token, http, MODELS_TITLE, models_body(current, text))
+        number = github_create_pr(repo, branch, token, http, MODELS_TITLE, models_body(current, text, candidates))
+    else:
+        github_update_pr_body(repo, number, models_body(current, text, candidates), token, http)
     github_label(repo, number, MODELS_LABELS, token, http)
     return True
 
@@ -1586,7 +1728,7 @@ def main(argv=None, env=None, http=None, now=None):
     models_repo, models_token = env.get("MODELS_REPO"), env.get("MODELS_TOKEN")
     if models_repo and models_token:
         try:
-            if publish_models(models_repo, models_token, text, http, env):
+            if publish_models(models_repo, models_token, text, http, env, catalogue.get("free_candidates") or {}):
                 print(f"catalog: opened or updated the models pull request on {models_repo}")
             else:
                 print(f"catalog: {models_repo} already holds the generated deployments")
