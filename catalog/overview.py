@@ -341,7 +341,8 @@ def candidates_section(candidates, heading="##"):
     if not candidates:
         return lines + ["No static-list route was scanned."]
     for route in sorted(candidates):
-        items = candidates[route] or []
+        # Approved ids first (already decided), then the ones the listing suggests, then the rest, each by id.
+        items = sorted(candidates[route] or [], key=lambda i: (not i.get("approved"), not i.get("suggested"), str(i.get("id"))))
         lines.append(f"**{cell(route)}**: " + (f"{len(items)} listed, {sum(1 for i in items if i.get('approved'))} approved" if items else "nothing listed (key absent or listing failed)"))
         if items:
             lines.append("")

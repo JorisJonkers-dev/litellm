@@ -141,6 +141,14 @@ applications:
                 optional: true
               - name: neosantara_api_key
                 optional: true
+              - name: cloudflare_account_id
+                optional: true
+              - name: bazaarlink_api_base
+                optional: true
+              - name: watsonx_api_base
+                optional: true
+              - name: watsonx_project_id
+                optional: true
               - local_llm_api_key
             access: read
             delivery: env
@@ -244,6 +252,16 @@ applications:
               - name: longcat_api_key
                 optional: true
               - name: neosantara_api_key
+                optional: true
+              - name: cloudflare_account_id
+                optional: true
+              - name: bazaarlink_api_base
+                optional: true
+              - name: cohere_api_base
+                optional: true
+              - name: watsonx_api_base
+                optional: true
+              - name: watsonx_project_id
                 optional: true
               - catalog_publish_token
               - catalog_pr_token
