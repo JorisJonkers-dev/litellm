@@ -795,17 +795,30 @@ class FreeRoutesWave2(unittest.TestCase):
         self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["cohere"], 0)
         self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["airforce"], 1)  # 1 request a minute
 
-    def test_no_base_is_invented_where_the_spec_names_none(self):
-        envs = [(ROOT / "deploy" / "env" / name / "base.env").read_text() for name in ("litellm", "litellm-catalog")]
-        for text in envs:
-            for base in ("COHERE_API_BASE", "WATSONX_API_BASE"):
-                self.assertNotIn(base + "=", text)
-            self.assertIn("BAZAARLINK_API_BASE=REPLACE_WITH_BAZAARLINK_API_BASE\n", text)
+    def test_no_base_is_invented_and_a_setting_comes_from_its_vault_field(self):
+        for name in ("litellm", "litellm-catalog"):
+            text = (ROOT / "deploy" / "env" / name / "base.env").read_text()
+            self.assertNotIn("REPLACE_WITH", text)
+            for env_name, field in (("BAZAARLINK_API_BASE", "bazaarlink_api_base"), ("COHERE_API_BASE", "cohere_api_base"),
+                                    ("WATSONX_API_BASE", "watsonx_api_base"), ("WATSONX_PROJECT_ID", "watsonx_project_id"),
+                                    ("CLOUDFLARE_ACCOUNT_ID", "cloudflare_account_id")):
+                self.assertIn(f"{env_name}=${{secret:secret/data/platform/litellm#{field}}}\n", text)
         route = entry("bazaarlink")
         self.assertEqual(sync.route_base(route, {}), "")
         self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "")
-        with self.assertRaises(RuntimeError):
+        with self.assertRaisesRegex(RuntimeError, "Vault field bazaarlink_api_base"):
             sync.list_models(route, {"BAZAARLINK_API_KEY": "k"}, Http({}), {})
+
+    def test_a_route_with_a_key_and_no_setting_is_skipped_with_one_error_naming_the_field(self):
+        cases = {"bazaarlink": ({"BAZAARLINK_API_KEY": "k"}, "bazaarlink_api_base"),
+                 "cohere": ({"COHERE_API_KEY": "k"}, "cohere_api_base"),
+                 "watsonx": ({"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, "watsonx_project_id")}
+        for route, (env, field) in cases.items():
+            cat, stats = sync.build(env, Http({}), {}, NOW, rules={})
+            errors = [e for e in stats["route_errors"] if e.startswith(route)]
+            self.assertEqual(len(errors), 1, route)
+            self.assertIn(f"Vault field {field}", errors[0])
+            self.assertEqual(cat["providers"][route]["models"], [])
 
     def test_the_provider_prefixes_exist_in_the_pinned_litellm(self):
         # LiteLLM 1.109.1 (the image's pin) knows each native prefix; checked where litellm is importable.

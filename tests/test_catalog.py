@@ -1097,7 +1097,7 @@ class CloudflareWithoutAnAccount(unittest.TestCase):
         lists = dict(LISTS, **{CF_ACCOUNTS: {"result": []}})
         cat, stats = sync.build(env, Http(lists=lists), {}, NOW, rules=CF_RULES)
         self.assertEqual([e for e in stats["route_errors"] if "cloudflare" in e], [
-            "cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the token sees 0 accounts; set it"])
+            "cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in secret/platform/litellm) and the token sees 0 accounts; set it"])
         self.assertEqual(cat["free_candidates"]["cloudflare"], [])
 
     def test_a_template_base_names_the_account_variable(self):

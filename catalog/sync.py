@@ -107,16 +107,17 @@ ROUTES = [
     {"route": "inferbase", "base_env": "INFERBASE_API_BASE", "key_env": "INFERBASE_API_KEY", "kind": "inferbase"},
     # Second wave (agent-kit#916, litellm#64). Bases come from the spec, or from the default base of LiteLLM
     # 1.109.1's own provider where the spec names none (poe, vercel, together, neosantara). A route whose base
-    # the spec does not give (bazaarlink, cohere, watsonx) has none in the env files (BazaarLink's is the
-    # placeholder REPLACE_WITH_BAZAARLINK_API_BASE): with a key it is a route error, never a guess, and it
-    # deploys nothing until the owner sets the base.
+    # the spec does not give (bazaarlink, cohere, watsonx) has its base in an optional Vault field (bazaarlink_api_base,
+    # cohere_api_base, watsonx_api_base): with a key and no field it is one route error naming the field, never a guess,
+    # and it deploys nothing until the owner writes the field.
     # No free signal in the listing: the free ids are the static list in routing.json (empty until approved,
     # so the candidate scan shows what the provider lists). Cohere and watsonx are not OpenAI-style lists.
     {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink"},
     {"route": "cohere", "base_env": "COHERE_API_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
     {"route": "plugsky", "base_env": "PLUGSKY_API_BASE", "key_env": "PLUGSKY_API_KEY", "kind": "plugsky"},
     {"route": "poe", "base_env": "POE_API_BASE", "key_env": "POE_API_KEY", "kind": "poe"},
-    {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx"},
+    {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx",
+     "needs": ["WATSONX_PROJECT_ID"]},
     {"route": "together", "base_env": "TOGETHER_API_BASE", "key_env": "TOGETHER_API_KEY", "kind": "together"},
     {"route": "typhoon", "base_env": "TYPHOON_API_BASE", "key_env": "TYPHOON_API_KEY", "kind": "typhoon"},
     {"route": "sealion", "base_env": "SEALION_API_BASE", "key_env": "SEALION_API_KEY", "kind": "sealion"},
@@ -416,12 +417,31 @@ def route_base(entry, env):
     return "" if value.startswith("REPLACE_WITH") else value
 
 
-def base_missing(entry):
-    """Why a route has no base: a templated base names the variables it is composed from."""
+VAULT_PATH = "secret/platform/litellm"
+
+
+def vault_field(env_name):
+    """The Vault field a setting comes from: its env name, lower-cased (CLOUDFLARE_ACCOUNT_ID -> cloudflare_account_id)."""
+    return env_name.lower()
+
+
+def missing_setting(entry, env):
+    """The error naming the first setting (and its Vault field) a route needs and does not have, or "".
+
+    Settings that are not secrets (an account id, a base URL, a project id) are Vault fields too, mapped to
+    env names by the env files; an unset optional field arrives empty.
+    """
     template = entry.get("base_template")
-    if template:
-        return f"{', '.join(re.findall(r'{(\w+)}', template))} is not set"
-    return f"{entry['base_env']} is not set"
+    names = re.findall(r"{(\w+)}", template) if template and not env.get(entry["base_env"]) else [entry["base_env"]]
+    for name in names + list(entry.get("needs") or []):
+        value = env.get(name) or ""
+        if not value or value.startswith("REPLACE_WITH"):
+            return f"{name} is not set; write the Vault field {vault_field(name)} in {VAULT_PATH}"
+    return ""
+
+
+def base_missing(entry, env=None):
+    return missing_setting(entry, env or {}) or f"{entry['base_env']} is not set"
 
 
 def free_by(rules, route):
@@ -470,7 +490,7 @@ def list_models(entry, env, http, rules=None):
     """
     base = route_base(entry, env).rstrip("/")
     if not base:
-        raise RuntimeError(base_missing(entry))
+        raise RuntimeError(base_missing(entry, env))
     free_ids = set(((rules or {}).get("free_ids") or {}).get(entry["route"]) or [])
     key = env.get(entry["key_env"]) or ""
     kind = entry["kind"]
@@ -592,9 +612,9 @@ def resolve_cloudflare_account(env, http, log=None):
     accounts = body.get("result") if status == 200 and isinstance(body, dict) else None
     accounts = [a for a in (accounts or []) if isinstance(a, dict) and a.get("id")]
     if status != 200 or not isinstance(body, dict):
-        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the account list answered {status}"
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in {VAULT_PATH}) and the account list answered {status}"
     if len(accounts) != 1:
-        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the token sees {len(accounts)} accounts; set it"
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in {VAULT_PATH}) and the token sees {len(accounts)} accounts; set it"
     if log:
         log(f"catalog: cloudflare: CLOUDFLARE_ACCOUNT_ID is not set; using the token's one account {accounts[0]['id']} ({accounts[0].get('name', '')})")
     return dict(env, CLOUDFLARE_ACCOUNT_ID=str(accounts[0]["id"])), None
@@ -669,7 +689,7 @@ def scan_candidates(entry, env, http, rules):
     route, kind = entry["route"], entry["kind"]
     base = route_base(entry, env).rstrip("/")
     if not base:
-        raise RuntimeError(base_missing(entry))
+        raise RuntimeError(base_missing(entry, env))
     key = env.get(entry["key_env"]) or ""
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     approved = set(((rules or {}).get("free_ids") or {}).get(route) or [])
@@ -1514,6 +1534,16 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 providers[route] = stale_provider(old, route, entry["key_env"])
             else:
                 providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
+            continue
+        missing = missing_setting(entry, env)
+        if missing:
+            # One clear route error naming the Vault field; neither a scan nor a listing can work without it.
+            stats["route_errors"].append(f"{route}: {missing}"[:200])
+            old = (previous.get("providers") or {}).get(route)
+            providers[route] = stale_provider(old, route, entry["key_env"]) if old and old.get("models") else {
+                "metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
+            if entry["kind"] in STATIC_KINDS:
+                candidates[route] = []
             continue
         if entry["kind"] in STATIC_KINDS:
             # Show the owner what this route lists, so an id can be approved in free_ids. Never deployed.
