@@ -45,6 +45,7 @@
     "longcat": [],
     "neosantara": ["gemini-3.1-flash-lite"]
   },
+  "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan"},
   "free_order": {
     "openrouter": 1, "requesty": 2, "kilo": 3, "nvidia": 4, "ovh": 4,
     "groq": 5, "zai": 5, "routeway": 6, "cloudflare": 6, "naga": 7, "opencode-go": 8

@@ -289,6 +289,9 @@ def load_rules(path=None):
     if not isinstance(rules, dict):
         raise RuntimeError(f"the routing rules {path} are not a JSON object")
     check_free_exclusions(rules, path)
+    for route, how in (rules.get("free_by") or {}).items():
+        if how not in ("plan", "price"):
+            raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
     return rules
 
 
@@ -325,7 +328,7 @@ def classify(status, text):
     if 200 <= status < 300:
         return "usable", ""
     message = error_message(text)
-    reason = SECRETISH.sub("[redacted]", message)[:240]
+    reason = SECRETISH.sub("[redacted]", message)[:240] or f"HTTP {status} with no reason text"
     if status == 402 or BUDGET.search(message):
         return "budget-exhausted", reason
     if status in (401, 403) or BLOCKED.search(message):
@@ -346,9 +349,12 @@ def error_message(text):
         return " ".join(str(error.get(k) or "") for k in ("type", "message")).strip()
     if isinstance(error, str):
         return error
-    # Any other body is not published: only a `message` field is the provider's own reason.
-    message = body.get("message") if isinstance(body, dict) else None
-    return message if isinstance(message, str) else ""
+    # Any other body is not published: only the provider's own reason fields are. `message` is the OpenAI-style
+    # one; NVIDIA answers {"status": 403, "title": "Forbidden", "detail": "Authorization failed"}.
+    if isinstance(body, dict):
+        parts = [body[k] for k in ("title", "detail", "message") if isinstance(body.get(k), str) and body[k]]
+        return " ".join(parts)
+    return ""
 
 
 def is_free_price(pricing):
@@ -410,6 +416,21 @@ def route_base(entry, env):
     return "" if value.startswith("REPLACE_WITH") else value
 
 
+def base_missing(entry):
+    """Why a route has no base: a templated base names the variables it is composed from."""
+    template = entry.get("base_template")
+    if template:
+        return f"{', '.join(re.findall(r'{(\w+)}', template))} is not set"
+    return f"{entry['base_env']} is not set"
+
+
+def free_by(rules, route):
+    """How a static-list route is free: "plan" (the plan is free, whatever the listing prices the id at: Groq,
+    Cloudflare, Z.ai) or "price" (a pay-per-token host: the approved id must be listed at zero, the default,
+    fail closed: Together, Typhoon, Neosantara)."""
+    return ((rules or {}).get("free_by") or {}).get(route, "price")
+
+
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -449,7 +470,7 @@ def list_models(entry, env, http, rules=None):
     """
     base = route_base(entry, env).rstrip("/")
     if not base:
-        raise RuntimeError(f"{entry['base_env']} is not set")
+        raise RuntimeError(base_missing(entry))
     free_ids = set(((rules or {}).get("free_ids") or {}).get(entry["route"]) or [])
     key = env.get(entry["key_env"]) or ""
     kind = entry["kind"]
@@ -534,7 +555,9 @@ def list_models(entry, env, http, rules=None):
             else:
                 # Pay-per-token hosts name one approved free id (Together, Typhoon, Neosantara): a listing that
                 # prices it anywhere above zero, on either side, refuses it.
-                out["free"] = model_id in free_ids and not priced_above_zero(item)
+                # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
+                # does not apply there: the plan is the signal.
+                out["free"] = model_id in free_ids and (free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -542,6 +565,13 @@ def list_models(entry, env, http, rules=None):
         if out["modality"] != "chat":
             out["chat"] = False
         found[model_id] = out
+    if kind in STATIC_KINDS and kind != "inferbase" and free_by(rules, entry["route"]) == "plan":
+        # A plan-free provider may leave its free ids out of the list (Z.ai's /models omits the *-flash ids): an
+        # approved id still joins, and the probe decides whether the account can use it. A price-guarded route
+        # cannot: an unlisted id has no price to check.
+        for model_id in sorted(free_ids - set(found)):
+            found[model_id] = {"id": model_id, "name": model_id, "context_length": None, "free": True, "chat": None,
+                               "modality": "chat"}
     return list(found.values())
 
 CLOUDFLARE_ACCOUNTS = "https://api.cloudflare.com/client/v4/accounts"
@@ -603,8 +633,28 @@ def listing_signals(kind, item):
     context_length = item.get("context_length") or item.get("context_window") or item.get("max_context_length")
     if isinstance(context_length, int) and not isinstance(context_length, bool):
         signals["context_length"] = context_length
-    signals["modality"] = modality(kind, item)
+    signals["modality"] = candidate_modality(kind, item)
     return signals
+
+
+# Id parts and listing fields that mark a listed model as no chat model, beyond what `modality` knows.
+NON_CHAT_ID = re.compile(r"whisper|(?:^|[-/_])tts(?:[-/_]|$)|orpheus|dall-?e|imagen|flux|stable-diffusion|sdxl|-image(?:-|$)|/image|rerank|moderation|guard", re.I)
+NON_CHAT_TYPE = re.compile(r"embed|image|audio|speech|transcri|rerank|moderation|video", re.I)
+
+
+def candidate_modality(kind, item):
+    """`modality`, plus the listing's own type/modality fields and a few id parts (image, speech, rerank), so a
+    candidate list shows chat models only."""
+    found = modality(kind, item)
+    if found != "chat":
+        return found
+    for field in ("type", "modality", "mode", "object_type", "category"):
+        value = item.get(field)
+        if isinstance(value, str) and NON_CHAT_TYPE.search(value):
+            return value.lower()[:40]
+    if NON_CHAT_ID.search(str(item.get("id") or "")):
+        return "non-chat"
+    return "chat"
 
 
 def scan_candidates(entry, env, http, rules):
@@ -619,7 +669,7 @@ def scan_candidates(entry, env, http, rules):
     route, kind = entry["route"], entry["kind"]
     base = route_base(entry, env).rstrip("/")
     if not base:
-        raise RuntimeError(f"{entry['base_env']} is not set")
+        raise RuntimeError(base_missing(entry))
     key = env.get(entry["key_env"]) or ""
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     approved = set(((rules or {}).get("free_ids") or {}).get(route) or [])
@@ -650,6 +700,11 @@ def scan_candidates(entry, env, http, rules):
     out = []
     for model_id in sorted(found):
         signals = found[model_id]
+        # Only chat models are candidates (an approved id always shows): embeddings, images and speech are
+        # listed by the same providers and are no use on a chat route. Cloudflare's tasks are named, not typed.
+        kind_of = str(signals.get("modality") or "chat").lower()
+        if model_id not in approved and kind_of not in ("chat", "text generation"):
+            continue
         suggested = signals.get("zero_priced") is True or signals.get("free_flag") is True
         out.append({"id": model_id, "approved": model_id in approved, "signals": signals, "suggested": suggested})
     # An approved id the provider no longer lists still shows, so the owner sees it went away.
@@ -1444,6 +1499,13 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     stats["route_errors"] += stats_errors
     for entry in ROUTES:
         route = entry["route"]
+        if route == "cloudflare" and account_error:
+            # One clear error (already in route_errors); no listing or scan can work without the account.
+            old = (previous.get("providers") or {}).get(route)
+            providers[route] = stale_provider(old, route, entry["key_env"]) if old and old.get("models") else {
+                "metadata": {"route": route, "key_env": entry["key_env"]}, "models": []}
+            candidates[route] = []
+            continue
         if not (env.get(entry["key_env"]) or "") and not (entry.get("anonymous") and route_base(entry, env)):
             # A route whose key is not written yet is skipped silently: the sync must run before the
             # owner adds it. Its last entries stay, stale, until a run can list it again.

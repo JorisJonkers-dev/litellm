@@ -1028,3 +1028,104 @@ class FreeCandidates(unittest.TestCase):
         self.assertIn("### Free-route candidates", body)
         self.assertIn("| @cf/b/zero | candidate |", body)
         self.assertIn("deployments added:", sync.models_body("", "{}"))
+
+
+class PlanFreeRoutes(unittest.TestCase):
+    """Groq, Z.ai and Cloudflare are free per plan; a pay-per-token host is free per price."""
+
+    PRICED = [{"id": "approved", "pricing": {"prompt": "1.5e-07", "completion": "6e-07"}}, {"id": "other", "input_price": 1e-7, "output_price": 1e-7}]
+
+    def listed(self, route, data, rules):
+        env = {e["base_env"]: f"https://{route}/v1" for e in sync.ROUTES if e["route"] == route}
+        http = Http(lists={f"https://{route}/v1/models": {"data": data}})
+        return {m["id"]: m["free"] for m in sync.list_models(next(e for e in sync.ROUTES if e["route"] == route), env, http, rules)}
+
+    def test_a_plan_free_route_keeps_an_approved_id_the_listing_prices(self):
+        for route in ("groq", "zai"):
+            rules = {"free_ids": {route: ["approved"]}, "free_by": {route: "plan"}}
+            self.assertEqual(self.listed(route, self.PRICED, rules), {"approved": True, "other": False}, route)
+
+    def test_a_price_route_refuses_an_approved_id_the_listing_prices_and_it_is_the_default(self):
+        for rules in ({"free_ids": {"together": ["approved"]}, "free_by": {"together": "price"}}, {"free_ids": {"together": ["approved"]}}):
+            self.assertEqual(self.listed("together", self.PRICED, rules), {"approved": False, "other": False})
+
+    def test_the_shipped_rules_name_how_each_static_route_is_free(self):
+        rules = sync.load_rules()
+        self.assertEqual({r: sync.free_by(rules, r) for r in ("groq", "cloudflare", "zai", "together", "typhoon", "neosantara")},
+                         {"groq": "plan", "cloudflare": "plan", "zai": "plan", "together": "price", "typhoon": "price", "neosantara": "price"})
+
+    def test_an_unknown_free_by_value_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "r.json")
+            with open(path, "w") as handle:
+                json.dump({"free_by": {"groq": "free"}}, handle)
+            with self.assertRaises(RuntimeError):
+                sync.load_rules(path)
+
+    def test_an_approved_id_a_plan_free_listing_omits_is_still_probed(self):
+        # Z.ai's /models leaves its *-flash ids out.
+        rules = {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_by": {"zai": "plan"}}
+        found = self.listed("zai", [{"id": "glm-5"}], rules)
+        self.assertEqual(found, {"glm-5": False, "glm-4.7-flash": True})
+        # A price-guarded route cannot: an unlisted id has no price to check.
+        self.assertEqual(self.listed("typhoon", [{"id": "x"}], {"free_ids": {"typhoon": ["gone"]}}), {"x": False})
+
+    def test_a_priced_groq_id_is_probed_and_deployed_once_usable(self):
+        rules = dict(sync.load_rules(), free_ids={"groq": ["approved"]})
+        http = Http(lists={"https://groq/v1/models": {"data": self.PRICED}})
+        cat, _ = sync.build({"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}, http, {}, NOW, rules=rules)
+        meta = {m["id"]: m["metadata"] for m in cat["providers"]["groq"]["models"]}
+        self.assertEqual((meta["groq/approved"]["free"], meta["groq/approved"]["status"]), (True, "usable"))
+        self.assertEqual(meta["groq/other"]["status"], "unprobed")
+        self.assertTrue(any("approved" in d["model_info"]["id"] for d in sync.plan_groups(cat, rules)))
+
+
+class ProbeReasons(unittest.TestCase):
+    def test_a_reason_is_never_empty(self):
+        for status, text in ((403, ""), (403, '{"status":403}'), (401, "Unauthorized access")):
+            self.assertTrue(sync.classify(status, text)[1], (status, text))
+        self.assertIn("HTTP 403", sync.classify(403, "")[1])
+
+    def test_a_title_and_detail_body_gives_its_reason(self):
+        status = sync.classify(403, '{"status":403,"title":"Forbidden","detail":"Authorization failed"}')
+        self.assertEqual(status, ("blocked", "Forbidden Authorization failed"))
+
+
+class CloudflareWithoutAnAccount(unittest.TestCase):
+    def test_a_missing_account_is_one_route_error(self):
+        env = dict(CF_ENV)
+        lists = dict(LISTS, **{CF_ACCOUNTS: {"result": []}})
+        cat, stats = sync.build(env, Http(lists=lists), {}, NOW, rules=CF_RULES)
+        self.assertEqual([e for e in stats["route_errors"] if "cloudflare" in e], [
+            "cloudflare: CLOUDFLARE_ACCOUNT_ID is not set and the token sees 0 accounts; set it"])
+        self.assertEqual(cat["free_candidates"]["cloudflare"], [])
+
+    def test_a_template_base_names_the_account_variable(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "cloudflare")
+        with self.assertRaisesRegex(RuntimeError, "CLOUDFLARE_ACCOUNT_ID is not set"):
+            sync.list_models(entry, {}, Http(lists={}), {})
+
+
+class CandidatesAreChatModels(unittest.TestCase):
+    def test_non_chat_models_are_dropped_and_suggested_come_first(self):
+        data = [{"id": "text-embedding-x"}, {"id": "img", "type": "image"}, {"id": "flux-1"}, {"id": "chat-a"},
+                {"id": "chat-free", "pricing": {"input": 0, "output": 0}}, {"id": "whisper-large"}]
+        entry = next(e for e in sync.ROUTES if e["route"] == "inferbase")
+        http = Http(lists={"https://ib/v1/models": {"data": data}})
+        found = sync.scan_candidates(entry, {"INFERBASE_API_BASE": "https://ib/v1"}, http, {})
+        self.assertEqual([c["id"] for c in found], ["chat-a", "chat-free"])
+        text = "\n".join(overview.candidates_section({"inferbase": found}))
+        self.assertLess(text.index("chat-free"), text.index("chat-a"))
+
+    def test_an_approved_id_shows_even_when_it_looks_like_no_chat_model(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "groq")
+        http = Http(lists={"https://g/v1/models": {"data": [{"id": "whisper-large-v3"}]}})
+        found = sync.scan_candidates(entry, {"GROQ_API_BASE": "https://g/v1"}, http, {"free_ids": {"groq": ["whisper-large-v3"]}})
+        self.assertEqual([c["id"] for c in found], ["whisper-large-v3"])
+
+    def test_the_pull_request_body_and_the_overview_show_the_same_section(self):
+        cands = {"zai": [{"id": "glm-4.7-flash", "approved": True, "signals": {"unlisted": True}, "suggested": False}]}
+        section = "\n".join(overview.candidates_section(cands, heading="###"))
+        self.assertIn(section, sync.models_body("", "{}", cands))
+        self.assertNotIn("No static-list route was scanned", sync.models_body("", "{}", cands))
+        self.assertEqual("\n".join(overview.candidates_section(cands)).replace("## ", "### ", 1), section)
