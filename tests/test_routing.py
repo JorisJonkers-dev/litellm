@@ -799,9 +799,12 @@ class FreeRoutesWave2(unittest.TestCase):
         for name in ("litellm", "litellm-catalog"):
             text = (ROOT / "deploy" / "env" / name / "base.env").read_text()
             self.assertNotIn("REPLACE_WITH", text)
-            for env_name, field in (("BAZAARLINK_API_BASE", "bazaarlink_api_base"), ("COHERE_API_BASE", "cohere_api_base"),
+            for env_name, field in (("BAZAARLINK_API_BASE", "bazaarlink_api_base"), ("COHERE_LIST_BASE", "cohere_api_base"),
                                     ("WATSONX_API_BASE", "watsonx_api_base"), ("WATSONX_PROJECT_ID", "watsonx_project_id"),
                                     ("CLOUDFLARE_ACCOUNT_ID", "cloudflare_account_id")):
+                if env_name == "COHERE_LIST_BASE" and name == "litellm":
+                    self.assertFalse([l for l in text.splitlines() if l.startswith(("COHERE_API_BASE", "COHERE_LIST_BASE"))])  # LiteLLM would read COHERE_API_BASE
+                    continue
                 self.assertIn(f"{env_name}=${{secret:secret/data/platform/litellm#{field}}}\n", text)
         route = entry("bazaarlink")
         self.assertEqual(sync.route_base(route, {}), "")

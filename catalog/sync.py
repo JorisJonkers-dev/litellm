@@ -113,7 +113,7 @@ ROUTES = [
     # No free signal in the listing: the free ids are the static list in routing.json (empty until approved,
     # so the candidate scan shows what the provider lists). Cohere and watsonx are not OpenAI-style lists.
     {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink"},
-    {"route": "cohere", "base_env": "COHERE_API_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
+    {"route": "cohere", "base_env": "COHERE_LIST_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
     {"route": "plugsky", "base_env": "PLUGSKY_API_BASE", "key_env": "PLUGSKY_API_KEY", "kind": "plugsky"},
     {"route": "poe", "base_env": "POE_API_BASE", "key_env": "POE_API_KEY", "kind": "poe"},
     {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx",
@@ -290,7 +290,13 @@ def load_rules(path=None):
     if not isinstance(rules, dict):
         raise RuntimeError(f"the routing rules {path} are not a JSON object")
     check_free_exclusions(rules, path)
-    for route, how in (rules.get("free_by") or {}).items():
+    free_by_rules = rules.get("free_by") or {}
+    if not isinstance(free_by_rules, dict):
+        raise RuntimeError(f"{path}: free_by must be an object of route -> \"plan\" or \"price\"")
+    known = {entry["route"] for entry in ROUTES}
+    for route, how in free_by_rules.items():
+        if route not in known:
+            raise RuntimeError(f"{path}: free_by names {route!r}, which is no route")
         if how not in ("plan", "price"):
             raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
     return rules
@@ -417,12 +423,16 @@ def route_base(entry, env):
     return "" if value.startswith("REPLACE_WITH") else value
 
 
-VAULT_PATH = "secret/platform/litellm"
+# The Vault API path (the UI shows it as secret/platform/litellm); the env files name it the same way.
+VAULT_PATH = "secret/data/platform/litellm"
+# Env names whose Vault field is not their lower-cased name. COHERE_API_BASE is LiteLLM's own cohere_chat base, so the
+# sync's list base has its own name.
+VAULT_FIELDS = {"COHERE_LIST_BASE": "cohere_api_base"}
 
 
 def vault_field(env_name):
     """The Vault field a setting comes from: its env name, lower-cased (CLOUDFLARE_ACCOUNT_ID -> cloudflare_account_id)."""
-    return env_name.lower()
+    return VAULT_FIELDS.get(env_name, env_name.lower())
 
 
 def missing_setting(entry, env):
@@ -436,7 +446,7 @@ def missing_setting(entry, env):
     for name in names + list(entry.get("needs") or []):
         value = env.get(name) or ""
         if not value or value.startswith("REPLACE_WITH"):
-            return f"{name} is not set; write the Vault field {vault_field(name)} in {VAULT_PATH}"
+            return f"{name} is not set; write the Vault field {vault_field(name)} at {VAULT_PATH}"
     return ""
 
 
@@ -489,7 +499,7 @@ def list_models(entry, env, http, rules=None):
     plan-wide free tier or a listing with no signal (Groq, Cloudflare, Z.ai, AxForge, Inferbase, Cohere, ...).
     """
     base = route_base(entry, env).rstrip("/")
-    if not base:
+    if not base or missing_setting(entry, env):
         raise RuntimeError(base_missing(entry, env))
     free_ids = set(((rules or {}).get("free_ids") or {}).get(entry["route"]) or [])
     key = env.get(entry["key_env"]) or ""
@@ -612,9 +622,9 @@ def resolve_cloudflare_account(env, http, log=None):
     accounts = body.get("result") if status == 200 and isinstance(body, dict) else None
     accounts = [a for a in (accounts or []) if isinstance(a, dict) and a.get("id")]
     if status != 200 or not isinstance(body, dict):
-        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in {VAULT_PATH}) and the account list answered {status}"
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id at {VAULT_PATH}) and the account list answered {status}"
     if len(accounts) != 1:
-        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in {VAULT_PATH}) and the token sees {len(accounts)} accounts; set it"
+        return env, f"cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id at {VAULT_PATH}) and the token sees {len(accounts)} accounts; set it"
     if log:
         log(f"catalog: cloudflare: CLOUDFLARE_ACCOUNT_ID is not set; using the token's one account {accounts[0]['id']} ({accounts[0].get('name', '')})")
     return dict(env, CLOUDFLARE_ACCOUNT_ID=str(accounts[0]["id"])), None
@@ -688,7 +698,7 @@ def scan_candidates(entry, env, http, rules):
     """
     route, kind = entry["route"], entry["kind"]
     base = route_base(entry, env).rstrip("/")
-    if not base:
+    if not base or missing_setting(entry, env):
         raise RuntimeError(base_missing(entry, env))
     key = env.get(entry["key_env"]) or ""
     headers = {"Authorization": f"Bearer {key}"} if key else {}

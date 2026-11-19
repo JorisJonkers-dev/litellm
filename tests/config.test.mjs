@@ -231,18 +231,22 @@ test('the second-wave routes: optional Vault fields, a base only where the spec 
   }
   assert.equal(Object.keys(WAVE2_FIELDS).length, WAVE2_ROUTES.length - 1) // every route but UnoRouter has a key
   // Settings that are not secrets are optional Vault fields too, mapped by the env files; no placeholder is left.
-  const SETTINGS = { cloudflare_account_id: 'CLOUDFLARE_ACCOUNT_ID', bazaarlink_api_base: 'BAZAARLINK_API_BASE', cohere_api_base: 'COHERE_API_BASE',
+  const SETTINGS = { cloudflare_account_id: 'CLOUDFLARE_ACCOUNT_ID', bazaarlink_api_base: 'BAZAARLINK_API_BASE', cohere_api_base: 'COHERE_LIST_BASE',
     watsonx_api_base: 'WATSONX_API_BASE', watsonx_project_id: 'WATSONX_PROJECT_ID' }
   for (const file of ['litellm', 'litellm-catalog']) {
     const env = readFileSync(`${ROOT}/deploy/env/${file}/base.env`, 'utf8')
     assert.doesNotMatch(env, /REPLACE_WITH/, file)
     for (const [field, name] of Object.entries(SETTINGS)) {
+      if (file === 'litellm' && field === 'cohere_api_base') continue // the sync's list base is the catalogue Process's alone
       assert.match(env, new RegExp(`^${name}=\\$\\{secret:secret/data/platform/litellm#${field}\\}$`, 'm'), `${file} ${name}`)
     }
+    assert.doesNotMatch(env, /^COHERE_API_BASE=/m, file) // LiteLLM's cohere_chat would read it
     assert.match(env, /^WATSONX_URL=\$\{secret:secret\/data\/platform\/litellm#watsonx_api_base\}$/m, file)
   }
+  assert.doesNotMatch(PROXY_SECRETS, /cohere_api_base/) // the sync's list base is the catalogue Process's alone
   for (const field of Object.keys(SETTINGS)) {
     for (const [scope, text] of [['proxy', PROXY_SECRETS], ['catalog', CATALOG]]) {
+      if (scope === 'proxy' && field === 'cohere_api_base') continue
       assert.match(text, new RegExp(`- name: ${field}\\n +optional: true\\n`), `${scope} ${field}`)
     }
   }

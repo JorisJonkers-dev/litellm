@@ -1097,7 +1097,7 @@ class CloudflareWithoutAnAccount(unittest.TestCase):
         lists = dict(LISTS, **{CF_ACCOUNTS: {"result": []}})
         cat, stats = sync.build(env, Http(lists=lists), {}, NOW, rules=CF_RULES)
         self.assertEqual([e for e in stats["route_errors"] if "cloudflare" in e], [
-            "cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id in secret/platform/litellm) and the token sees 0 accounts; set it"])
+            "cloudflare: CLOUDFLARE_ACCOUNT_ID is not set (Vault field cloudflare_account_id at secret/data/platform/litellm) and the token sees 0 accounts; set it"])
         self.assertEqual(cat["free_candidates"]["cloudflare"], [])
 
     def test_a_template_base_names_the_account_variable(self):
@@ -1129,3 +1129,60 @@ class CandidatesAreChatModels(unittest.TestCase):
         self.assertIn(section, sync.models_body("", "{}", cands))
         self.assertNotIn("No static-list route was scanned", sync.models_body("", "{}", cands))
         self.assertEqual("\n".join(overview.candidates_section(cands)).replace("## ", "### ", 1), section)
+
+
+class InjectedApprovedIds(unittest.TestCase):
+    RULES = dict(sync.load_rules(), free_ids={"zai": ["glm-4.7-flash"]})
+
+    def build(self):
+        http = Http(lists={"https://zai/v1/models": {"data": [{"id": "glm-5"}]}})
+        return sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW, rules=self.RULES, max_probes=0)
+
+    def deployed(self, cat):
+        return [d["model_info"]["id"] for d in sync.plan_groups(cat, self.RULES) if "glm-4.7-flash" in d["model_info"]["id"]]
+
+    def test_an_unlisted_id_is_not_deployed_until_a_probe_found_it_usable(self):
+        cat, _ = self.build()  # no probe ran: pending
+        meta = next(m["metadata"] for m in cat["providers"]["zai"]["models"] if m["id"].endswith("flash"))
+        self.assertEqual((meta["free"], meta["status"]), (True, "pending"))
+        self.assertEqual(self.deployed(cat), [])
+        for status in ("blocked", "unknown", "error"):
+            meta["status"] = status
+            self.assertEqual(self.deployed(cat), [], status)
+        meta["status"] = "usable"
+        self.assertTrue(self.deployed(cat))
+
+    def test_a_probed_usable_injected_id_deploys(self):
+        http = Http(lists={"https://zai/v1/models": {"data": [{"id": "glm-5"}]}})
+        cat, _ = sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW, rules=self.RULES)
+        self.assertIn("glm-4.7-flash", "".join(http.probed_ids()))
+        self.assertTrue(self.deployed(cat))
+
+
+class RulesValidation(unittest.TestCase):
+    def load(self, doc):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "r.json")
+            with open(path, "w") as handle:
+                json.dump(doc, handle)
+            return sync.load_rules(path)
+
+    def test_a_free_by_typo_or_a_non_object_is_a_clean_error(self):
+        for doc in ({"free_by": {"gorq": "plan"}}, {"free_by": ["groq"]}, {"free_by": {"groq": "free"}}):
+            with self.assertRaises(RuntimeError):
+                self.load(doc)
+        self.assertEqual(self.load({"free_by": {"groq": "plan"}})["free_by"], {"groq": "plan"})
+
+
+class SettingsEverywhere(unittest.TestCase):
+    def test_a_missing_project_id_stops_listing_and_scan_too(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "watsonx")
+        env = {"WATSONX_API_BASE": "https://w", "WATSONX_API_KEY": "k"}
+        for call in (lambda: sync.list_models(entry, env, Http(lists={}), {}), lambda: sync.scan_candidates(entry, env, Http(lists={}), {})):
+            with self.assertRaisesRegex(RuntimeError, "Vault field watsonx_project_id at secret/data/platform/litellm"):
+                call()
+
+    def test_cohere_has_its_own_list_base_name(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "cohere")
+        self.assertEqual(entry["base_env"], "COHERE_LIST_BASE")
+        self.assertEqual(sync.missing_setting(entry, {}), "COHERE_LIST_BASE is not set; write the Vault field cohere_api_base at secret/data/platform/litellm")

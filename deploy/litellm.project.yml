@@ -145,8 +145,6 @@ applications:
                 optional: true
               - name: bazaarlink_api_base
                 optional: true
-              - name: cohere_api_base
-                optional: true
               - name: watsonx_api_base
                 optional: true
               - name: watsonx_project_id
