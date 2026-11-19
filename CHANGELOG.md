@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.9.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.8.0...v1.9.0) (2026-11-19)
+
+
+### Features
+
+* **catalog:** add first-wave free-only routes ([#66](https://github.com/JorisJonkers-dev/litellm/issues/66)) ([05861cf](https://github.com/JorisJonkers-dev/litellm/commit/05861cfafa76eb6581940bd1b5059c0e072a6470)), closes [#58](https://github.com/JorisJonkers-dev/litellm/issues/58) [#59](https://github.com/JorisJonkers-dev/litellm/issues/59)
+* **catalog:** list free-route candidates for the owner to approve ([#71](https://github.com/JorisJonkers-dev/litellm/issues/71)) ([cdc33bc](https://github.com/JorisJonkers-dev/litellm/commit/cdc33bcf843e43980f27efa503da3db355a2a771))
+* **catalog:** second-wave free routes ([#72](https://github.com/JorisJonkers-dev/litellm/issues/72)) ([0d79af8](https://github.com/JorisJonkers-dev/litellm/commit/0d79af8992fa7236a2376af333730647ed565752))
+* **catalog:** shared free groups per model, and tier groups in routing.json ([#68](https://github.com/JorisJonkers-dev/litellm/issues/68)) ([5ba2081](https://github.com/JorisJonkers-dev/litellm/commit/5ba2081ae5f195be010a9bd846d25c154899d19f))
+* **telemetry:** record requested tier against serving deployment, alert on a paid leak ([#67](https://github.com/JorisJonkers-dev/litellm/issues/67)) ([1e5c913](https://github.com/JorisJonkers-dev/litellm/commit/1e5c9136e479306bdc23ccbc1e0566b5c58e8a61)), closes [#62](https://github.com/JorisJonkers-dev/litellm/issues/62)
+
+
+### Bug Fixes
+
+* **catalog:** cap each paid account once, not once per model ([#70](https://github.com/JorisJonkers-dev/litellm/issues/70)) ([bbf8aa0](https://github.com/JorisJonkers-dev/litellm/commit/bbf8aa0c2149fc71ccb036190bd36f28de6f0db5))
+* **catalog:** keep gemini-2.5-pro and gemini-2.5-flash out of the free groups ([#65](https://github.com/JorisJonkers-dev/litellm/issues/65)) ([1b43daa](https://github.com/JorisJonkers-dev/litellm/commit/1b43daa1d77934f6e69541193d1b9bce58aff622)), closes [#63](https://github.com/JorisJonkers-dev/litellm/issues/63)
+
 ## [1.8.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.7.0...v1.8.0) (2026-11-17)
 
 
