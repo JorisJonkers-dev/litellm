@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.0...v1.9.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **catalog:** free per plan on Groq and Z.ai, clear probe reasons, Vault fields for provider settings ([#77](https://github.com/JorisJonkers-dev/litellm/issues/77)) ([1f6c3b8](https://github.com/JorisJonkers-dev/litellm/commit/1f6c3b8d1c846be25d8a4d6dae8447c4b21a34f2))
+* **models:** refresh the generated model deployments ([#75](https://github.com/JorisJonkers-dev/litellm/issues/75)) ([abc49b1](https://github.com/JorisJonkers-dev/litellm/commit/abc49b1423d008e09967938ec4d33ad7587734d2))
+
 ## [1.9.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.8.0...v1.9.0) (2026-11-19)
 
 
