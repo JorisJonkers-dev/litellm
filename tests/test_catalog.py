@@ -651,6 +651,18 @@ class Main(unittest.TestCase):
             sync.github_put("o/r", "p", "t", {}, None, lambda *a: (422, "x"))
         self.assertEqual(sync.github_get_text("o/r", "p", "t", lambda *a: (404, "")), (None, None))
 
+    def test_github_reads_a_file_over_one_megabyte_through_the_blob_api(self):
+        text = '{"big": true}'
+        answers = {
+            "contents": (200, {"sha": "s1", "encoding": "none", "content": ""}),
+            "blobs": (200, {"sha": "s1", "content": base64.b64encode(text.encode()).decode()}),
+        }
+        http = lambda method, url, *a: answers["blobs" if "/git/blobs/s1" in url else "contents"]
+        self.assertEqual(sync.github_get("o/r", "p", "t", http), ({"big": True}, "s1"))
+        answers["blobs"] = (404, "x")
+        with self.assertRaisesRegex(RuntimeError, "as a blob"):
+            sync.github_get("o/r", "p", "t", http)
+
 
 class Models(unittest.TestCase):
     """The generated deployments: a bot branch and a pull request in the litellm repository."""
