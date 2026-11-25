@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.1...v1.9.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **catalog:** read the published catalogue through the blob API once it passes 1 MB ([#78](https://github.com/JorisJonkers-dev/litellm/issues/78)) ([9e6b45f](https://github.com/JorisJonkers-dev/litellm/commit/9e6b45fa3b231488af02430f14b7ee66ef0c2b9a))
+
 ## [1.9.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.0...v1.9.1) (2026-11-19)
 
 
