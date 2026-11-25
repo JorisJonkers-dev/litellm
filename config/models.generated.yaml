@@ -530,29 +530,6 @@
       }
     },
     {
-      "model_name": "free/deepseek-v4.1-flash",
-      "litellm_params": {
-        "model": "ovhcloud/DeepSeek-V4.1-Flash-1017",
-        "litellm_credential_name": "ovh",
-        "order": 4,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "cooldown_time": 120
-      },
-      "model_info": {
-        "id": "free/ovh/DeepSeek-V4.1-Flash-1017",
-        "route": "ovh",
-        "canonical": "deepseek-v4.1-flash",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/dots-3-note-preview",
       "litellm_params": {
         "model": "openrouter/dots-studio/dots-3-note-preview:free",
@@ -855,6 +832,75 @@
       }
     },
     {
+      "model_name": "free/gemma-4-26b-a4b-it-meromero",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-meromero:free",
+        "litellm_credential_name": "routeway",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/routeway/gemma-4-26b-a4b-it-meromero:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-meromero",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemma-4-26b-a4b-it-moonlight",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-moonlight:free",
+        "litellm_credential_name": "routeway",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/routeway/gemma-4-26b-a4b-it-moonlight:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-moonlight",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemma-4-26b-a4b-it-musica",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-musica:free",
+        "litellm_credential_name": "routeway",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/routeway/gemma-4-26b-a4b-it-musica:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-musica",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/gemma-4-31b-it",
       "litellm_params": {
         "model": "openrouter/google/gemma-4-31b-it:free",
@@ -901,6 +947,52 @@
       }
     },
     {
+      "model_name": "free/glm-4.5-flash",
+      "litellm_params": {
+        "model": "zai/glm-4.5-flash",
+        "litellm_credential_name": "zai",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/zai/glm-4.5-flash",
+        "route": "zai",
+        "canonical": "glm-4.5-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/glm-4.7-flash",
+      "litellm_params": {
+        "model": "zai/glm-4.7-flash",
+        "litellm_credential_name": "zai",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/zai/glm-4.7-flash",
+        "route": "zai",
+        "canonical": "glm-4.7-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/glyph-cluster",
       "litellm_params": {
         "model": "openai/stealth/glyph-cluster",
@@ -915,6 +1007,78 @@
         "id": "free/kilo/stealth/glyph-cluster",
         "route": "kilo",
         "canonical": "glyph-cluster",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-oss-120b",
+      "litellm_params": {
+        "model": "groq/openai/gpt-oss-120b",
+        "litellm_credential_name": "groq",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/groq/openai/gpt-oss-120b",
+        "route": "groq",
+        "canonical": "gpt-oss-120b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-oss-20b",
+      "litellm_params": {
+        "model": "groq/openai/gpt-oss-20b",
+        "litellm_credential_name": "groq",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/groq/openai/gpt-oss-20b",
+        "route": "groq",
+        "canonical": "gpt-oss-20b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/hungerg-free",
+      "litellm_params": {
+        "model": "opencode_go/hungerg-free",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 8,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "free/opencode-go/hungerg-free",
+        "route": "opencode-go",
+        "canonical": "hungerg-free",
         "access_groups": [
           "free"
         ],
@@ -1171,6 +1335,26 @@
     {
       "model_name": "free/nemotron-3-nano-omni-30b-a3b-reasoning",
       "litellm_params": {
+        "model": "openai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "litellm_credential_name": "requesty",
+        "order": 2,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/requesty/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "route": "requesty",
+        "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "litellm_params": {
         "model": "openai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "litellm_credential_name": "kilo",
         "order": 3,
@@ -1208,6 +1392,26 @@
       "model_info": {
         "id": "free/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
         "route": "openrouter",
+        "canonical": "nemotron-3-ultra-550b-a55b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3-ultra-550b-a55b",
+      "litellm_params": {
+        "model": "openai/nvidia/nemotron-3-ultra-550b-a55b",
+        "litellm_credential_name": "requesty",
+        "order": 2,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/requesty/nvidia/nemotron-3-ultra-550b-a55b",
+        "route": "requesty",
         "canonical": "nemotron-3-ultra-550b-a55b",
         "access_groups": [
           "free"
@@ -1278,6 +1482,29 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3.5-lightning-30b-a3b",
+      "litellm_params": {
+        "model": "openai/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "litellm_credential_name": "requesty",
+        "order": 2,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "free/requesty/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "route": "requesty",
+        "canonical": "nemotron-3.5-lightning-30b-a3b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -1416,6 +1643,29 @@
       }
     },
     {
+      "model_name": "free/olala-v1.0-summarise",
+      "litellm_params": {
+        "model": "ovhcloud/Olala-v1.0-summarise",
+        "litellm_credential_name": "ovh",
+        "order": 4,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/ovh/Olala-v1.0-summarise",
+        "route": "ovh",
+        "canonical": "olala-v1.0-summarise",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/particle-1",
       "litellm_params": {
         "model": "openrouter/particle-ai/particle-1:free",
@@ -1459,6 +1709,29 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-27b",
+      "litellm_params": {
+        "model": "groq/qwen/qwen3.8-27b",
+        "litellm_credential_name": "groq",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "free/groq/qwen/qwen3.8-27b",
+        "route": "groq",
+        "canonical": "qwen3.8-27b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -2018,6 +2291,78 @@
       }
     },
     {
+      "model_name": "groq/gpt-oss-120b",
+      "litellm_params": {
+        "model": "groq/openai/gpt-oss-120b",
+        "litellm_credential_name": "groq",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "groq/openai/gpt-oss-120b",
+        "route": "groq",
+        "canonical": "gpt-oss-120b",
+        "access_groups": [
+          "groq-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "groq/gpt-oss-20b",
+      "litellm_params": {
+        "model": "groq/openai/gpt-oss-20b",
+        "litellm_credential_name": "groq",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "groq/openai/gpt-oss-20b",
+        "route": "groq",
+        "canonical": "gpt-oss-20b",
+        "access_groups": [
+          "groq-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "groq/qwen3.8-27b",
+      "litellm_params": {
+        "model": "groq/qwen/qwen3.8-27b",
+        "litellm_credential_name": "groq",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "groq/qwen/qwen3.8-27b",
+        "route": "groq",
+        "canonical": "qwen3.8-27b",
+        "access_groups": [
+          "groq-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "hy3",
       "litellm_params": {
         "model": "opencode_go/hy3",
@@ -2452,6 +2797,33 @@
         "id": "opencode-go:longcat-2.0",
         "route": "opencode-go",
         "canonical": "longcat-2.0",
+        "access_groups": [
+          "canonical"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "longcat-2.5",
+      "litellm_params": {
+        "model": "opencode_go/longcat-2.5",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:longcat-2.5",
+        "route": "opencode-go",
+        "canonical": "longcat-2.5",
         "access_groups": [
           "canonical"
         ],
@@ -3694,6 +4066,33 @@
       }
     },
     {
+      "model_name": "opencode-go-free/hungerg-free",
+      "litellm_params": {
+        "model": "opencode_go/hungerg-free",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go/hungerg-free",
+        "route": "opencode-go",
+        "canonical": "hungerg-free",
+        "access_groups": [
+          "opencode-go-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "opencode-go-free/hy4-flash",
       "litellm_params": {
         "model": "opencode_go/hy4-flash-free",
@@ -4306,30 +4705,6 @@
       }
     },
     {
-      "model_name": "ovh/deepseek-v4.1-flash",
-      "litellm_params": {
-        "model": "ovhcloud/DeepSeek-V4.1-Flash-1017",
-        "litellm_credential_name": "ovh",
-        "order": 1,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "cooldown_time": 120
-      },
-      "model_info": {
-        "id": "ovh/DeepSeek-V4.1-Flash-1017",
-        "route": "ovh",
-        "canonical": "deepseek-v4.1-flash",
-        "access_groups": [
-          "ovh-free-public",
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "ovh/olala-v1.0-mini-7a1b",
       "litellm_params": {
         "model": "ovhcloud/Olala-v1.0-mini-7A1B",
@@ -4344,6 +4719,30 @@
         "id": "ovh/Olala-v1.0-mini-7A1B",
         "route": "ovh",
         "canonical": "olala-v1.0-mini-7a1b",
+        "access_groups": [
+          "ovh-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "ovh/olala-v1.0-summarise",
+      "litellm_params": {
+        "model": "ovhcloud/Olala-v1.0-summarise",
+        "litellm_credential_name": "ovh",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "ovh/Olala-v1.0-summarise",
+        "route": "ovh",
+        "canonical": "olala-v1.0-summarise",
         "access_groups": [
           "ovh-free-public",
           "free"
@@ -4833,6 +5232,78 @@
       }
     },
     {
+      "model_name": "requesty/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "litellm_params": {
+        "model": "openai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "litellm_credential_name": "requesty",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "requesty/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "route": "requesty",
+        "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
+        "access_groups": [
+          "requesty-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "requesty/nemotron-3-ultra-550b-a55b",
+      "litellm_params": {
+        "model": "openai/nvidia/nemotron-3-ultra-550b-a55b",
+        "litellm_credential_name": "requesty",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "requesty/nvidia/nemotron-3-ultra-550b-a55b",
+        "route": "requesty",
+        "canonical": "nemotron-3-ultra-550b-a55b",
+        "access_groups": [
+          "requesty-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "requesty/nemotron-3.5-lightning-30b-a3b",
+      "litellm_params": {
+        "model": "openai/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "litellm_credential_name": "requesty",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "requesty/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "route": "requesty",
+        "canonical": "nemotron-3.5-lightning-30b-a3b",
+        "access_groups": [
+          "requesty-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "routeway/gemma-4-26b-a4b-it-chimerax",
       "litellm_params": {
         "model": "openai/gemma-4-26b-a4b-it-chimerax:free",
@@ -4895,6 +5366,78 @@
         "id": "routeway/gemma-4-26b-a4b-it-luminous:free",
         "route": "routeway",
         "canonical": "gemma-4-26b-a4b-it-luminous",
+        "access_groups": [
+          "routeway-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "routeway/gemma-4-26b-a4b-it-meromero",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-meromero:free",
+        "litellm_credential_name": "routeway",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "routeway/gemma-4-26b-a4b-it-meromero:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-meromero",
+        "access_groups": [
+          "routeway-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "routeway/gemma-4-26b-a4b-it-moonlight",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-moonlight:free",
+        "litellm_credential_name": "routeway",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "routeway/gemma-4-26b-a4b-it-moonlight:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-moonlight",
+        "access_groups": [
+          "routeway-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "routeway/gemma-4-26b-a4b-it-musica",
+      "litellm_params": {
+        "model": "openai/gemma-4-26b-a4b-it-musica:free",
+        "litellm_credential_name": "routeway",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "routeway/gemma-4-26b-a4b-it-musica:free",
+        "route": "routeway",
+        "canonical": "gemma-4-26b-a4b-it-musica",
         "access_groups": [
           "routeway-free-public",
           "free"
@@ -5461,6 +6004,54 @@
           "canonical"
         ],
         "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "zai/glm-4.5-flash",
+      "litellm_params": {
+        "model": "zai/glm-4.5-flash",
+        "litellm_credential_name": "zai",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "zai/glm-4.5-flash",
+        "route": "zai",
+        "canonical": "glm-4.5-flash",
+        "access_groups": [
+          "zai-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "zai/glm-4.7-flash",
+      "litellm_params": {
+        "model": "zai/glm-4.7-flash",
+        "litellm_credential_name": "zai",
+        "order": 1,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "cooldown_time": 120
+      },
+      "model_info": {
+        "id": "zai/glm-4.7-flash",
+        "route": "zai",
+        "canonical": "glm-4.7-flash",
+        "access_groups": [
+          "zai-free-public",
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     }
   ]
