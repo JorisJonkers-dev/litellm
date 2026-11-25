@@ -1693,6 +1693,12 @@ def github_get_text(repo, path, token, http, ref=None):
         return None, None
     if status != 200 or not isinstance(body, dict):
         raise RuntimeError(f"reading {repo}/{path} answered {status}")
+    if body.get("encoding") == "none":
+        # Over 1 MB the contents API leaves the content out; the blob API returns it up to 100 MB.
+        status, blob = http("GET", f"{GITHUB}/repos/{repo}/git/blobs/{body['sha']}", github_headers(token), None)
+        if status != 200 or not isinstance(blob, dict):
+            raise RuntimeError(f"reading {repo}/{path} as a blob answered {status}")
+        body = dict(body, content=blob["content"])
     return base64.b64decode(body["content"]).decode(), body["sha"]
 
 
