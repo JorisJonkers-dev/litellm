@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.2...v1.9.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* **models:** refresh the generated model deployments ([#80](https://github.com/JorisJonkers-dev/litellm/issues/80)) ([6821ac1](https://github.com/JorisJonkers-dev/litellm/commit/6821ac18738525c64d18c85e0c44dba2e8794d31))
+
 ## [1.9.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.1...v1.9.2) (2026-11-25)
 
 
