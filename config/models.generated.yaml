@@ -456,6 +456,29 @@
       }
     },
     {
+      "model_name": "free/absolutereality",
+      "litellm_params": {
+        "model": "openai/absolutereality:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/absolutereality:free",
+        "route": "unorouter",
+        "canonical": "absolutereality",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/agnes-2.5-flash",
       "litellm_params": {
         "model": "neosantara/agnes-2.5-flash",
@@ -491,6 +514,28 @@
         "id": "free/neosantara/agnes-3.0-flash",
         "route": "neosantara",
         "canonical": "agnes-3.0-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/ai-synthetic-video-detector",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/ai-synthetic-video-detector",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/ai-synthetic-video-detector",
+        "route": "nvidia",
+        "canonical": "ai-synthetic-video-detector",
         "access_groups": [
           "free"
         ],
@@ -544,6 +589,29 @@
       }
     },
     {
+      "model_name": "free/albedobase-xl-31",
+      "litellm_params": {
+        "model": "openai/albedobase-xl-31:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/albedobase-xl-31:free",
+        "route": "unorouter",
+        "canonical": "albedobase-xl-31",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/allam-2-7b",
       "litellm_params": {
         "model": "groq/allam-2-7b",
@@ -564,10 +632,27 @@
         "canonical": "allam-2-7b",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/allam-2-7b",
+      "litellm_params": {
+        "model": "openai/allam-2-7b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/allam-2-7b:free",
+        "route": "unorouter",
+        "canonical": "allam-2-7b",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -628,6 +713,29 @@
       }
     },
     {
+      "model_name": "free/anything-v5",
+      "litellm_params": {
+        "model": "openai/anything-v5:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/anything-v5:free",
+        "route": "unorouter",
+        "canonical": "anything-v5",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/apertus-v1.5-8b",
       "litellm_params": {
         "model": "cloudflare/@cf/swiss-ai/apertus-v1.5-8b",
@@ -642,6 +750,28 @@
         "id": "free/cloudflare/@cf/swiss-ai/apertus-v1.5-8b",
         "route": "cloudflare",
         "canonical": "apertus-v1.5-8b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/aqa",
+      "litellm_params": {
+        "model": "gemini/aqa",
+        "litellm_credential_name": "google",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/google/aqa",
+        "route": "google",
+        "canonical": "aqa",
         "access_groups": [
           "free"
         ],
@@ -1253,6 +1383,94 @@
       }
     },
     {
+      "model_name": "free/deepseek-r1-0528",
+      "litellm_params": {
+        "model": "openai/deepseek-r1-0528",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-r1-0528",
+        "route": "inferbase",
+        "canonical": "deepseek-r1-0528",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/deepseek-v3",
+      "litellm_params": {
+        "model": "openai/deepseek-v3",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v3",
+        "route": "inferbase",
+        "canonical": "deepseek-v3",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/deepseek-v3-1",
+      "litellm_params": {
+        "model": "openai/deepseek-v3-1",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v3-1",
+        "route": "inferbase",
+        "canonical": "deepseek-v3-1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/deepseek-v3.1",
+      "litellm_params": {
+        "model": "poe/deepseek-v3.1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/deepseek-v3.1",
+        "route": "poe",
+        "canonical": "deepseek-v3.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/deepseek-v3.2",
       "litellm_params": {
         "model": "openai/deepseek-v3.2:free",
@@ -1268,6 +1486,44 @@
         "canonical": "deepseek-v3.2",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v3.2",
+      "litellm_params": {
+        "model": "poe/deepseek-v3.2",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/deepseek-v3.2",
+        "route": "poe",
+        "canonical": "deepseek-v3.2",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-1-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-1-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-1-flash",
+        "route": "inferbase",
+        "canonical": "deepseek-v4-1-flash",
+        "access_groups": [
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -1275,20 +1531,38 @@
       }
     },
     {
-      "model_name": "free/deepseek-v4-flash-0731",
+      "model_name": "free/deepseek-v4-flash",
       "litellm_params": {
-        "model": "openai/deepseek-v4-flash-0731:free",
-        "litellm_credential_name": "unorouter",
+        "model": "poe/deepseek-v4-flash",
+        "litellm_credential_name": "poe",
         "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
+        "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/unorouter/deepseek-v4-flash-0731:free",
-        "route": "unorouter",
-        "canonical": "deepseek-v4-flash-0731",
+        "id": "free/poe/deepseek-v4-flash",
+        "route": "poe",
+        "canonical": "deepseek-v4-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-flash",
+        "route": "inferbase",
+        "canonical": "deepseek-v4-flash",
         "access_groups": [
           "free"
         ]
@@ -1352,6 +1626,66 @@
       }
     },
     {
+      "model_name": "free/deepseek-v4-flash-vision-exp",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-flash-vision-exp",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-flash-vision-exp",
+        "route": "inferbase",
+        "canonical": "deepseek-v4-flash-vision-exp",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-pro",
+      "litellm_params": {
+        "model": "poe/deepseek-v4-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/deepseek-v4-pro",
+        "route": "poe",
+        "canonical": "deepseek-v4-pro",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-pro",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-pro",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-pro",
+        "route": "inferbase",
+        "canonical": "deepseek-v4-pro",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
         "model": "openai/deepseek-v4.1-flash:free",
@@ -1364,6 +1698,25 @@
       "model_info": {
         "id": "free/electronhub/deepseek-v4.1-flash:free",
         "route": "electronhub",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "poe/deepseek-v4.1-flash-1017",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/deepseek-v4.1-flash-1017",
+        "route": "poe",
         "canonical": "deepseek-v4.1-flash",
         "access_groups": [
           "free"
@@ -1403,6 +1756,25 @@
       "model_info": {
         "id": "free/neosantara/deepseek-v4.1-flash-free",
         "route": "neosantara",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-1-flash-1017",
+        "route": "inferbase",
         "canonical": "deepseek-v4.1-flash",
         "access_groups": [
           "free"
@@ -1717,6 +2089,26 @@
     {
       "model_name": "free/gemini-2.5-flash",
       "litellm_params": {
+        "model": "openai/gemini-2.5-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-2.5-flash:free",
+        "route": "unorouter",
+        "canonical": "gemini-2.5-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-2.5-flash",
+      "litellm_params": {
         "model": "openai/google/gemini-2.5-flash:free",
         "litellm_credential_name": "naga",
         "order": 6,
@@ -1730,10 +2122,26 @@
         "canonical": "gemini-2.5-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-2.5-flash-lite",
+      "litellm_params": {
+        "model": "gemini/gemini-2.5-flash-lite",
+        "litellm_credential_name": "google",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/google/gemini-2.5-flash-lite",
+        "route": "google",
+        "canonical": "gemini-2.5-flash-lite",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -1753,10 +2161,26 @@
         "canonical": "gemini-2.5-flash-lite",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-3-flash",
+      "litellm_params": {
+        "model": "poe/gemini-3-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3-flash",
+        "route": "poe",
+        "canonical": "gemini-3-flash",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -1776,10 +2200,7 @@
         "canonical": "gemini-3-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -1805,6 +2226,48 @@
       }
     },
     {
+      "model_name": "free/gemini-3-pro",
+      "litellm_params": {
+        "model": "openai/gemini-3-pro:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-3-pro:free",
+        "route": "unorouter",
+        "canonical": "gemini-3-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemini-3.1-flash-lite",
+      "litellm_params": {
+        "model": "poe/gemini-3.1-flash-lite",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.1-flash-lite",
+        "route": "poe",
+        "canonical": "gemini-3.1-flash-lite",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/gemini-3.1-flash-lite",
       "litellm_params": {
         "model": "openai/gemini-3.1-flash-lite:free",
@@ -1821,10 +2284,7 @@
         "canonical": "gemini-3.1-flash-lite",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -1841,6 +2301,28 @@
         "id": "free/google/gemini-3.1-flash-lite-preview",
         "route": "google",
         "canonical": "gemini-3.1-flash-lite-preview",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemini-3.1-pro",
+      "litellm_params": {
+        "model": "poe/gemini-3.1-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.1-pro",
+        "route": "poe",
+        "canonical": "gemini-3.1-pro",
         "access_groups": [
           "free"
         ],
@@ -1894,6 +2376,28 @@
       }
     },
     {
+      "model_name": "free/gemini-3.5-flash",
+      "litellm_params": {
+        "model": "poe/gemini-3.5-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.5-flash",
+        "route": "poe",
+        "canonical": "gemini-3.5-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/gemini-3.5-flash-lite",
       "litellm_params": {
         "model": "gemini/gemini-3.5-flash-lite",
@@ -1906,6 +2410,25 @@
       "model_info": {
         "id": "free/google/gemini-3.5-flash-lite",
         "route": "google",
+        "canonical": "gemini-3.5-flash-lite",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-3.5-flash-lite",
+      "litellm_params": {
+        "model": "poe/gemini-3.5-flash-lite",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.5-flash-lite",
+        "route": "poe",
         "canonical": "gemini-3.5-flash-lite",
         "access_groups": [
           "free"
@@ -1972,6 +2495,28 @@
       }
     },
     {
+      "model_name": "free/gemini-3.7-flash",
+      "litellm_params": {
+        "model": "poe/gemini-3.7-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.7-flash",
+        "route": "poe",
+        "canonical": "gemini-3.7-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/gemini-3.8-flash",
       "litellm_params": {
         "model": "gemini/gemini-3.8-flash",
@@ -1987,10 +2532,26 @@
         "canonical": "gemini-3.8-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-3.8-flash",
+      "litellm_params": {
+        "model": "poe/gemini-3.8-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-3.8-flash",
+        "route": "poe",
+        "canonical": "gemini-3.8-flash",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -2053,10 +2614,26 @@
         "canonical": "gemini-4-hydrogen",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-4-hydrogen",
+      "litellm_params": {
+        "model": "poe/gemini-4-hydrogen",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemini-4-hydrogen",
+        "route": "poe",
+        "canonical": "gemini-4-hydrogen",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -2073,6 +2650,28 @@
         "id": "free/google/gemini-4-neon",
         "route": "google",
         "canonical": "gemini-4-neon",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemini-decision-1",
+      "litellm_params": {
+        "model": "gemini/gemini-decision-1",
+        "litellm_credential_name": "google",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/google/gemini-decision-1",
+        "route": "google",
+        "canonical": "gemini-decision-1",
         "access_groups": [
           "free"
         ],
@@ -2181,6 +2780,28 @@
         "id": "free/unorouter/gemma-4-26b:free",
         "route": "unorouter",
         "canonical": "gemma-4-26b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gemma-4-26b-a4b",
+      "litellm_params": {
+        "model": "poe/gemma-4-26b-a4b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemma-4-26b-a4b",
+        "route": "poe",
+        "canonical": "gemma-4-26b-a4b",
         "access_groups": [
           "free"
         ],
@@ -2576,6 +3197,25 @@
     {
       "model_name": "free/gemma-4-31b-it",
       "litellm_params": {
+        "model": "poe/gemma-4-31b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gemma-4-31b",
+        "route": "poe",
+        "canonical": "gemma-4-31b-it",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemma-4-31b-it",
+      "litellm_params": {
         "model": "openai/gemma-4-31b:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
@@ -2715,6 +3355,28 @@
       }
     },
     {
+      "model_name": "free/gliner2-pii",
+      "litellm_params": {
+        "model": "nvidia_nim/fastino/gliner2-pii",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/fastino/gliner2-pii",
+        "route": "nvidia",
+        "canonical": "gliner2-pii",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/glm-4.5-flash",
       "litellm_params": {
         "model": "zai/glm-4.5-flash",
@@ -2770,10 +3432,26 @@
         "canonical": "glm-4.6",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-4.6",
+      "litellm_params": {
+        "model": "poe/glm-4.6",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-4.6",
+        "route": "poe",
+        "canonical": "glm-4.6",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -2860,6 +3538,25 @@
     {
       "model_name": "free/glm-4.7-flash",
       "litellm_params": {
+        "model": "poe/glm-4.7-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-4.7-flash",
+        "route": "poe",
+        "canonical": "glm-4.7-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-4.7-flash",
+      "litellm_params": {
         "model": "openai/glm-4.7-flash:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
@@ -2912,10 +3609,26 @@
         "canonical": "glm-5",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5",
+      "litellm_params": {
+        "model": "openai/zai-glm-5",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5",
+        "route": "inferbase",
+        "canonical": "glm-5",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -2956,10 +3669,124 @@
         "canonical": "glm-5.2",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.2",
+      "litellm_params": {
+        "model": "poe/glm-5.2",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.2",
+        "route": "poe",
+        "canonical": "glm-5.2",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.2",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-2",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-2",
+        "route": "inferbase",
+        "canonical": "glm-5.2",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.3",
+      "litellm_params": {
+        "model": "poe/glm-5.3",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.3",
+        "route": "poe",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.3",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-3",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-3",
+        "route": "inferbase",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.3-fast",
+      "litellm_params": {
+        "model": "poe/glm-5.3-fast",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.3-fast",
+        "route": "poe",
+        "canonical": "glm-5.3-fast",
+        "access_groups": [
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "free/glm-5.3-flash",
+      "litellm_params": {
+        "model": "nvidia_nim/z-ai/glm-5.3-flash",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/z-ai/glm-5.3-flash",
+        "route": "nvidia",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -2975,6 +3802,25 @@
       "model_info": {
         "id": "free/electronhub/glm-5.3-flash:free",
         "route": "electronhub",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.3-flash",
+      "litellm_params": {
+        "model": "poe/glm-5.3-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.3-flash",
+        "route": "poe",
         "canonical": "glm-5.3-flash",
         "access_groups": [
           "free"
@@ -3033,6 +3879,25 @@
       "model_info": {
         "id": "free/gonka/zai-org/GLM-5.3-Flash",
         "route": "gonka",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/glm-5.3-flash",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-3-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-3-flash",
+        "route": "inferbase",
         "canonical": "glm-5.3-flash",
         "access_groups": [
           "free"
@@ -3119,6 +3984,135 @@
       }
     },
     {
+      "model_name": "free/google-gemma-3-27b-it",
+      "litellm_params": {
+        "model": "openai/google-gemma-3-27b-it",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/google-gemma-3-27b-it",
+        "route": "inferbase",
+        "canonical": "google-gemma-3-27b-it",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/google-gemma-4-26b-a4b-it",
+      "litellm_params": {
+        "model": "openai/google-gemma-4-26b-a4b-it",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/google-gemma-4-26b-a4b-it",
+        "route": "inferbase",
+        "canonical": "google-gemma-4-26b-a4b-it",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/google-gemma-4-31b-it",
+      "litellm_params": {
+        "model": "openai/google-gemma-4-31b-it",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/google-gemma-4-31b-it",
+        "route": "inferbase",
+        "canonical": "google-gemma-4-31b-it",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-4.1",
+      "litellm_params": {
+        "model": "poe/gpt-4.1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-4.1",
+        "route": "poe",
+        "canonical": "gpt-4.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-4.1-mini",
+      "litellm_params": {
+        "model": "poe/gpt-4.1-mini",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-4.1-mini",
+        "route": "poe",
+        "canonical": "gpt-4.1-mini",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-4o",
+      "litellm_params": {
+        "model": "poe/gpt-4o",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-4o",
+        "route": "poe",
+        "canonical": "gpt-4o",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/gpt-4o",
       "litellm_params": {
         "model": "openai/gpt-4o:free",
@@ -3135,10 +4129,285 @@
         "canonical": "gpt-4o",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-4o-aug",
+      "litellm_params": {
+        "model": "poe/gpt-4o-aug",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-4o-aug",
+        "route": "poe",
+        "canonical": "gpt-4o-aug",
+        "access_groups": [
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "free/gpt-4o-mini",
+      "litellm_params": {
+        "model": "poe/gpt-4o-mini",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-4o-mini",
+        "route": "poe",
+        "canonical": "gpt-4o-mini",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5",
+      "litellm_params": {
+        "model": "poe/gpt-5",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5",
+        "route": "poe",
+        "canonical": "gpt-5",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5-mini",
+      "litellm_params": {
+        "model": "poe/gpt-5-mini",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5-mini",
+        "route": "poe",
+        "canonical": "gpt-5-mini",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-5-mini",
+      "litellm_params": {
+        "model": "openai/gpt-5-mini:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gpt-5-mini:free",
+        "route": "unorouter",
+        "canonical": "gpt-5-mini",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-5-nano",
+      "litellm_params": {
+        "model": "poe/gpt-5-nano",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5-nano",
+        "route": "poe",
+        "canonical": "gpt-5-nano",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5-pro",
+      "litellm_params": {
+        "model": "poe/gpt-5-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5-pro",
+        "route": "poe",
+        "canonical": "gpt-5-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.1",
+      "litellm_params": {
+        "model": "poe/gpt-5.1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.1",
+        "route": "poe",
+        "canonical": "gpt-5.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.2",
+      "litellm_params": {
+        "model": "poe/gpt-5.2",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.2",
+        "route": "poe",
+        "canonical": "gpt-5.2",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.2-pro",
+      "litellm_params": {
+        "model": "poe/gpt-5.2-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.2-pro",
+        "route": "poe",
+        "canonical": "gpt-5.2-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.3-codex",
+      "litellm_params": {
+        "model": "poe/gpt-5.3-codex",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.3-codex",
+        "route": "poe",
+        "canonical": "gpt-5.3-codex",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.4",
+      "litellm_params": {
+        "model": "poe/gpt-5.4",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.4",
+        "route": "poe",
+        "canonical": "gpt-5.4",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.4-mini",
+      "litellm_params": {
+        "model": "poe/gpt-5.4-mini",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.4-mini",
+        "route": "poe",
+        "canonical": "gpt-5.4-mini",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -3156,6 +4425,93 @@
         "id": "free/unorouter/gpt-5.4-mini:free",
         "route": "unorouter",
         "canonical": "gpt-5.4-mini",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-5.4-nano",
+      "litellm_params": {
+        "model": "poe/gpt-5.4-nano",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.4-nano",
+        "route": "poe",
+        "canonical": "gpt-5.4-nano",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-5.4-pro",
+      "litellm_params": {
+        "model": "poe/gpt-5.4-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-5.4-pro",
+        "route": "poe",
+        "canonical": "gpt-5.4-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-6",
+      "litellm_params": {
+        "model": "openai/gpt-6:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gpt-6:free",
+        "route": "unorouter",
+        "canonical": "gpt-6",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-6-luna",
+      "litellm_params": {
+        "model": "openai/gpt-6-luna:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gpt-6-luna:free",
+        "route": "unorouter",
+        "canonical": "gpt-6-luna",
         "access_groups": [
           "free"
         ],
@@ -3230,6 +4586,25 @@
     {
       "model_name": "free/gpt-oss-120b",
       "litellm_params": {
+        "model": "poe/gpt-oss-120b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-oss-120b",
+        "route": "poe",
+        "canonical": "gpt-oss-120b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-oss-120b",
+      "litellm_params": {
         "model": "openai/gpt-oss-120b:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
@@ -3245,6 +4620,28 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/gpt-oss-120b-cs",
+      "litellm_params": {
+        "model": "poe/gpt-oss-120b-cs",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-oss-120b-cs",
+        "route": "poe",
+        "canonical": "gpt-oss-120b-cs",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -3304,6 +4701,25 @@
       "model_info": {
         "id": "free/electronhub/gpt-oss-20b:free",
         "route": "electronhub",
+        "canonical": "gpt-oss-20b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gpt-oss-20b",
+      "litellm_params": {
+        "model": "poe/gpt-oss-20b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/gpt-oss-20b",
+        "route": "poe",
         "canonical": "gpt-oss-20b",
         "access_groups": [
           "free"
@@ -3396,9 +4812,9 @@
       }
     },
     {
-      "model_name": "free/grok-4.7",
+      "model_name": "free/grok-4.1",
       "litellm_params": {
-        "model": "openai/grok-4.7:free",
+        "model": "openai/grok-4.1:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
         "weight": 1,
@@ -3407,8 +4823,118 @@
         "rpm": 1
       },
       "model_info": {
-        "id": "free/unorouter/grok-4.7:free",
+        "id": "free/unorouter/grok-4.1:free",
         "route": "unorouter",
+        "canonical": "grok-4.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/grok-4.20-multi-agent",
+      "litellm_params": {
+        "model": "poe/grok-4.20-multi-agent",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/grok-4.20-multi-agent",
+        "route": "poe",
+        "canonical": "grok-4.20-multi-agent",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/grok-4.3",
+      "litellm_params": {
+        "model": "poe/grok-4.3",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/grok-4.3",
+        "route": "poe",
+        "canonical": "grok-4.3",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/grok-4.5",
+      "litellm_params": {
+        "model": "poe/grok-4.5",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/grok-4.5",
+        "route": "poe",
+        "canonical": "grok-4.5",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/grok-4.6",
+      "litellm_params": {
+        "model": "poe/grok-4.6",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/grok-4.6",
+        "route": "poe",
+        "canonical": "grok-4.6",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/grok-4.7",
+      "litellm_params": {
+        "model": "poe/grok-4.7",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/grok-4.7",
+        "route": "poe",
         "canonical": "grok-4.7",
         "access_groups": [
           "free"
@@ -3435,6 +4961,29 @@
         "id": "free/opencode-go/hungerg-free",
         "route": "opencode-go",
         "canonical": "hungerg",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/hy3",
+      "litellm_params": {
+        "model": "openai/hy3:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/hy3:free",
+        "route": "unorouter",
+        "canonical": "hy3",
         "access_groups": [
           "free"
         ],
@@ -3494,6 +5043,47 @@
       }
     },
     {
+      "model_name": "free/inkling",
+      "litellm_params": {
+        "model": "poe/inkling",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/inkling",
+        "route": "poe",
+        "canonical": "inkling",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/ising-calibration-1.5-31b",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/ising-calibration-1.5-31b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/ising-calibration-1.5-31b",
+        "route": "nvidia",
+        "canonical": "ising-calibration-1.5-31b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/ising-calibration-1.5-31b",
       "litellm_params": {
         "model": "openai/ising-calibration-1.5-31b:free",
@@ -3508,6 +5098,26 @@
         "id": "free/unorouter/ising-calibration-1.5-31b:free",
         "route": "unorouter",
         "canonical": "ising-calibration-1.5-31b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/k-exaone-2.5",
+      "litellm_params": {
+        "model": "openai/k-exaone-2.5:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/k-exaone-2.5:free",
+        "route": "unorouter",
+        "canonical": "k-exaone-2.5",
         "access_groups": [
           "free"
         ],
@@ -3540,6 +5150,28 @@
       }
     },
     {
+      "model_name": "free/kimi-k2.6",
+      "litellm_params": {
+        "model": "poe/kimi-k2.6",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/kimi-k2.6",
+        "route": "poe",
+        "canonical": "kimi-k2.6",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/kimi-k2.7-code",
       "litellm_params": {
         "model": "openai/kimi-k2.7-code",
@@ -3562,72 +5194,63 @@
       }
     },
     {
-      "model_name": "free/kimi-k3.1-pro",
+      "model_name": "free/kimi-k3",
       "litellm_params": {
-        "model": "openai/kimi-k3.1-pro:free",
-        "litellm_credential_name": "unorouter",
+        "model": "poe/kimi-k3",
+        "litellm_credential_name": "poe",
         "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
+        "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/unorouter/kimi-k3.1-pro:free",
-        "route": "unorouter",
+        "id": "free/poe/kimi-k3",
+        "route": "poe",
+        "canonical": "kimi-k3",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/kimi-k3.1-pro",
+      "litellm_params": {
+        "model": "nvidia_nim/moonshotai/kimi-k3.1-pro",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/moonshotai/kimi-k3.1-pro",
+        "route": "nvidia",
         "canonical": "kimi-k3.1-pro",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
-      "model_name": "free/l3-70b-euryale-v2.1",
+      "model_name": "free/kimi-k3.1-pro",
       "litellm_params": {
-        "model": "openai/l3-70b-euryale-v2.1:free",
-        "litellm_credential_name": "unorouter",
+        "model": "poe/kimi-k3.1-pro",
+        "litellm_credential_name": "poe",
         "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
+        "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/unorouter/l3-70b-euryale-v2.1:free",
-        "route": "unorouter",
-        "canonical": "l3-70b-euryale-v2.1",
+        "id": "free/poe/kimi-k3.1-pro",
+        "route": "poe",
+        "canonical": "kimi-k3.1-pro",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/l3-8b-stheno-v3.2",
-      "litellm_params": {
-        "model": "openai/l3-8b-stheno-v3.2:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/l3-8b-stheno-v3.2:free",
-        "route": "unorouter",
-        "canonical": "l3-8b-stheno-v3.2",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -3650,6 +5273,25 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "free/laguna-xs-2.1",
+      "litellm_params": {
+        "model": "nvidia_nim/poolside/laguna-xs-2.1",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/poolside/laguna-xs-2.1",
+        "route": "nvidia",
+        "canonical": "laguna-xs-2.1",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -3946,6 +5588,28 @@
       }
     },
     {
+      "model_name": "free/llama-3.3-70b",
+      "litellm_params": {
+        "model": "poe/llama-3.3-70b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/llama-3.3-70b",
+        "route": "poe",
+        "canonical": "llama-3.3-70b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/llama-3.3-70b-instruct-fp8-fast",
       "litellm_params": {
         "model": "cloudflare/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
@@ -3960,6 +5624,28 @@
         "id": "free/cloudflare/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         "route": "cloudflare",
         "canonical": "llama-3.3-70b-instruct-fp8-fast",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/llama-4-maverick",
+      "litellm_params": {
+        "model": "poe/llama-4-maverick",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/llama-4-maverick",
+        "route": "poe",
+        "canonical": "llama-4-maverick",
         "access_groups": [
           "free"
         ],
@@ -4036,52 +5722,6 @@
       }
     },
     {
-      "model_name": "free/manta-flash-1.0",
-      "litellm_params": {
-        "model": "openai/manta-flash-1.0:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/manta-flash-1.0:free",
-        "route": "unorouter",
-        "canonical": "manta-flash-1.0",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/manta-mini-1.0",
-      "litellm_params": {
-        "model": "openai/manta-mini-1.0:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/manta-mini-1.0:free",
-        "route": "unorouter",
-        "canonical": "manta-mini-1.0",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/mercury-3",
       "litellm_params": {
         "model": "openai/mercury-3:free",
@@ -4119,6 +5759,50 @@
         "id": "free/unorouter/mercury-decide:free",
         "route": "unorouter",
         "canonical": "mercury-decide",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/meta-llama-3-1-8b-instruct",
+      "litellm_params": {
+        "model": "openai/meta-llama-3-1-8b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/meta-llama-3-1-8b-instruct",
+        "route": "inferbase",
+        "canonical": "meta-llama-3-1-8b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/meta-llama-3-3-70b-instruct",
+      "litellm_params": {
+        "model": "openai/meta-llama-3-3-70b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/meta-llama-3-3-70b-instruct",
+        "route": "inferbase",
+        "canonical": "meta-llama-3-3-70b-instruct",
         "access_groups": [
           "free"
         ],
@@ -4174,6 +5858,25 @@
     {
       "model_name": "free/mimo-v2.6-flash",
       "litellm_params": {
+        "model": "poe/mimo-v2.6-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/mimo-v2.6-flash",
+        "route": "poe",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/mimo-v2.6-flash",
+      "litellm_params": {
         "model": "neosantara/mimo-v2.6-flash-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -4187,10 +5890,7 @@
         "canonical": "mimo-v2.6-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -4262,6 +5962,50 @@
       }
     },
     {
+      "model_name": "free/minimax-m2.1",
+      "litellm_params": {
+        "model": "poe/minimax-m2.1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/minimax-m2.1",
+        "route": "poe",
+        "canonical": "minimax-m2.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/minimax-m2.5",
+      "litellm_params": {
+        "model": "poe/minimax-m2.5",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/minimax-m2.5",
+        "route": "poe",
+        "canonical": "minimax-m2.5",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/minimax-m2.7",
       "litellm_params": {
         "model": "openai/minimax-m2.7:free",
@@ -4274,6 +6018,26 @@
       "model_info": {
         "id": "free/electronhub/minimax-m2.7:free",
         "route": "electronhub",
+        "canonical": "minimax-m2.7",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m2.7",
+      "litellm_params": {
+        "model": "openai/minimax-m2.7",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/minimax-m2.7",
+        "route": "unorouter",
         "canonical": "minimax-m2.7",
         "access_groups": [
           "free"
@@ -4321,6 +6085,25 @@
     {
       "model_name": "free/minimax-m3",
       "litellm_params": {
+        "model": "poe/minimax-m3",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/minimax-m3",
+        "route": "poe",
+        "canonical": "minimax-m3",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m3",
+      "litellm_params": {
         "model": "neosantara/minimax-m3-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -4334,10 +6117,67 @@
         "canonical": "minimax-m3",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m3",
+      "litellm_params": {
+        "model": "openai/minimax-m3",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/minimax-m3",
+        "route": "inferbase",
+        "canonical": "minimax-m3",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m3-1-flash",
+      "litellm_params": {
+        "model": "openai/minimax-m3-1-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/minimax-m3-1-flash",
+        "route": "inferbase",
+        "canonical": "minimax-m3-1-flash",
+        "access_groups": [
+          "free"
         ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "free/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "nvidia_nim/minimaxai/minimax-m3.1-flash",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/minimaxai/minimax-m3.1-flash",
+        "route": "nvidia",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -4578,6 +6418,25 @@
     {
       "model_name": "free/mistral-large-4",
       "litellm_params": {
+        "model": "poe/mistral-large-4",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/mistral-large-4",
+        "route": "poe",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/mistral-large-4",
+      "litellm_params": {
         "model": "openai/mistral-large-4",
         "litellm_credential_name": "airforce",
         "order": 6,
@@ -4589,6 +6448,47 @@
         "id": "free/airforce/mistral-large-4",
         "route": "airforce",
         "canonical": "mistral-large-4",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/mistral-large-4-1t-a52b",
+      "litellm_params": {
+        "model": "nvidia_nim/mistralai/mistral-large-4-1t-a52b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/mistralai/mistral-large-4-1t-a52b",
+        "route": "nvidia",
+        "canonical": "mistral-large-4-1t-a52b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/mistral-nemo-instruct-2407",
+      "litellm_params": {
+        "model": "openai/mistral-nemo-instruct-2407",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/mistral-nemo-instruct-2407",
+        "route": "inferbase",
+        "canonical": "mistral-nemo-instruct-2407",
         "access_groups": [
           "free"
         ],
@@ -4612,6 +6512,50 @@
         "id": "free/unorouter/mistral-small:free",
         "route": "unorouter",
         "canonical": "mistral-small",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/mistral-small-24b-instruct-2501",
+      "litellm_params": {
+        "model": "openai/mistral-small-24b-instruct-2501",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/mistral-small-24b-instruct-2501",
+        "route": "inferbase",
+        "canonical": "mistral-small-24b-instruct-2501",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/mistral-small-3.1",
+      "litellm_params": {
+        "model": "poe/mistral-small-3.1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/mistral-small-3.1",
+        "route": "poe",
+        "canonical": "mistral-small-3.1",
         "access_groups": [
           "free"
         ],
@@ -4666,6 +6610,28 @@
       }
     },
     {
+      "model_name": "free/mistral-small-4",
+      "litellm_params": {
+        "model": "poe/mistral-small-4",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/mistral-small-4",
+        "route": "poe",
+        "canonical": "mistral-small-4",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/mistral-tiny-2407",
       "litellm_params": {
         "model": "openai/mistral-tiny-2407",
@@ -4688,20 +6654,19 @@
       }
     },
     {
-      "model_name": "free/mn-violet-lotus-12b",
+      "model_name": "free/muse-ember",
       "litellm_params": {
-        "model": "openai/mn-violet-lotus-12b:free",
-        "litellm_credential_name": "unorouter",
+        "model": "poe/muse-ember",
+        "litellm_credential_name": "poe",
         "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
+        "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/unorouter/mn-violet-lotus-12b:free",
-        "route": "unorouter",
-        "canonical": "mn-violet-lotus-12b",
+        "id": "free/poe/muse-ember",
+        "route": "poe",
+        "canonical": "muse-ember",
         "access_groups": [
           "free"
         ],
@@ -4733,6 +6698,72 @@
       }
     },
     {
+      "model_name": "free/muse-spark-1-1",
+      "litellm_params": {
+        "model": "poe/muse-spark-1-1",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/muse-spark-1-1",
+        "route": "poe",
+        "canonical": "muse-spark-1-1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/muse-spark-open",
+      "litellm_params": {
+        "model": "poe/muse-spark-open",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/muse-spark-open",
+        "route": "poe",
+        "canonical": "muse-spark-open",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/muse-wonder-1.0",
+      "litellm_params": {
+        "model": "poe/muse-wonder-1.0",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/muse-wonder-1.0",
+        "route": "poe",
+        "canonical": "muse-wonder-1.0",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/nemotron-3-nano-omni-30b-a3b-reasoning",
       "litellm_params": {
         "model": "openai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -4745,6 +6776,25 @@
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "route": "kilo",
+        "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "route": "nvidia",
         "canonical": "nemotron-3-nano-omni-30b-a3b-reasoning",
         "access_groups": [
           "free"
@@ -4876,6 +6926,25 @@
     {
       "model_name": "free/nemotron-3-ultra-550b-a55b",
       "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+        "route": "nvidia",
+        "canonical": "nemotron-3-ultra-550b-a55b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3-ultra-550b-a55b",
+      "litellm_params": {
         "model": "openai/nemotron-3-ultra-550b-a55b:free",
         "litellm_credential_name": "electronhub",
         "order": 4,
@@ -4979,6 +7048,25 @@
     {
       "model_name": "free/nemotron-3.5-bolt-e4b",
       "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3.5-bolt-e4b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3.5-bolt-e4b",
+        "route": "nvidia",
+        "canonical": "nemotron-3.5-bolt-e4b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3.5-bolt-e4b",
+      "litellm_params": {
         "model": "openai/nemotron-3.5-bolt-e4b:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
@@ -4991,6 +7079,25 @@
         "id": "free/unorouter/nemotron-3.5-bolt-e4b:free",
         "route": "unorouter",
         "canonical": "nemotron-3.5-bolt-e4b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3.5-content-safety",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3.5-content-safety",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3.5-content-safety",
+        "route": "nvidia",
+        "canonical": "nemotron-3.5-content-safety",
         "access_groups": [
           "free"
         ],
@@ -5012,6 +7119,25 @@
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3.5-lightning:free",
         "route": "kilo",
+        "canonical": "nemotron-3.5-lightning",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/nemotron-3.5-lightning",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+        "route": "nvidia",
         "canonical": "nemotron-3.5-lightning",
         "access_groups": [
           "free"
@@ -5263,6 +7389,28 @@
       }
     },
     {
+      "model_name": "free/nemotron-3.5-super-vl-120b-a12b",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+        "route": "nvidia",
+        "canonical": "nemotron-3.5-super-vl-120b-a12b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/nemotron-sea-lion-v4.8-120b-a12b",
       "litellm_params": {
         "model": "openai/nemotron-sea-lion-v4.8-120b-a12b:free",
@@ -5394,6 +7542,138 @@
       }
     },
     {
+      "model_name": "free/nvclip",
+      "litellm_params": {
+        "model": "nvidia_nim/nvidia/nvclip",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/nvidia/nvclip",
+        "route": "nvidia",
+        "canonical": "nvclip",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/nvidia-nemotron-3-5-super-vl-120b-a12b",
+      "litellm_params": {
+        "model": "openai/nvidia-nemotron-3-5-super-vl-120b-a12b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/nvidia-nemotron-3-5-super-vl-120b-a12b",
+        "route": "inferbase",
+        "canonical": "nvidia-nemotron-3-5-super-vl-120b-a12b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/nvidia-nemotron-3-super-120b-a12b",
+      "litellm_params": {
+        "model": "openai/nvidia-nemotron-3-super-120b-a12b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/nvidia-nemotron-3-super-120b-a12b",
+        "route": "inferbase",
+        "canonical": "nvidia-nemotron-3-super-120b-a12b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/nvidia-nemotron-3-ultra-550b-a55b",
+      "litellm_params": {
+        "model": "openai/nvidia-nemotron-3-ultra-550b-a55b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/nvidia-nemotron-3-ultra-550b-a55b",
+        "route": "inferbase",
+        "canonical": "nvidia-nemotron-3-ultra-550b-a55b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/o3",
+      "litellm_params": {
+        "model": "poe/o3",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/o3",
+        "route": "poe",
+        "canonical": "o3",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/o3-pro",
+      "litellm_params": {
+        "model": "poe/o3-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/o3-pro",
+        "route": "poe",
+        "canonical": "o3-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/olala-v1.0-mini-7a1b",
       "litellm_params": {
         "model": "ovhcloud/Olala-v1.0-mini-7A1B",
@@ -5476,6 +7756,50 @@
         "id": "free/airforce/open-mistral-nemo",
         "route": "airforce",
         "canonical": "open-mistral-nemo",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/openai-gpt-oss-120b",
+      "litellm_params": {
+        "model": "openai/openai-gpt-oss-120b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/openai-gpt-oss-120b",
+        "route": "inferbase",
+        "canonical": "openai-gpt-oss-120b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/openai-gpt-oss-20b",
+      "litellm_params": {
+        "model": "openai/openai-gpt-oss-20b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/openai-gpt-oss-20b",
+        "route": "inferbase",
+        "canonical": "openai-gpt-oss-20b",
         "access_groups": [
           "free"
         ],
@@ -5658,6 +7982,28 @@
       }
     },
     {
+      "model_name": "free/qwen-mt-plus",
+      "litellm_params": {
+        "model": "openai/qwen-mt-plus",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen-mt-plus",
+        "route": "inferbase",
+        "canonical": "qwen-mt-plus",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/qwen-sea-lion-v4-32b-it",
       "litellm_params": {
         "model": "openai/aisingapore/Qwen-SEA-LION-v4-32B-IT",
@@ -5789,6 +8135,359 @@
       }
     },
     {
+      "model_name": "free/qwen3-14b",
+      "litellm_params": {
+        "model": "openai/qwen3-14b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-14b",
+        "route": "inferbase",
+        "canonical": "qwen3-14b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-235b-a22b-2507",
+      "litellm_params": {
+        "model": "openai/qwen3-235b-a22b-2507",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-235b-a22b-2507",
+        "route": "inferbase",
+        "canonical": "qwen3-235b-a22b-2507",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-235b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen3-235b-instruct:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/qwen3-235b-instruct:free",
+        "route": "unorouter",
+        "canonical": "qwen3-235b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-30b-a3b",
+      "litellm_params": {
+        "model": "openai/qwen3-30b-a3b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-30b-a3b",
+        "route": "inferbase",
+        "canonical": "qwen3-30b-a3b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-32b",
+      "litellm_params": {
+        "model": "openai/qwen3-32b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-32b",
+        "route": "inferbase",
+        "canonical": "qwen3-32b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-5-122b-a10b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-122b-a10b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-122b-a10b",
+        "route": "inferbase",
+        "canonical": "qwen3-5-122b-a10b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-5-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-27b",
+        "route": "inferbase",
+        "canonical": "qwen3-5-27b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-5-35b-a3b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-35b-a3b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-35b-a3b",
+        "route": "inferbase",
+        "canonical": "qwen3-5-35b-a3b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-5-397b-a17b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-397b-a17b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-397b-a17b",
+        "route": "inferbase",
+        "canonical": "qwen3-5-397b-a17b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-5-9b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-9b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-9b",
+        "route": "inferbase",
+        "canonical": "qwen3-5-9b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-6-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-6-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-6-27b",
+        "route": "inferbase",
+        "canonical": "qwen3-6-27b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-6-35b-a3b",
+      "litellm_params": {
+        "model": "openai/qwen3-6-35b-a3b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-6-35b-a3b",
+        "route": "inferbase",
+        "canonical": "qwen3-6-35b-a3b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-7-max",
+      "litellm_params": {
+        "model": "openai/qwen3-7-max",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-7-max",
+        "route": "inferbase",
+        "canonical": "qwen3-7-max",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-8-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-8-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-27b",
+        "route": "inferbase",
+        "canonical": "qwen3-8-27b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-8-flash",
+      "litellm_params": {
+        "model": "openai/qwen3-8-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-flash",
+        "route": "inferbase",
+        "canonical": "qwen3-8-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-8-max",
+      "litellm_params": {
+        "model": "openai/qwen3-8-max",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-max",
+        "route": "inferbase",
+        "canonical": "qwen3-8-max",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/qwen3-coder-30-a3b-instruct",
       "litellm_params": {
         "model": "openai/qwen3-coder-30-a3b-instruct:free",
@@ -5802,6 +8501,160 @@
         "id": "free/electronhub/qwen3-coder-30-a3b-instruct:free",
         "route": "electronhub",
         "canonical": "qwen3-coder-30-a3b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-coder-480b-a35b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen3-coder-480b-a35b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-coder-480b-a35b-instruct",
+        "route": "inferbase",
+        "canonical": "qwen3-coder-480b-a35b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-coder-next",
+      "litellm_params": {
+        "model": "poe/qwen3-coder-next",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3-coder-next",
+        "route": "poe",
+        "canonical": "qwen3-coder-next",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-next-80b-a3b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen3-next-80b-a3b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-next-80b-a3b-instruct",
+        "route": "inferbase",
+        "canonical": "qwen3-next-80b-a3b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-vl-235b-a22b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen3-vl-235b-a22b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-vl-235b-a22b-instruct",
+        "route": "inferbase",
+        "canonical": "qwen3-vl-235b-a22b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-vl-30b-a3b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen3-vl-30b-a3b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-vl-30b-a3b-instruct",
+        "route": "inferbase",
+        "canonical": "qwen3-vl-30b-a3b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-omni-flash",
+      "litellm_params": {
+        "model": "poe/qwen3.5-omni-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.5-omni-flash",
+        "route": "poe",
+        "canonical": "qwen3.5-omni-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-omni-plus",
+      "litellm_params": {
+        "model": "poe/qwen3.5-omni-plus",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.5-omni-plus",
+        "route": "poe",
+        "canonical": "qwen3.5-omni-plus",
         "access_groups": [
           "free"
         ],
@@ -5868,6 +8721,28 @@
         "id": "free/bazaarlink/qwen/qwen3.7-flash:free",
         "route": "bazaarlink",
         "canonical": "qwen3.7-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-2.4t-a95b",
+      "litellm_params": {
+        "model": "poe/qwen3.8-2.4t-a95b",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.8-2.4t-a95b",
+        "route": "poe",
+        "canonical": "qwen3.8-2.4t-a95b",
         "access_groups": [
           "free"
         ],
@@ -5960,6 +8835,182 @@
       }
     },
     {
+      "model_name": "free/qwen3.8-flash",
+      "litellm_params": {
+        "model": "poe/qwen3.8-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.8-flash",
+        "route": "poe",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-max-0902",
+      "litellm_params": {
+        "model": "poe/qwen3.8-max-0902",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.8-max-0902",
+        "route": "poe",
+        "canonical": "qwen3.8-max-0902",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen4-max",
+      "litellm_params": {
+        "model": "poe/qwen4-max",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/qwen4-max",
+        "route": "poe",
+        "canonical": "qwen4-max",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/seed-2.0-code",
+      "litellm_params": {
+        "model": "poe/seed-2.0-code",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/seed-2.0-code",
+        "route": "poe",
+        "canonical": "seed-2.0-code",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/seed-2.0-lite",
+      "litellm_params": {
+        "model": "poe/seed-2.0-lite",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/seed-2.0-lite",
+        "route": "poe",
+        "canonical": "seed-2.0-lite",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/seed-2.0-mini",
+      "litellm_params": {
+        "model": "poe/seed-2.0-mini",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/seed-2.0-mini",
+        "route": "poe",
+        "canonical": "seed-2.0-mini",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/seed-2.0-pro",
+      "litellm_params": {
+        "model": "poe/seed-2.0-pro",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/seed-2.0-pro",
+        "route": "poe",
+        "canonical": "seed-2.0-pro",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/seed-2.1-turbo",
+      "litellm_params": {
+        "model": "poe/seed-2.1-turbo",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/poe/seed-2.1-turbo",
+        "route": "poe",
+        "canonical": "seed-2.1-turbo",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/sensenova-6.8-flash-lite",
       "litellm_params": {
         "model": "openai/sensenova-6.8-flash-lite:free",
@@ -5983,6 +9034,70 @@
       }
     },
     {
+      "model_name": "free/solaria-3",
+      "litellm_params": {
+        "model": "ovhcloud/solaria-3",
+        "litellm_credential_name": "ovh",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 2
+      },
+      "model_info": {
+        "id": "free/ovh/solaria-3",
+        "route": "ovh",
+        "canonical": "solaria-3",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/starcoder2-15b",
+      "litellm_params": {
+        "model": "nvidia_nim/bigcode/starcoder2-15b",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/bigcode/starcoder2-15b",
+        "route": "nvidia",
+        "canonical": "starcoder2-15b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/step-5-preview",
+      "litellm_params": {
+        "model": "nvidia_nim/stepfun-ai/step-5-preview",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/nvidia/stepfun-ai/step-5-preview",
+        "route": "nvidia",
+        "canonical": "step-5-preview",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/step-5-preview",
       "litellm_params": {
         "model": "openai/step-5-preview:free",
@@ -5999,10 +9114,7 @@
         "canonical": "step-5-preview",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -6265,6 +9377,28 @@
         "id": "free/unorouter/xing4.0-29b-a4b:free",
         "route": "unorouter",
         "canonical": "xing4.0-29b-a4b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/zai-glm-5-1",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-1",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-1",
+        "route": "inferbase",
+        "canonical": "zai-glm-5-1",
         "access_groups": [
           "free"
         ],
