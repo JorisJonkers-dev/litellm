@@ -116,8 +116,7 @@ class Clustering(unittest.TestCase):
 
     def test_paid_and_budgeted_deployments_never_join(self):
         specs = plan(free("groq", "openai/gpt-oss-120b"), ("vibe", "gpt-oss-120b", "usable", {"free": True}),
-                     ("vibe-api", "gpt-oss-120b", "usable", {}), ("anthropic", "gpt-oss-120b", "usable", {}),
-                     ("inferbase", "gpt-oss-120b", "usable", {"free": True, "price": {"input": 1e-6, "output": 1e-6}}))
+                     ("vibe-api", "gpt-oss-120b", "usable", {}), ("anthropic", "gpt-oss-120b", "usable", {}))
         self.assertEqual(group(specs, "free/gpt-oss-120b"), ["groq"])
 
 
@@ -228,7 +227,7 @@ class Generated(unittest.TestCase):
             self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0), info["id"])
             self.assertEqual(info["access_groups"], ["free"], info["id"])
             self.assertIn(info["route"], sync.FREE_GROUP_ROUTES, info["id"])
-            self.assertNotIn(info["route"], ("vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic", "inferbase"))
+            self.assertNotIn(info["route"], ("vibe", "vibe-study", "vibe-api", "vibe-study-api", "anthropic"))
             self.assertNotIn("cooldown_time", params, info["id"])
             self.assertNotIn("max_budget", params, info["id"])
             self.assertNotIn("account", info, info["id"])

@@ -572,7 +572,7 @@ class FreeRoutesWave1(unittest.TestCase):
     """The first-wave free-only routes (agent-kit#916): public work only, never canonical, never paid."""
 
     ROUTES = ("groq", "cloudflare", "nvidia", "zai", "kilo", "ovh", "requesty", "axforge", "naga", "routeway", "inferbase")
-    RULES = dict(RULES, accounts={"inferbase": {"routes": ["inferbase"], "max_budget": 0.5, "window": {"days": 1}}}, cooldowns={"naga": 3600})
+    RULES = dict(RULES, cooldowns={"naga": 3600})
 
     def plan(self, *models):
         return sync.plan_groups(catalogue(*models), self.RULES)
@@ -585,16 +585,13 @@ class FreeRoutesWave1(unittest.TestCase):
         specs = self.plan(*models)
         self.assertEqual({spec["upstream_id"] for spec in specs}, {"free-model"})
         self.assertEqual({spec["route"] for spec in specs}, set(self.ROUTES))
-        self.assertEqual({spec["name"] for spec in specs}, {"free/free-model", "inferbase/free-model"})
+        self.assertEqual({spec["name"] for spec in specs}, {"free/free-model"})
 
     def test_no_deployment_lands_in_canonical_or_a_paid_group(self):
         specs = self.plan(*[(route, "free-model", "usable", {"free": True}) for route in self.ROUTES],
                           ("vibe", "free-model", "usable", {}), ("vibe-api", "free-model", "usable", {}))
         for spec in specs:
-            if spec["route"] == "inferbase":  # budgeted and priced: its own group, never free/
-                self.assertEqual(spec["name"], "inferbase/free-model")
-                self.assertEqual(spec["model_info"]["access_groups"], ["inferbase-free-public"])
-            elif spec["route"] in self.ROUTES:
+            if spec["route"] in self.ROUTES:
                 # Reachable only as free/<model>, with the access group free alone.
                 self.assertEqual(spec["model_info"]["access_groups"], ["free"])
                 self.assertEqual(spec["name"], "free/free-model")
@@ -602,20 +599,15 @@ class FreeRoutesWave1(unittest.TestCase):
             else:
                 self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
 
-    def test_free_deployments_cost_zero_per_token_except_inferbase_which_has_a_budget(self):
+    def test_free_deployments_cost_zero_per_token_inferbase_included(self):
+        """Inferbase's account has no payment method (owner, 2026-11-26): free and rate limited like the rest."""
         specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        self.assertEqual(set(specs), set(self.ROUTES))
         for route, spec in specs.items():
             params = spec["litellm_params"]
-            if route == "inferbase":
-                self.assertNotIn("input_cost_per_token", params)
-                self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
-            else:
-                self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0))
-                self.assertNotIn("max_budget", params)
-        # A free route carries its limits instead of a fixed cooldown; the budgeted Inferbase keeps its cooldown.
-        self.assertNotIn("cooldown_time", specs["naga"]["litellm_params"])
-        self.assertNotIn("cooldown_time", specs["groq"]["litellm_params"])
-        self.assertIn("cooldown_time", specs["inferbase"]["litellm_params"])
+            self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0), route)
+            self.assertNotIn("max_budget", params)
+            self.assertNotIn("cooldown_time", params)
 
     def test_prefixes_and_credentials(self):
         specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
@@ -633,7 +625,7 @@ class FreeRoutesWave1(unittest.TestCase):
         # Free routes are outside the tiers, so no rule makes one a fallback of a paid group.
         tiered = {route for tier in rules["tiers"] for route, _ in tier}
         self.assertFalse(tiered & set(self.ROUTES))
-        self.assertEqual(sync.account_budgets(rules)["inferbase"], {"max_budget": 0.5, "budget_duration": "1d", "account": "inferbase"})
+        self.assertNotIn("inferbase", sync.account_budgets(rules))  # no payment method, so no cap to keep
         for route in ("requesty", "naga", "routeway"):
             self.assertEqual(rules["cooldowns"][route], 3600)
 
@@ -653,12 +645,6 @@ class FreeRoutesWave1(unittest.TestCase):
         for route in ("kilo", "groq", "zai", "ovh", "requesty", "unorouter", "nvidia"):
             self.assertIn(route, reference, route)
         self.assertNotIn("openrouter", reference)  # never as new work, and never a source of "free"
-
-    def test_inferbase_deploys_at_its_real_price_under_its_daily_budget(self):
-        specs = self.plan(("inferbase", "m", "usable", {"free": True, "price": {"input": 5e-7, "output": 2e-6}}))
-        params = specs[0]["litellm_params"]
-        self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (5e-7, 2e-6))
-        self.assertEqual((params["max_budget"], params["budget_duration"]), (0.5, "1d"))
 
     def test_every_openai_prefixed_free_route_has_an_api_base(self):
         config = (ROOT / "config" / "config.yaml").read_text()
@@ -792,7 +778,10 @@ class FreeRoutesWave2(unittest.TestCase):
 
 
 class FreeExclusions(unittest.TestCase):
-    """The free tier never serves a model the 2026-12-01 re-route bills: the real routing.json decides."""
+    """The free_exclusions mechanism: a rule keeps a model out of the free groups of a route.
+
+    The real routing.json holds no rule since 2026-11-26 (the Google project has no billing account, so the re-routed
+    2.5 Pro and Flash would be refused, never billed): these tests apply the former rule to prove the mechanism."""
 
     # Dated, preview, experimental and versioned ids of 2.5 Pro and 2.5 Flash: all excluded.
     EXCLUDED = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro-preview-06-05",
@@ -802,7 +791,8 @@ class FreeExclusions(unittest.TestCase):
                "gemini-2.5-flash-lite-preview-06-17"]
 
     def setUp(self):
-        self.rules = sync.load_rules(str(ROOT / "catalog" / "routing.json"))
+        self.rules = dict(sync.load_rules(str(ROOT / "catalog" / "routing.json")),
+                          free_exclusions=[{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}])
 
     def test_every_dated_preview_and_exp_2_5_pro_or_flash_is_in_no_free_group(self):
         for name in self.EXCLUDED:
@@ -852,8 +842,11 @@ class FreeExclusions(unittest.TestCase):
                 sync.load_rules(path)
 
     def test_the_real_routing_file_loads_and_is_valid(self):
-        self.assertTrue(self.rules["free_exclusions"])
+        real = sync.load_rules(str(ROOT / "catalog" / "routing.json"))
+        self.assertEqual(real["free_exclusions"], [])  # no payment method anywhere it applied: at worst refused
         sync.check_free_exclusions(self.rules)
+        specs = sync.plan_groups(catalogue(("google", "gemini-2.5-pro", "usable", {})), real)
+        self.assertEqual([s["name"] for s in specs], ["free/gemini-2.5-pro"])
 
 
 if __name__ == "__main__":

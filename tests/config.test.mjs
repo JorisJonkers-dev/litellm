@@ -387,9 +387,9 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     'vibe-study-api': { routes: ['vibe-study-api'], max_budget: 12.7, window: { calendar: 'month' } },
     anthropic: { routes: ['anthropic'], max_budget: 90, window: { days: 30 } },
     'opencode-go': { routes: ['opencode-go'], max_budget: 40, window: { days: 30, anchor: '2026-11-04T10:41:00Z' } },
-    // Inferbase's free share is $0.50 a day: the route can never bill past it.
-    inferbase: { routes: ['inferbase'], max_budget: 0.5, window: { days: 1 } },
   })
+  // Inferbase has no payment method (owner, 2026-11-26): a free route, rate limited, with no cap to keep.
+  assert.ok(!Object.values(rules.accounts).some((account) => account.routes.includes('inferbase')))
   // Google is a free tier: a budget would only take it out of the pick.
   assert.ok(!Object.values(rules.accounts).some((account) => account.routes.includes('google')))
   assert.deepEqual(rules.cooldowns, {

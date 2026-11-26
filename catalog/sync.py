@@ -192,7 +192,9 @@ FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FRE
 FREE_ACCESS_GROUPS = {entry["route"]: f"{entry['route']}-free-public" for entry in ROUTES if entry["kind"] in FREE_KINDS}
 # A free deployment the price map does not know records a real cost of 0, not an unknown. Inferbase's
 # free share is a dollar allowance, so its deployments keep their price and the route's budget caps it.
-FREE_PRICED = frozenset({"inferbase"})
+# Empty since the owner's decision of 2026-11-26: Inferbase's account has no payment method, so it is free and
+# rate limited like every no-card route. The mechanism stays for a route that bills an allowance again.
+FREE_PRICED = frozenset()
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # The routes whose deployments may join a shared "free/<canonical>" group (agent-kit#916, litellm#60):
 # the free-only routes that record a zero cost, plus the free ids of a paid route (FREE_ID_ROUTES).
@@ -214,7 +216,8 @@ GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
 FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
 # The Google free tier joins too (owner, 2026-11-26): like every free route it is public work only.
-FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES) | frozenset({"google"})
+FREE_PUBLIC_ROUTES = frozenset({"google"})
+FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES) | FREE_PUBLIC_ROUTES
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -774,14 +777,7 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             # The plan is free, so the list is the signal; a listing that prices the id above zero
             # overrides it (fail closed): the plan is not free for that model.
             price = listed_prices(item)
-            if kind == "inferbase":
-                # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
-                # deployment needs the real per-token price for the route's budget to fire; an id the
-                # listing does not price is not deployed.
-                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and price is not None
-                if price is not None:
-                    out["price"] = {"input": price[0], "output": price[1]}
-            else:
+            if True:  # Inferbase too: its account has no payment method (owner, 2026-11-26), so the plan is the signal
                 # Pay-per-token hosts name one approved free id (Together, Typhoon, Neosantara): a listing that
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
@@ -805,11 +801,7 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             if ref["chat"] is False and out["modality"] == "chat":
                 out["modality"] = "other"
             if ref["cost"] is not None:
-                if kind == "inferbase":
-                    if "price" not in out:
-                        out["price"] = {"input": ref["cost"][0], "output": ref["cost"][1]}
-                        out["free"] = model_id in free_ids or approves_all(rules, entry["route"])
-                elif kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
+                if kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
                     out["free"] = True  # the catalogue says 0 and the listing prices nothing above zero
                     out["free_source"] = "models.dev"
         verdict_chat, unavailable = listing_verdict(kind, item)
@@ -838,7 +830,7 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             out["free"] = False
             out["paid_only"] = True
         found[model_id] = out
-    if kind in STATIC_KINDS and kind != "inferbase" and free_by(rules, entry["route"]) == "plan":
+    if kind in STATIC_KINDS and free_by(rules, entry["route"]) == "plan":
         # A plan-free provider may leave its free ids out of the list (Z.ai's /models omits the *-flash ids): an
         # approved id still joins, and the probe decides whether the account can use it. A price-guarded route
         # cannot: an unlisted id has no price to check.
@@ -1075,7 +1067,7 @@ FREE_NON_CHAT = re.compile(
     r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
     r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
     r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
-    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie|antigravity|gemini-omni|(?:^|[-_])streaming(?:[-_]|$)", re.I)
+    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie|antigravity|gemini-omni|native-audio|(?:^|[-_])streaming(?:[-_]|$)", re.I)
 
 
 def free_chat(route, chosen, rules):
@@ -1277,7 +1269,7 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
     if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")) or (
-            free_only and route in FREE_GROUP_ROUTES and route not in FREE_PRICED):
+            free_only and route in FREE_PUBLIC_ROUTES):
         params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
     elif route in FREE_PRICED and chosen.get("price"):
         params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})

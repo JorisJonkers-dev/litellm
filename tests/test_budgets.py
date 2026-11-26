@@ -64,7 +64,7 @@ class Accounts(unittest.TestCase):
         budgets = sync.account_budgets(RULES)
         self.assertEqual({r: (b["max_budget"], b["budget_duration"]) for r, b in budgets.items()}, {
             "vibe": (255, "1mo"), "vibe-study": (127, "1mo"), "vibe-api": (25.5, "1mo"), "vibe-study-api": (12.7, "1mo"),
-            "anthropic": (90, "30d"), "opencode-go": (40, "30d"), "inferbase": (0.5, "1d")})
+            "anthropic": (90, "30d"), "opencode-go": (40, "30d")})
 
     def test_a_route_is_billed_by_one_account(self):
         rules = {"accounts": {"a": {"routes": ["x"], "max_budget": 1, "window": {"days": 1}},

@@ -31,15 +31,14 @@
                    "@cf/zai-org/glm-5.3-flash", "@cf/deepseek-ai/deepseek-v4-flash-0731", "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
                    "@cf/deepseek-ai/deepseek-v4-pro-0813", "@cf/thinkingmachines/inkling-2-small"]
   },
-  "free_exclusions": [{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}],
+  "free_exclusions": [],
   "accounts": {
     "vibe": {"routes": ["vibe"], "max_budget": 255, "window": {"calendar": "month"}},
     "vibe-study": {"routes": ["vibe-study"], "max_budget": 127, "window": {"calendar": "month"}},
     "vibe-api": {"routes": ["vibe-api"], "max_budget": 25.5, "window": {"calendar": "month"}},
     "vibe-study-api": {"routes": ["vibe-study-api"], "max_budget": 12.7, "window": {"calendar": "month"}},
     "anthropic": {"routes": ["anthropic"], "max_budget": 90, "window": {"days": 30}},
-    "opencode-go": {"routes": ["opencode-go"], "max_budget": 40, "window": {"days": 30, "anchor": "2026-11-04T10:41:00Z"}},
-    "inferbase": {"routes": ["inferbase"], "max_budget": 0.5, "window": {"days": 1}}
+    "opencode-go": {"routes": ["opencode-go"], "max_budget": 40, "window": {"days": 30, "anchor": "2026-11-04T10:41:00Z"}}
   },
   "free_ids": {
     "groq": ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
@@ -67,8 +66,8 @@
     "cloudflare": "cloudflare-workers-ai", "watsonx": "watsonx", "poe": "poe", "longcat": "longcat", "vercel": "vercel",
     "novita": "novita-ai", "together": "togetherai", "cohere": "cohere", "gonka": "joingonka"
   },
-  "free_all": ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "gonka", "bazaarlink", "neosantara"],
-  "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan", "cohere": "plan", "sealion": "plan", "typhoon": "plan", "plugsky": "plan", "gonka": "plan", "bazaarlink": "listed", "neosantara": "listed"},
+  "free_all": ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "gonka", "bazaarlink", "neosantara", "poe"],
+  "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan", "cohere": "plan", "sealion": "plan", "typhoon": "plan", "plugsky": "plan", "gonka": "plan", "poe": "plan", "inferbase": "plan", "bazaarlink": "listed", "neosantara": "listed"},
   "free_order": {
     "_note": "Order inside a free/<model> group, lowest first: the per-minute providers before the scarce daily and monthly allowances, so a daily budget is spent only when the per-minute ones are limited. config/free_limits.py removes a limited copy before the pick, so order is preference, not a wait. A route not named comes last.",
     "groq": 1, "cloudflare": 2, "zai": 2, "google": 3, "kilo": 3, "ovh": 3, "nvidia": 3, "sealion": 3,
@@ -91,7 +90,7 @@
     "zai": {"deployment": {"max_parallel_requests": 1}, "concurrency": 1, "scope": "deployment", "status": "unconfirmed",
             "source": "https://docs.z.ai/guides/overview/pricing states GLM-4.7-Flash, GLM-4.5-Flash and GLM-4.6V-Flash free; no rate limit is published (the rate-limits page answers 404). One request in flight is the route's earlier note."},
     "poe": {"shared": [{"requests": 500, "per": "minute"}], "scope": "account", "status": "partial",
-            "source": "https://creator.poe.com/docs/external-applications/openai-compatible-api: 500 RPM, x-ratelimit-*-requests headers, Retry-After on 429. API calls spend subscription points; no free daily points or zero-point model is stated, so free_ids.poe stays empty (fail closed) and nothing of Poe is deployed."},
+            "source": "https://creator.poe.com/docs/external-applications/openai-compatible-api: 500 RPM, x-ratelimit-*-requests headers, Retry-After on 429. API calls spend points. The account has no subscription or payment method (owner, 2026-11-26), so only its free daily points can be spent: free and rate limited, a spent allowance is refused (402 or 429, which blocks the account until the daily reset)."},
     "requesty": {"shared": [{"requests": 200, "per": "day"}, {"requests": 20, "per": "minute"}], "scope": "account", "status": "unconfirmed",
                  "source": "provider registry: 200 requests a day and 20 a minute shared across the free models."},
     "routeway": {"shared": [{"requests": 200, "per": "day"}], "concurrency": 1, "scope": "account", "status": "unconfirmed",
@@ -113,6 +112,8 @@
                "source": "https://aistudio.google.com/docs/rate-limits: limits per project, RPD resets at midnight Pacific (08:00 UTC in winter; 07:00 in summer, so 08:00 is the later, safe one). Per-model RPM/RPD are shown in AI Studio only (https://aistudio.google.com/rate-limit), not on a public page, so they are learned from the 429s. The key's project has no billing account (owner, 2026-11-26): a model the free tier does not serve answers 429 or 403 and is blocked, never billed."},
     "nvidia": {"shared": [{"requests": 40, "per": "minute"}], "scope": "account", "account_match": "credit|quota|payment",
                "status": "unconfirmed", "source": "build.nvidia.com (NVIDIA Developer Program, hosted NIM for prototyping): 40 requests a minute per account is the commonly stated limit; no NVIDIA page read on 2026-11-26 states the limit, credits or paid models (build.nvidia.com/faq answers 404). A 402 or a credit error blocks the account."},
+    "inferbase": {"scope": "account", "status": "unconfirmed", "account_match": "credit|quota|allowance|payment",
+                  "source": "The account has no payment method (owner, 2026-11-26): its daily dollar allowance is the limit, learned from the refusal (402 or a quota error blocks the account until the daily reset)."},
     "vercel": {"scope": "account", "status": "unconfirmed", "source": "provider registry: monthly free credits; 429 over the limit, 402 with no balance (learned, not counted)."}
   },
   "cooldowns": {

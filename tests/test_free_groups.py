@@ -85,11 +85,10 @@ class FreeGroup(unittest.TestCase):
 
     def test_every_deployment_is_zero_cost_and_nothing_paid_is_in_the_group(self):
         specs = plan(*free_models(), ("vibe", "nemotron-3-ultra-550b-a55b", "usable", {}),
-                     ("vibe-api", "nemotron-3-ultra-550b-a55b", "usable", {}),
-                     ("inferbase", "nemotron-3-ultra-550b-a55b", "usable", {"free": True, "price": {"input": 1e-6, "output": 2e-6}}))
+                     ("vibe-api", "nemotron-3-ultra-550b-a55b", "usable", {}))
         for spec in self.group(specs):
             self.assertEqual((spec["litellm_params"]["input_cost_per_token"], spec["litellm_params"]["output_cost_per_token"]), (0, 0))
-            self.assertNotIn(spec["route"], ("vibe", "vibe-api", "inferbase"))
+            self.assertNotIn(spec["route"], ("vibe", "vibe-api"))
             self.assertNotIn("max_budget", spec["litellm_params"])
 
     def test_a_free_id_on_a_paid_route_joins_with_an_explicit_zero_cost(self):
@@ -102,14 +101,14 @@ class FreeGroup(unittest.TestCase):
         # The paid id of the same route is not in any free group.
         self.assertEqual(self.group(specs, "free/deepseek-v4.1-flash"), [])
 
-    def test_a_paid_deployment_joining_a_free_group_fails_the_plan(self):
-        # Inferbase bills against a dollar allowance. If a rule edit made it a free-group route, the copy
-        # would carry its real price and the sync must refuse the whole plan.
-        models = free_models(NEMOTRON[:1]) + [("inferbase", "nvidia/nemotron-3-ultra-550b-a55b", "usable",
-                                               {"free": True, "price": {"input": 1e-6, "output": 2e-6}})]
-        with mock.patch.object(sync, "FREE_GROUP_ROUTES", sync.FREE_GROUP_ROUTES | {"inferbase"}):
-            with self.assertRaisesRegex(RuntimeError, r"inferbase.*may not join free/nemotron.*explicit zero"):
-                plan(*models)
+    def test_a_route_outside_the_free_group_routes_never_joins_even_when_marked_free(self):
+        # A paid route marked free by mistake (a rule edit) still never joins: only FREE_GROUP_ROUTES do, and the
+        # assertion (test below) refuses any priced or budgeted copy that would.
+        rules = dict(FREE_RULES, accounts={"vibe": {"routes": ["vibe"], "max_budget": 5, "window": {"calendar": "month"}}})
+        models = free_models(NEMOTRON[:1]) + [("vibe", "nemotron-3-ultra-550b-a55b", "usable", {"free": True, "chat_evidence": "listing"})]
+        with mock.patch.object(sync, "FREE_ONLY", sync.FREE_ONLY | {"vibe"}):
+            specs = sync.plan_groups(catalogue(*models), rules)
+        self.assertEqual([s["route"] for s in self.group(specs)], ["openrouter"])
 
     def test_the_assertion_names_each_way_a_deployment_can_be_paid(self):
         good = self.group(plan(*free_models(NEMOTRON[:1])))[0]
