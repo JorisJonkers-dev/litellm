@@ -77,6 +77,9 @@ SEED_SQL = ('SELECT model_id, date_trunc(\'hour\', "startTime") AS hour, COUNT(*
 DAILY_ERROR = re.compile(r"per[ -]day|daily|quota|exhausted|insufficient|credit|allowance|neuron", re.I)
 QUOTA_ERROR = re.compile(r"rate.?limit|too many requests|quota|exhausted|insufficient[_ ](credit|quota|funds)|payment required|"
                          r"out of credit|limit exceeded", re.I)
+# A 402 that refuses one request for its size (Inferbase's free plan: "allows 8,192 per request"): the next smaller
+# request works, so it blocks nothing.
+REQUEST_TOO_LARGE = re.compile(r"per request|input tokens|too many tokens|context length|maximum context", re.I)
 DURATION = re.compile(r"(\d+(?:\.\d+)?)(ms|s|m|h|d)")
 
 
@@ -119,6 +122,15 @@ def parse_reset(value: Any, now: float) -> float | None:
     if parsed is not None:
         return float(email.utils.mktime_tz(parsed))
     return None
+
+
+def input_tokens(model: str, messages: Any) -> int:
+    """The input size of a request: litellm.token_counter, else a conservative len(json)/3 when that fails."""
+    try:
+        import litellm
+        return int(litellm.token_counter(model=model, messages=messages))
+    except Exception:  # noqa: BLE001  # no tokenizer offline, or an unknown message shape: estimate instead
+        return len(json.dumps(messages, default=str)) // 3
 
 
 def header(headers: dict, name: str) -> Any:
@@ -376,6 +388,10 @@ class FreeLimits(CustomLogger):
             return healthy_deployments
         if any(self.route_of(deployment) for deployment in healthy_deployments):
             await self._seed()
+        if messages is not None:
+            healthy_deployments = self._fitting(model, healthy_deployments, messages)
+            if not healthy_deployments:
+                return healthy_deployments
         kept, out = [], []
         for deployment in healthy_deployments:
             until = self.unavailable_until(deployment)
@@ -385,6 +401,21 @@ class FreeLimits(CustomLogger):
             raise ValueError(f"{LIMIT_ERROR}: every free deployment of {model} is limited; the first is back in "
                              f"{max(0, int(soonest - self.clock()))}s")
         return [deployment for deployment, _ in kept]
+
+    def _fitting(self, model: str, deployments: list, messages: Any) -> list:
+        """Drop the copies whose max_input_tokens the request's input is over; the rest keep their order.
+
+        When every copy is dropped for size, the call fails at once (as when every copy is limited): no copy
+        would take this request, so no retry could.
+        """
+        size = input_tokens(model, messages)
+        caps = [self._parts(d)[1].get("max_input_tokens") for d in deployments]
+        fit = [d for d, cap in zip(deployments, caps) if not isinstance(cap, int) or size <= cap]
+        if deployments and not fit:
+            largest = max(caps)
+            raise ValueError(f"{LIMIT_ERROR}: every free copy of {model} caps a request below {largest} input tokens "
+                             f"(this request is about {size})")
+        return fit
 
     async def async_pre_call_check(self, deployment, parent_otel_span=None):
         """Count the attempt just before it goes out; refuse it when a concurrent request took the last unit."""
@@ -497,6 +528,8 @@ class FreeLimits(CustomLogger):
         text = str(getattr(exception, "message", "") or exception)
         if LIMIT_ERROR in text:
             return  # our own refusal: nothing new was learned
+        if status == 402 and REQUEST_TOO_LARGE.search(text):
+            return  # refused for its size, not the account: a smaller request works, so record nothing
         dead = status in DEAD_STATUS or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
         if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead:
             return

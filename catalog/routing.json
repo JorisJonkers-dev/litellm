@@ -113,8 +113,8 @@
                "source": "https://aistudio.google.com/docs/rate-limits: limits per project, RPD resets at midnight Pacific (08:00 UTC in winter; 07:00 in summer, so 08:00 is the later, safe one). Per-model RPM/RPD are shown in AI Studio only (https://aistudio.google.com/rate-limit), not on a public page, so they are learned from the 429s. The key's project has no billing account (owner, 2026-11-26): a model the free tier does not serve answers 429 or 403 and is blocked, never billed."},
     "nvidia": {"shared": [{"requests": 40, "per": "minute"}], "scope": "account", "account_match": "credit|quota|payment",
                "status": "unconfirmed", "source": "build.nvidia.com (NVIDIA Developer Program, hosted NIM for prototyping): 40 requests a minute per account is the commonly stated limit; no NVIDIA page read on 2026-11-26 states the limit, credits or paid models (build.nvidia.com/faq answers 404). A 402 or a credit error blocks the account."},
-    "inferbase": {"scope": "account", "status": "unconfirmed", "account_match": "credit|quota|allowance|payment",
-                  "source": "The account has no payment method (owner, 2026-11-26): its daily dollar allowance is the limit, learned from the refusal (402 or a quota error blocks the account until the daily reset)."},
+    "inferbase": {"scope": "account", "status": "unconfirmed", "account_match": "credit|quota|allowance|payment", "max_input_tokens": 8192,
+                  "source": "The account has no payment method (owner, 2026-11-26): its daily dollar allowance is the limit, learned from the refusal (402 or a quota error blocks the account until the daily reset). The free plan refuses any request over 8,192 input tokens with a 402 (\"the free plan allows 8,192 per request on Inferbase's own models\", owner, 2026-11-26): max_input_tokens caps each deployment's model_info, and config/free_limits.py drops a copy the request is too big for."},
     "vercel": {"scope": "account", "status": "unconfirmed", "source": "provider registry: monthly free credits; 429 over the limit, 402 with no balance (learned, not counted)."}
   },
   "cooldowns": {

@@ -272,6 +272,16 @@ class Generated(unittest.TestCase):
         self.assertEqual({k: groq["litellm_params"][k] for k in ("rpm", "rpd", "tpm", "tpd", "daily_reset_time")},
                          {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "daily_reset_time": "00:00"})
 
+    def test_the_input_cap_reaches_the_inferbase_deployment_as_model_info(self):
+        specs = plan(free("inferbase", "deepseek-v4.1-flash"), free("groq", "deepseek-v4.1-flash"))
+        inferbase = group(specs, "free/deepseek-v4.1-flash")
+        self.assertEqual(inferbase, ["groq", "inferbase"])
+        for spec in specs:
+            if spec["name"] == "free/deepseek-v4.1-flash" and spec["route"] == "inferbase":
+                self.assertEqual(spec["model_info"]["max_input_tokens"], 8192)
+            elif spec["name"] == "free/deepseek-v4.1-flash":
+                self.assertNotIn("max_input_tokens", spec["model_info"], spec["route"])
+
     def test_the_free_tier_steps_name_groups_the_catalogue_serves(self):
         names = {e["model_name"] for e in GENERATED}
         steps = [step["model"] for tier in REAL["tier_groups"].values() for step in tier["steps"]
@@ -304,6 +314,12 @@ class LimitRules(unittest.TestCase):
                     {"kilo": {"status": "maybe"}}, {"kilo": {"account_match": "(", "status": "confirmed"}}):
             with self.assertRaises(RuntimeError, msg=bad):
                 sync.check_free_limits({"free_limits": bad})
+
+    def test_a_bad_request_cap_is_refused(self):
+        self.assertEqual(REAL["free_limits"]["inferbase"]["max_input_tokens"], 8192)
+        for bad in (0, -1, "8192", True, 1.5):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                sync.check_free_limits({"free_limits": {"inferbase": {"max_input_tokens": bad, "status": "confirmed"}}})
 
     def test_deployment_limits_are_litellm_params(self):
         self.assertEqual(sync.free_limit_params("ovh", REAL), {"rpm": 2})
@@ -409,6 +425,58 @@ class Hook(unittest.TestCase):
         self.assertEqual(self.pick([a, b, dep("groq", "x")]), ["free/groq/x"])
         self.at(2026, 11, 27, 0, 0)
         self.assertEqual(len(self.pick([a, b])), 2)
+
+    CAPPED = {"inferbase": {"max_input_tokens": 8192, "scope": "account", "status": "unconfirmed"}}
+    SIZE_402 = ("This request is about 9,774 input tokens; the free plan allows 8,192 per request on Inferbase's own "
+                "models. Upgrade to Pro to lift it, shorten the input, or use your own provider key.")
+
+    def capped(self, model="a"):
+        deployment = dep("inferbase", model)
+        deployment["model_info"]["max_input_tokens"] = 8192
+        return deployment
+
+    def hook_with_caps(self):
+        return free_limits.FreeLimits(dict(TEST_RULES, free_limits=dict(TEST_RULES["free_limits"], **self.CAPPED)),
+                                      clock=lambda: self.now[0], prisma=None, deployments=[])
+
+    def pick_for(self, hook, deployments, messages):
+        return [d["model_info"]["id"] for d in asyncio.run(hook.async_filter_deployments("free/m", deployments, messages))]
+
+    @staticmethod
+    def messages(words):
+        return [{"role": "user", "content": " ".join(f"word{i}" for i in range(words))}]
+
+    def test_a_request_over_a_copys_input_cap_skips_that_copy_and_keeps_the_uncapped_one(self):
+        hook = self.hook_with_caps()
+        big, plain = self.capped(), dep("electronhub", "b")
+        self.assertEqual(self.pick_for(hook, [big, plain], self.messages(20000)), ["free/electronhub/b"])
+
+    def test_a_small_request_keeps_both_copies_in_order(self):
+        hook = self.hook_with_caps()
+        big, plain = self.capped(), dep("electronhub", "b")
+        self.assertEqual(self.pick_for(hook, [big, plain], self.messages(10)), ["free/inferbase/a", "free/electronhub/b"])
+
+    def test_a_request_too_big_for_every_copy_fails_at_once_with_the_cap(self):
+        hook = self.hook_with_caps()
+        with self.assertRaisesRegex(ValueError, "every free copy of free/m caps a request below 8192 input tokens"):
+            self.pick_for(hook, [self.capped()], self.messages(20000))
+
+    def test_the_input_size_falls_back_to_a_third_of_the_json_without_a_tokenizer(self):
+        self.assertEqual(free_limits.input_tokens("free/m", self.messages(3)), len(json.dumps(self.messages(3))) // 3)
+
+    def test_a_size_402_blocks_nothing(self):
+        hook = self.hook_with_caps()
+        big, plain = self.capped(), dep("electronhub", "b")
+        asyncio.run(hook.async_log_failure_event(self.kwargs(big, exception=Error(402, self.SIZE_402)), None, None, None))
+        self.assertEqual(hook.store.blocked_until("a:inferbase", self.now[0]), 0)
+        self.assertEqual(hook.store.blocked_until("d:inferbase|openai/a", self.now[0]), 0)
+        self.assertEqual(self.pick_for(hook, [big, plain], self.messages(10)), ["free/inferbase/a", "free/electronhub/b"])
+
+    def test_another_402_still_blocks_the_account(self):
+        hook = self.hook_with_caps()
+        big, plain = self.capped(), dep("electronhub", "b")
+        asyncio.run(hook.async_log_failure_event(self.kwargs(big, exception=Error(402, "Payment required: add a payment method")), None, None, None))
+        self.assertEqual(self.pick_for(hook, [big, plain], self.messages(10)), ["free/electronhub/b"])
 
     def test_a_402_blocks_the_account(self):
         a, b = dep("electronhub", "a"), dep("electronhub", "b")
