@@ -12,7 +12,8 @@ answers. This callback adds both, before routing:
   against the route's `shared` budgets and `concurrency` in catalog/routing.json `free_limits`. Tokens are
   added after a success. Windows are clock windows: the minute, the hour, the day from the route's
   `reset` (HH:MM UTC), the calendar month (UTC).
-- Learning. A 429, a 402, or a quota error blocks until Retry-After, else x-ratelimit-reset*,
+- Learning. A success whose x-ratelimit-remaining-requests or -tokens is 0 blocks until the matching
+  x-ratelimit-reset-*. A 429, a 402, or a quota error blocks until Retry-After, else x-ratelimit-reset*,
   else the next daily reset when the error speaks of a day or a quota, else the route's `cooldowns`
   value. A learned block covers the one deployment or the whole account, as the route's `scope` says
   (`account_match` escalates a matching error to the account; a 402 is always the account).
@@ -440,8 +441,30 @@ class FreeLimits(CustomLogger):
                     if unit == "tokens":
                         key, ends = self._counter(scope, unit, per, route, params, now)
                         self.store.add(key, tokens, ends, now)
+            hidden = getattr(response_obj, "_hidden_params", None) or {}
+            headers = dict(hidden.get("additional_headers") or {})
+            payload_headers = ((kwargs.get("standard_logging_object") or {}).get("hidden_params") or {}).get("additional_headers") or {}
+            headers = {**payload_headers, **headers}
+            self.learn_headers(route, params, headers)
         except Exception as error:  # noqa: BLE001  # logging must never fail a served request
             LOG.warning("free_limits: success not recorded (%s)", error)
+
+    def learn_headers(self, route: str, params: dict, headers: dict) -> None:
+        """Block when a success says nothing is left: x-ratelimit-remaining-* 0 until its x-ratelimit-reset-*."""
+        now = self.clock()
+        for kind in ("requests", "tokens", ""):
+            suffix = f"-{kind}" if kind else ""
+            remaining = header(headers, f"x-ratelimit-remaining{suffix}")
+            try:
+                left = float(remaining)
+            except (TypeError, ValueError):
+                continue
+            if left > 0:
+                continue
+            until = parse_reset(header(headers, f"x-ratelimit-reset{suffix}"), now)
+            if until is None:
+                until = now + float(self.cooldowns.get(route, DEFAULT_BLOCK))
+            self._block(route, params, until, account=False)
 
     async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
         try:

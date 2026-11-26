@@ -319,6 +319,14 @@ class Hook(unittest.TestCase):
         self.now[0] += free_limits.SLOT_TTL
         self.assertEqual(self.pick([a]), ["free/routeway/a"])
 
+    def test_a_success_with_nothing_left_blocks_until_the_headers_reset(self):
+        a, b = dep("groq", "a"), dep("groq", "b")
+        self.succeed(a, headers={"llm_provider-x-ratelimit-remaining-requests": "0", "llm_provider-x-ratelimit-reset-requests": "2m30s"})
+        self.succeed(b, headers={"x-ratelimit-remaining-requests": "5", "x-ratelimit-reset-requests": "1m"})
+        self.assertEqual(self.pick([a, b]), ["free/groq/b"])
+        self.now[0] += 150
+        self.assertEqual(self.pick([a, b]), ["free/groq/a", "free/groq/b"])
+
     def test_tokens_count_after_a_success(self):
         a = dep("plugsky", "a")
         self.call(a)
