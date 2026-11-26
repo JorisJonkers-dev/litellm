@@ -53,8 +53,8 @@
     "cloudflare": "cloudflare-workers-ai", "watsonx": "watsonx", "poe": "poe", "longcat": "longcat", "vercel": "vercel",
     "novita": "novita-ai", "together": "togetherai", "cohere": "cohere"
   },
-  "free_all": ["groq", "inferbase"],
-  "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan"},
+  "free_all": ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"],
+  "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan", "cohere": "plan", "sealion": "plan", "typhoon": "plan", "plugsky": "plan", "gonka": "plan", "bazaarlink": "listed", "neosantara": "listed"},
   "free_order": {
     "openrouter": 1, "requesty": 2, "kilo": 3, "nvidia": 4, "ovh": 4,
     "groq": 5, "zai": 5, "routeway": 6, "cloudflare": 6, "naga": 7, "opencode-go": 8

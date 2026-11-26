@@ -281,13 +281,13 @@ def load_rules(path=None):
     check_free_exclusions(rules, path)
     free_by_rules = rules.get("free_by") or {}
     if not isinstance(free_by_rules, dict):
-        raise RuntimeError(f"{path}: free_by must be an object of route -> \"plan\" or \"price\"")
+        raise RuntimeError(f"{path}: free_by must be an object of route -> \"plan\", \"price\" or \"listed\"")
     known = {entry["route"] for entry in ROUTES}
     for route, how in free_by_rules.items():
         if route not in known:
             raise RuntimeError(f"{path}: free_by names {route!r}, which is no route")
-        if how not in ("plan", "price"):
-            raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
+        if how not in ("plan", "price", "listed"):
+            raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\", \"price\" or \"listed\"")
     free_all = rules.get("free_all") or []
     if not isinstance(free_all, list) or any(route not in known or route not in STATIC_ROUTES for route in free_all):
         raise RuntimeError(f"{path}: free_all must list static-list routes (those with `free_ids`) only")
@@ -516,7 +516,7 @@ def listing_verdict(kind, item):
 
 def approves_all(rules, route):
     """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
-    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes only (Groq);
+    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes (Groq, and the no-card accounts) and `listed` routes (zero price in the listing);
     a route whose plan frees some ids (Z.ai) or bills per token stays on `free_ids`, because a probe that is
     answered does not show the id is free, and a zero cost recorded on a paid id would hide the spend."""
     return route in ((rules or {}).get("free_all") or [])
@@ -536,6 +536,11 @@ def modality(kind, item):
             return "embedding"
         if caps.get("moderation"):
             return "moderation"
+        return "chat"
+    if kind == "cloudflare" and isinstance(item.get("task"), dict):
+        # Workers AI names the task: only Text Generation is a chat model.
+        return "chat" if str(item["task"].get("name") or "").lower() == "text generation" else "other"
+    if kind == "cloudflare":
         return "chat"
     if kind == "cohere" and isinstance(item.get("endpoints"), list):
         return "chat" if "chat" in item["endpoints"] else "other"
@@ -565,11 +570,34 @@ def listing_items(body, kind=None):
     return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
 
 
+def cloudflare_search(base, headers, http, route="cloudflare"):
+    """Every item of GET /accounts/<id>/ai/models/search, paged by `page` and `result_info.total_pages`. The
+    OpenAI-style base (.../ai/v1) answers no GET /models (405): the search is Workers AI's model list."""
+    account = base.split("/accounts/", 1)[1].split("/", 1)[0]
+    items = []
+    for page in range(1, CANDIDATE_PAGES + 1):
+        status, body = http("GET", f"{CLOUDFLARE_ACCOUNTS}/{account}/ai/models/search?per_page=100&page={page}", headers, None)
+        if status != 200 or not isinstance(body, dict) or not isinstance(body.get("result"), list):
+            raise RuntimeError(f"{route}: the model search answered {status}")
+        items += [item for item in body["result"] if isinstance(item, dict)]
+        info = body.get("result_info") if isinstance(body.get("result_info"), dict) else {}
+        if not body["result"] or page >= int(info.get("total_pages") or 1):
+            break
+    return items
+
+
 def fetch_listing(entry, env, http, base, headers):
     """(status, body) of one route's model list. Most routes answer GET <base>/models. Cohere's is its own
     /v1/models (Bearer key). watsonx needs an IAM token first (the API key is exchanged at IBM Cloud IAM) and then
     lists its foundation model specs."""
     kind = entry["kind"]
+    if kind == "cloudflare":
+        try:
+            items = cloudflare_search(base, headers, http)
+        except RuntimeError as error:
+            return int(str(error).rsplit(" ", 1)[-1]) if str(error).rsplit(" ", 1)[-1].isdigit() else 502, str(error)
+        return 200, {"data": [dict(item, id=str(item.get("name") or item.get("id") or "")) for item in items
+                              if item.get("name") or item.get("id")]}
     if kind == "watsonx":
         key = env.get(entry["key_env"]) or ""
         form = "grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey&apikey=" + urllib.parse.quote(key, safe="")
@@ -608,7 +636,9 @@ def list_models(entry, env, http, rules=None, reference=None):
             status, body = user_status, user_body
     items = listing_items(body, kind)
     if status != 200 or items is None:
-        raise RuntimeError(f"{entry['route']}: the model list answered {status}")
+        # 599 is this client's own: no HTTP answer (DNS, connect, TLS, timeout); the body is the transport error.
+        detail = f" ({body})" if status == 599 and isinstance(body, str) and body else ""
+        raise RuntimeError(f"{entry['route']}: the model list answered {status}{detail}")
     found = {}
     for item in items:
         if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
@@ -681,8 +711,15 @@ def list_models(entry, env, http, rules=None, reference=None):
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
                 # does not apply there: the plan is the signal.
-                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
-                    free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
+                how = free_by(rules, entry["route"])
+                if how == "listed":
+                    # The listing's own price is the signal: free only on an explicit zero on both sides, and no
+                    # other price field above zero. A listing that prices nothing is not free (fail closed).
+                    out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                        price is not None and zero_price(*price) and not priced_above_zero(item))
+                else:
+                    out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                        how == "plan" or not priced_above_zero(item))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
@@ -821,19 +858,10 @@ def scan_candidates(entry, env, http, rules):
     found = {}
     if kind == "cloudflare":
         # The search endpoint carries pricing and properties; the OpenAI-style list does not.
-        account = base.split("/accounts/", 1)[1].split("/", 1)[0]
-        for page in range(1, CANDIDATE_PAGES + 1):
-            status, body = http("GET", f"{CLOUDFLARE_ACCOUNTS}/{account}/ai/models/search?per_page=100&page={page}", headers, None)
-            if status != 200 or not isinstance(body, dict) or not isinstance(body.get("result"), list):
-                raise RuntimeError(f"{route}: the model search answered {status}")
-            for item in body["result"]:
-                if isinstance(item, dict):
-                    model_id, signals = cloudflare_signals(item)
-                    if model_id:
-                        found[model_id] = signals
-            info = body.get("result_info") if isinstance(body.get("result_info"), dict) else {}
-            if not body["result"] or page >= int(info.get("total_pages") or 1):
-                break
+        for item in cloudflare_search(base, headers, http, route):
+            model_id, signals = cloudflare_signals(item)
+            if model_id:
+                found[model_id] = signals
     else:
         status, body = fetch_listing(entry, env, http, base, headers)
         items = listing_items(body, kind)
