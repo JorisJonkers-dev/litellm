@@ -58,6 +58,7 @@ import argparse
 import base64
 import copy as copy_module
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -580,6 +581,15 @@ def listing_verdict(kind, item):
     return chat, why
 
 
+def google_free_tier(rules, model_id):
+    """Whether Google's pricing page says this chat model is free of charge on the free tier (routing.json
+    `google_free_tier`: exact ids and one regex). Fail closed: a model the page does not name is not free."""
+    tier = (rules or {}).get("google_free_tier") or {}
+    if model_id in (tier.get("ids") or []):
+        return True
+    return bool(tier.get("match")) and re.search(tier["match"], model_id) is not None
+
+
 def paid_only(rules, route):
     """The ids a free route's provider names as needing a paid plan (routing.json `paid_only`): never free."""
     return frozenset(((rules or {}).get("paid_only") or {}).get(route) or [])
@@ -740,6 +750,7 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
+            out["free"] = google_free_tier(rules, model_id)
         elif kind == "kilo":
             out["context_length"] = item.get("context_length")
             # isFree, or a listed price that is an explicit zero on both sides (a "-1" is Kilo's router sentinel, not a zero).
@@ -1078,13 +1089,15 @@ def free_chat(route, chosen, rules):
     """Whether a free copy is a chat-completion model, so it may serve a free/<model> group (fail closed).
 
     Never one whose mode is not chat or whose name says it is something else (FREE_NON_CHAT). On a route whose
-    listing names no model type (`free_all` routes: everything listed is a candidate; the Google free tier), it needs positive
+    listing names no model type (`free_all` routes: everything listed is a candidate), it needs positive
     evidence too: a typed listing, models.dev saying text chat, or the owner's approval in `free_ids`.
     """
     if chosen.get("modality") != "chat" or FREE_NON_CHAT.search(chosen["upstream_id"]):
         return False
-    if approves_all(rules, route) or route in ((rules or {}).get("public_routes") or []):
-        # Google's OpenAI-compatible list names no model type either (image, live and agent models are listed too).
+    if route in ((rules or {}).get("public_routes") or []):
+        # Google: only the chat models its pricing page says are free of charge on the free tier (google_free_tier).
+        return google_free_tier(rules, chosen["upstream_id"])
+    if approves_all(rules, route):
         return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
     return True
 
@@ -1888,6 +1901,38 @@ def stale_provider(old, route, key_env):
     }
 
 
+# A negative answer a probe recorded (blocked, unknown, error, a spent budget) is kept this long; then the model
+# goes back to what the listing, models.dev and traffic say. Probes are manual now, so nothing else would
+# ever clear one.
+PROBE_ANSWER_TTL = datetime.timedelta(days=7)
+PROBE_NEGATIVE = ("blocked", "unknown", "error", "budget-exhausted")
+
+
+def key_fingerprint(entry, env):
+    """A short sha256 prefix of the route's key, to notice a new key; "anonymous" for a keyless route."""
+    key = env.get(entry["key_env"]) or ""
+    if not key:
+        return "anonymous" if entry.get("anonymous") else None
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def stale_answer(meta, key_changed, now):
+    """Whether a recorded probe answer no longer counts: made with another key, or a negative one past its TTL.
+
+    Only probe answers: what the listing or real traffic said (verified_by listing or traffic) is decided again
+    every run anyway. A positive answer is kept across a key change too: the listing still has to show the model.
+    """
+    if meta.get("verified_by") in ("listing", "traffic") or meta.get("status") not in PROBE_NEGATIVE:
+        return False
+    if key_changed:
+        return True
+    try:
+        probed = datetime.datetime.fromisoformat(str(meta.get("probed_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return False  # an unreadable stamp: keep the (negative, so conservative) answer
+    return now - probed > PROBE_ANSWER_TTL
+
+
 def build(env, http, previous, now, probe_ids=(), rules=None):
     """The catalogue, and counts. `previous` is the last published catalogue (the cache). `probe_ids` names
     `<route>/<model>` ids to send one real chat request to (a person's debugging; the sync never does it by itself)."""
@@ -1954,6 +1999,11 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             providers[route] = stale_provider(previous["providers"][route], route, entry["key_env"])
             continue
         models = []
+        # A recorded probe answer belongs to the key that got it: with another key it says nothing (NVIDIA's 18
+        # "blocked" answers came from an invalid key). The fingerprint is a hash prefix, never the key.
+        fingerprint = key_fingerprint(entry, env)
+        previous_fingerprint = ((previous.get("providers") or {}).get(route) or {}).get("metadata", {}).get("key_fingerprint")
+        key_changed = previous_fingerprint != fingerprint
         for item in sorted(listed, key=lambda m: m["id"]):
             full = f"{route}/{item['id']}"
             old = cache.get(full)
@@ -1961,7 +2011,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             for field in ("canonical_id", "api", "api_base", "price", "chat_evidence"):
                 if item.get(field):
                     meta[field] = item[field]
-            if old:
+            if old and not stale_answer(old.get("metadata") or {}, key_changed, now):
                 for k in ("status", "reason", "probed_at", "failing_probes", "was_usable", "verified_by"):
                     if k in (old.get("metadata") or {}):
                         meta[k] = old["metadata"][k]
@@ -2014,7 +2064,8 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                 continue
             models.append({"id": gone["id"], "description": gone.get("description", ""), "metadata": meta})
         models.sort(key=lambda model: model["id"])
-        providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": models}
+        providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"], "key_fingerprint": fingerprint},
+                            "models": models}
     for route, model in queue:
         status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
         meta = model["metadata"]

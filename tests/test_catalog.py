@@ -517,11 +517,32 @@ class Build(unittest.TestCase):
         self.assertEqual(http.probed(), [])
 
     def test_a_recorded_answer_with_a_corrupt_stamp_is_kept_and_one_with_no_status_is_decided_from_the_listing(self):
-        old = {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "blocked", "probed_at": "garbage"}}]}}}
+        local = next(e for e in sync.ROUTES if e["route"] == "local")
+        old = {"providers": {"local": {"metadata": {"key_fingerprint": sync.key_fingerprint(local, ENV)},
+                                       "models": [{"id": "local/qwen3:32b", "metadata": {"status": "blocked", "probed_at": "garbage"}}]}}}
         cat, _ = self.run_build(Http(), old)
         self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "blocked")
         cat, _ = self.run_build(Http(), {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {}}]}}})
         self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["verified_by"], "listing")
+
+    def test_a_probe_answer_from_another_key_or_older_than_its_ttl_is_decided_again(self):
+        local = next(e for e in sync.ROUTES if e["route"] == "local")
+        fingerprint = sync.key_fingerprint(local, ENV)
+        self.assertNotIn(ENV[local["key_env"]], fingerprint)  # a hash prefix, never the key
+        stamp = (NOW - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        def old(fp, probed_at=stamp, **meta):
+            return {"providers": {"local": {"metadata": {"key_fingerprint": fp},
+                                            "models": [{"id": "local/qwen3:32b", "metadata": dict({"status": "blocked", "probed_at": probed_at}, **meta)}]}}}
+        status = lambda prev: self.run_build(Http(), prev)[0]["providers"]["local"]["models"][0]["metadata"]["status"]
+        self.assertEqual(status(old(fingerprint)), "blocked")  # same key, recent: kept
+        self.assertEqual(status(old("another-key")), "usable")  # another key: the listing decides again
+        self.assertEqual(status(old(None)), "usable")  # recorded before fingerprints: decided again
+        week = (NOW - sync.PROBE_ANSWER_TTL - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.assertEqual(status(old(fingerprint, week)), "usable")  # past its TTL
+        # What traffic recorded is not a probe answer: the traffic window decides it.
+        self.assertEqual(status(old("another-key", verified_by="traffic")), "blocked")
+        cat, _ = self.run_build(Http())
+        self.assertEqual(cat["providers"]["local"]["metadata"]["key_fingerprint"], fingerprint)
 
     def test_a_route_that_cannot_be_listed_keeps_its_last_entries(self):
         first, _ = self.run_build(Http())

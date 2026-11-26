@@ -153,6 +153,20 @@ class ChatOnly(unittest.TestCase):
         self.assertLessEqual(plugsky, {"openai/plugsky-micro", "openai/plugsky-lite"})
 
 
+class Nvidia(unittest.TestCase):
+    def test_nvidia_nim_copies_join_the_free_groups_once_usable(self):
+        specs = plan(free("nvidia", "nvidia/nemotron-3.5-lightning-30b-a3b"), free("nvidia", "nvidia/nemotron-3-ultra-550b-a55b"),
+                     free("nvidia", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"), free("kilo", "nvidia/nemotron-3.5-lightning:free"),
+                     free("nvidia", "nvidia/llama-3.1-nemotron-safety-guard-8b-v3"))
+        self.assertEqual(group(specs, "free/nemotron-3.5-lightning"), ["kilo", "nvidia"])
+        self.assertEqual(group(specs, "free/nemotron-3-ultra-550b-a55b"), ["nvidia"])
+        self.assertEqual(group(specs, "free/nemotron-3-nano-omni-30b-a3b-reasoning"), ["nvidia"])
+        self.assertFalse([s for s in specs if "guard" in s["upstream_id"]])
+        # A blocked NVIDIA answer keeps it out (the probe or traffic decides), and a credit error blocks the account.
+        self.assertEqual(plan(("nvidia", "nvidia/nemotron-3-ultra-550b-a55b", "blocked", {"free": True})), [])
+        self.assertEqual(REAL["free_limits"]["nvidia"]["shared"], [{"requests": 40, "per": "minute"}])
+
+
 class PaidOnly(unittest.TestCase):
     """Cloudflare's paid-plan models (routing.json paid_only, from its pricing page) are never free."""
 

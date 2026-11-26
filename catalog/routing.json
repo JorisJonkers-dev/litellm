@@ -25,6 +25,11 @@
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
+  "google_free_tier": {
+    "_source": "https://aistudio.google.com/docs/pricing (redirected from ai.google.dev/gemini-api/docs/pricing, read 2026-11-26): chat models whose Free Tier column says 'Free of charge'. Not available on the free tier, so never free here: gemini-4-carbon, gemini-4-argon, gemini-4-neon, gemini-3.1-pro-preview(-customtools), genie-4, gemini-omni-*, image models. Gemma is free of charge (models.dev google: cost 0). An id the page does not name (gemini-*-latest aliases, previews of a GA model, robotics, live and TTS models) is not free: fail closed.",
+    "ids": ["gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3-flash-preview"],
+    "match": "^(gemma-|gemini-2\\.5-flash-lite(-|$))"
+  },
   "paid_only": {
     "_source": "Models a free route's provider says need a paid plan: never free, never probed, never deployed, whatever the listing shows. Cloudflare: https://developers.cloudflare.com/workers-ai/platform/pricing/ (read 2026-11-26): 'Some models require a paid billing method. This applies to' the ids below; 'You can access these models with either the Workers Paid plan or prepaid AI Gateway credits.' The /ai/models/search listing the sync reads has no documented field for this (the limits page says each model page states it), so the list is kept here and checked by hand when the pricing page changes.",
     "cloudflare": ["@cf/moonshotai/kimi-k2.6", "@cf/moonshotai/kimi-k2.7-code", "@cf/zai-org/glm-5.2", "@cf/zai-org/glm-5.3",
@@ -111,6 +116,8 @@
     "unorouter": {"deployment": {"rpm": 1}, "scope": "deployment", "status": "unconfirmed", "source": "route notes: anonymous, queue-throttled about one a minute per model per IP."},
     "google": {"reset": "08:00", "scope": "deployment", "status": "partial",
                "source": "https://aistudio.google.com/docs/rate-limits: limits per project, RPD resets at midnight Pacific (08:00 UTC in winter; 07:00 in summer, so 08:00 is the later, safe one). Per-model RPM/RPD are in AI Studio only, so they are learned from the 429s."},
+    "nvidia": {"shared": [{"requests": 40, "per": "minute"}], "scope": "account", "account_match": "credit|quota|payment",
+               "status": "unconfirmed", "source": "build.nvidia.com (NVIDIA Developer Program, hosted NIM for prototyping): 40 requests a minute per account is the commonly stated limit; no NVIDIA page read on 2026-11-26 states the limit, credits or paid models (build.nvidia.com/faq answers 404). A 402 or a credit error blocks the account."},
     "vercel": {"scope": "account", "status": "unconfirmed", "source": "provider registry: monthly free credits; 429 over the limit, 402 with no balance (learned, not counted)."}
   },
   "cooldowns": {

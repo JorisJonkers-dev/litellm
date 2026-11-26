@@ -59,6 +59,7 @@ RULES = {
     "cooldowns": {"vibe": 5, "vibe-study": 5, "vibe-api": 5, "vibe-study-api": 5,
                   "google": 120, "anthropic": 5, "opencode-go": 5, "openrouter": 5, "local": 5},
     "public_routes": ["google"],
+    "google_free_tier": {"ids": ["gemini-3-flash", "glm-4.6"], "match": "^gemma-"},
 }
 
 
@@ -336,9 +337,18 @@ class Plan(unittest.TestCase):
         self.assertEqual(specs[0]["model_info"]["id"], "free/google/gemini-3-flash")
         self.assertEqual(specs[0]["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
 
-    def test_a_google_model_without_chat_evidence_is_not_served(self):
-        cat = catalogue(("google", "gemini-3-flash", "usable", {}), ("google", "nano-banana-pro", "usable", {"chat_evidence": "x"}))
+    def test_a_google_model_its_pricing_page_does_not_call_free_is_not_served(self):
+        cat = catalogue(("google", "gemini-4-carbon", "usable", {"chat_evidence": "models.dev"}),
+                        ("google", "gemini-pro-latest", "usable", {"chat_evidence": "models.dev"}))
         self.assertEqual(sync.plan_groups(cat, RULES), [])
+
+    def test_the_real_google_free_tier_names_only_free_of_charge_chat_models(self):
+        rules = sync.load_rules()
+        for free_id in ("gemini-3.8-flash", "gemini-4-hydrogen", "gemma-4-31b-it", "gemini-2.5-flash-lite"):
+            self.assertTrue(sync.google_free_tier(rules, free_id), free_id)
+        for paid in ("gemini-4-carbon", "gemini-4-argon", "gemini-4-neon", "gemini-3.1-pro-preview", "gemini-3.1-pro-preview-customtools",
+                     "genie-4", "gemini-omni-1.2-flash", "gemini-pro-latest", "gemini-2.5-flash", "gemini-2.5-pro"):
+            self.assertFalse(sync.google_free_tier(rules, paid), paid)
 
     def test_the_free_groups_hold_free_models_only_with_no_paid_fallback(self):
         cat = catalogue(
@@ -792,7 +802,7 @@ class FreeExclusions(unittest.TestCase):
                 "gemini-2.5-flash-preview-09-2025", "gemini-2.5-pro-exp-03-25", "gemini-2.5-flash-001"]
     # Every 2.5 Flash Lite variant, and other families, stays on the free tier.
     ALLOWED = ["gemini-2.5-flash-lite", "gemini-2.5-flash-lite-preview-09-2025", "gemini-2.5-flash-lite-001",
-               "gemini-2.5-flash-lite-preview-06-17", "gemini-2.0-flash-001"]
+               "gemini-2.5-flash-lite-preview-06-17"]
 
     def setUp(self):
         self.rules = sync.load_rules(str(ROOT / "catalog" / "routing.json"))
