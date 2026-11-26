@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.12.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.11.0...v1.12.0) (2026-11-26)
+
+
+### Features
+
+* **catalog:** block deployments that real traffic shows are refused ([#113](https://github.com/JorisJonkers-dev/litellm/issues/113)) ([8cc877a](https://github.com/JorisJonkers-dev/litellm/commit/8cc877a3ecc836486e87ed942249ddb2660deac6))
+* **catalog:** paid/&lt;model&gt; chains across the paid routes ([#116](https://github.com/JorisJonkers-dev/litellm/issues/116)) ([75f9b63](https://github.com/JorisJonkers-dev/litellm/commit/75f9b637c44edbd224ad36c594ce2646294d52ba))
+
+
+### Bug Fixes
+
+* **free-limits:** take dead free copies out instead of failing the group ([#112](https://github.com/JorisJonkers-dev/litellm/issues/112)) ([3080bc4](https://github.com/JorisJonkers-dev/litellm/commit/3080bc4ca10e74f71c180f93bf83c0801906b6e2))
+* **models:** refresh the generated model deployments ([#115](https://github.com/JorisJonkers-dev/litellm/issues/115)) ([b5d1616](https://github.com/JorisJonkers-dev/litellm/commit/b5d161610393540827ffeb67ec177f5cfb11bbe5))
+
 ## [1.11.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.10.3...v1.11.0) (2026-11-26)
 
 
