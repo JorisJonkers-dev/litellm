@@ -996,7 +996,7 @@ class FreeSignals(unittest.TestCase):
         free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
         self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
         self.assertEqual(sync.load_rules()["free_all"],
-                         ["groq", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"])
+                         ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"])
 
     def test_no_card_routes_take_every_listed_chat_model_and_poe_and_zai_stay_gated(self):
         rules = sync.load_rules()
@@ -1036,11 +1036,13 @@ class FreeSignals(unittest.TestCase):
     def test_the_static_list_mechanism_is_the_signal_of_a_plan_wide_free_tier(self):
         # Synthetic lists: this proves the mechanism, not what routing.json holds (see test_routing).
         rules = {"free_ids": {"groq": ["openai/gpt-oss-120b"], "zai": ["glm-4.7-flash"], "cloudflare": ["@cf/x"]}}
-        for route, ids in (("groq", ["openai/gpt-oss-120b", "llama-4"]), ("zai", ["glm-4.7-flash", "glm-5"]),
-                           ("cloudflare", ["@cf/x", "@cf/y"])):
-            env = {"CLOUDFLARE_ACCOUNT_ID": "acc"} if route == "cloudflare" else None
-            free, _ = self.listed(route, [{"id": model} for model in ids], rules, env)
+        for route, ids in (("groq", ["openai/gpt-oss-120b", "llama-4"]), ("zai", ["glm-4.7-flash", "glm-5"])):
+            free, _ = self.listed(route, [{"id": model} for model in ids], rules)
             self.assertEqual(free, {ids[0]: True, ids[1]: False}, route)
+        entry = next(e for e in sync.ROUTES if e["route"] == "cloudflare")
+        search = "https://api.cloudflare.com/client/v4/accounts/acc/ai/models/search?per_page=100&page=1"
+        found = sync.list_models(entry, {"CLOUDFLARE_ACCOUNT_ID": "acc"}, Http(lists={search: {"result": [{"name": "@cf/x"}, {"name": "@cf/y"}]}}), rules)
+        self.assertEqual({m["id"]: m["free"] for m in found}, {"@cf/x": True, "@cf/y": False})
         # No list, nothing free: a paid id can never be deployed.
         free, _ = self.listed("groq", [{"id": "openai/gpt-oss-120b"}])
         self.assertEqual(free, {"openai/gpt-oss-120b": False})
@@ -1189,7 +1191,6 @@ CF_LISTS = dict(LISTS, **{
         {"name": "@cf/a/approved", "task": {"name": "Text Generation"}, "properties": [{"property_id": "price", "value": [{"unit": "per M input tokens", "price": 0.1, "currency": "USD"}]}]},
         {"name": "@cf/b/zero", "task": {"name": "Text Generation"}, "properties": [{"property_id": "price", "value": [{"unit": "per M input tokens", "price": 0, "currency": "USD"}]}, {"property_id": "context_window", "value": 8192}]},
         {"name": "@cf/c/unknown", "task": {"name": "Text Generation"}}]},
-    "https://api.cloudflare.com/client/v4/accounts/acc123/ai/v1/models": {"data": [{"id": "@cf/a/approved"}, {"id": "@cf/b/zero"}]},
     "https://ib/v1/models": {"data": [{"id": "x", "pricing": {"input": "0", "output": "0"}}, {"id": "y", "input_price": 1, "output_price": 2}]},
 })
 
@@ -1213,13 +1214,26 @@ class FreeCandidates(unittest.TestCase):
         self.assertFalse([i for i in deployed if "@cf/b/zero" in i or "@cf/c/unknown" in i])
         self.assertFalse(cat["providers"]["cloudflare"]["models"][0]["metadata"]["free"] and cat["providers"]["cloudflare"]["models"][1]["metadata"]["free"])
         free = {m["id"]: m["metadata"]["free"] for m in cat["providers"]["cloudflare"]["models"]}
-        self.assertEqual(free, {"cloudflare/@cf/a/approved": True, "cloudflare/@cf/b/zero": False})
+        self.assertEqual(free, {"cloudflare/@cf/a/approved": True, "cloudflare/@cf/b/zero": False, "cloudflare/@cf/c/unknown": False})
 
     def test_the_account_is_discovered_from_the_token_when_the_env_is_a_placeholder(self):
         _, _, http = self.build()
         self.assertEqual(http.calls[0][:2], ("GET", CF_ACCOUNTS))
         self.assertEqual(http.calls[0][2], {"Authorization": "Bearer k-cf"})
         self.assertIn(("GET", CF_SEARCH), [c[:2] for c in http.calls])
+
+    def test_the_model_list_is_the_search_paged_and_only_text_generation_is_chat(self):
+        base = "https://api.cloudflare.com/client/v4/accounts/acc/ai/models/search?per_page=100&page="
+        lists = {base + "1": {"result": [{"name": "@cf/t", "task": {"name": "Text Generation"}}, {"name": "@cf/e", "task": {"name": "Text Embeddings"}}],
+                              "result_info": {"total_pages": 2}},
+                 base + "2": {"result": [{"name": "@cf/i", "task": {"name": "Text-to-Image"}}], "result_info": {"total_pages": 2}}}
+        entry = next(e for e in sync.ROUTES if e["route"] == "cloudflare")
+        http = Http(lists=lists)
+        found = sync.list_models(entry, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_KEY": "k"}, http, sync.load_rules())
+        self.assertEqual({m["id"]: (m["modality"], m["free"]) for m in found},
+                         {"@cf/t": ("chat", True), "@cf/e": ("other", True), "@cf/i": ("other", True)})
+        self.assertEqual([c[1] for c in http.calls], [base + "1", base + "2"])  # never GET .../ai/v1/models (405)
+        self.assertEqual(http.calls[0][2], {"Authorization": "Bearer k"})
 
     def test_a_set_account_id_is_not_discovered(self):
         _, _, http = self.build(env=dict(CF_ENV, CLOUDFLARE_ACCOUNT_ID="acc123"))

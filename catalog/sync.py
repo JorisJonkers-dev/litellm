@@ -537,6 +537,11 @@ def modality(kind, item):
         if caps.get("moderation"):
             return "moderation"
         return "chat"
+    if kind == "cloudflare" and isinstance(item.get("task"), dict):
+        # Workers AI names the task: only Text Generation is a chat model.
+        return "chat" if str(item["task"].get("name") or "").lower() == "text generation" else "other"
+    if kind == "cloudflare":
+        return "chat"
     if kind == "cohere" and isinstance(item.get("endpoints"), list):
         return "chat" if "chat" in item["endpoints"] else "other"
     if kind == "watsonx" and isinstance(item.get("functions"), list):
@@ -565,11 +570,34 @@ def listing_items(body, kind=None):
     return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
 
 
+def cloudflare_search(base, headers, http, route="cloudflare"):
+    """Every item of GET /accounts/<id>/ai/models/search, paged by `page` and `result_info.total_pages`. The
+    OpenAI-style base (.../ai/v1) answers no GET /models (405): the search is Workers AI's model list."""
+    account = base.split("/accounts/", 1)[1].split("/", 1)[0]
+    items = []
+    for page in range(1, CANDIDATE_PAGES + 1):
+        status, body = http("GET", f"{CLOUDFLARE_ACCOUNTS}/{account}/ai/models/search?per_page=100&page={page}", headers, None)
+        if status != 200 or not isinstance(body, dict) or not isinstance(body.get("result"), list):
+            raise RuntimeError(f"{route}: the model search answered {status}")
+        items += [item for item in body["result"] if isinstance(item, dict)]
+        info = body.get("result_info") if isinstance(body.get("result_info"), dict) else {}
+        if not body["result"] or page >= int(info.get("total_pages") or 1):
+            break
+    return items
+
+
 def fetch_listing(entry, env, http, base, headers):
     """(status, body) of one route's model list. Most routes answer GET <base>/models. Cohere's is its own
     /v1/models (Bearer key). watsonx needs an IAM token first (the API key is exchanged at IBM Cloud IAM) and then
     lists its foundation model specs."""
     kind = entry["kind"]
+    if kind == "cloudflare":
+        try:
+            items = cloudflare_search(base, headers, http)
+        except RuntimeError as error:
+            return int(str(error).rsplit(" ", 1)[-1]) if str(error).rsplit(" ", 1)[-1].isdigit() else 502, str(error)
+        return 200, {"data": [dict(item, id=str(item.get("name") or item.get("id") or "")) for item in items
+                              if item.get("name") or item.get("id")]}
     if kind == "watsonx":
         key = env.get(entry["key_env"]) or ""
         form = "grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey&apikey=" + urllib.parse.quote(key, safe="")
@@ -830,19 +858,10 @@ def scan_candidates(entry, env, http, rules):
     found = {}
     if kind == "cloudflare":
         # The search endpoint carries pricing and properties; the OpenAI-style list does not.
-        account = base.split("/accounts/", 1)[1].split("/", 1)[0]
-        for page in range(1, CANDIDATE_PAGES + 1):
-            status, body = http("GET", f"{CLOUDFLARE_ACCOUNTS}/{account}/ai/models/search?per_page=100&page={page}", headers, None)
-            if status != 200 or not isinstance(body, dict) or not isinstance(body.get("result"), list):
-                raise RuntimeError(f"{route}: the model search answered {status}")
-            for item in body["result"]:
-                if isinstance(item, dict):
-                    model_id, signals = cloudflare_signals(item)
-                    if model_id:
-                        found[model_id] = signals
-            info = body.get("result_info") if isinstance(body.get("result_info"), dict) else {}
-            if not body["result"] or page >= int(info.get("total_pages") or 1):
-                break
+        for item in cloudflare_search(base, headers, http, route):
+            model_id, signals = cloudflare_signals(item)
+            if model_id:
+                found[model_id] = signals
     else:
         status, body = fetch_listing(entry, env, http, base, headers)
         items = listing_items(body, kind)
