@@ -15,8 +15,10 @@ answers. This callback adds both, before routing:
 - Learning. A success whose x-ratelimit-remaining-requests or -tokens is 0 blocks until the matching
   x-ratelimit-reset-*. A 429, a 402, or a quota error blocks until Retry-After, else x-ratelimit-reset*,
   else the next daily reset when the error speaks of a day or a quota, else the route's `cooldowns`
-  value. A learned block covers the one deployment or the whole account, as the route's `scope` says
-  (`account_match` escalates a matching error to the account; a 402 is always the account).
+  value. A dead copy (a 401, 403 or 404, or a 400 whose text says the model is deprecated, gone or missing)
+  blocks its deployment for DEAD_BLOCK (six hours) unless the answer gives a reset. A learned block covers
+  the one deployment or the whole account, as the route's `scope` says (`account_match` escalates a matching
+  error to the account; a 402 is always the account).
 - Filtering. async_filter_deployments drops every deployment that is blocked or whose window is spent,
   so the router picks the next free copy at once, and none is sent to a limited provider. A deployment
   comes back the moment its block ends or its window turns. When nothing is left the call fails with the
@@ -62,6 +64,10 @@ LIMIT_ERROR = "No deployments available for selected model, Try again in a momen
 # Seconds a slot counts as in flight when its end was never logged (a lost callback must not wedge a route).
 SLOT_TTL = 600.0
 DEFAULT_BLOCK = 60.0
+# A dead copy (a key the provider paused, a model it retired) stays out this long unless its answer gives a reset.
+DEAD_BLOCK = 6 * 3600.0
+DEAD_STATUS = (401, 403, 404)
+DEAD_MODEL_ERROR = re.compile(r"deprecated|model_deprecated|model not found|does not exist|no longer available|decommissioned", re.I)
 SEED_TIMEOUT = 5.0  # seconds a request may wait for the spend log, once
 SEED_RETRY = 60.0  # seconds before a failed seed is tried again
 # Hourly request and token sums per deployment since a moment: the counts a restart would otherwise forget.
@@ -479,14 +485,20 @@ class FreeLimits(CustomLogger):
             LOG.warning("free_limits: failure not recorded (%s)", error)
 
     def learn_failure(self, route: str, params: dict, exception: Any) -> None:
-        """Block after a 429, a 402 or a quota error, until the provider says, or the best guess."""
+        """Block after a 429, a 402, a quota error or a dead copy, until the provider says, or the best guess.
+
+        A dead copy (401, 403, 404, or a 400 whose text says the model is deprecated, gone or missing) blocks
+        its own deployment for DEAD_BLOCK, so the router takes the next copy of the group. A plain 400 never
+        blocks. Our own LIMIT_ERROR refusal never blocks.
+        """
         if exception is None:
             return
         status = getattr(exception, "status_code", None)
         text = str(getattr(exception, "message", "") or exception)
         if LIMIT_ERROR in text:
             return  # our own refusal: nothing new was learned
-        if status not in (402, 429) and not QUOTA_ERROR.search(text):
+        dead = status in DEAD_STATUS or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
+        if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead:
             return
         now = self.clock()
         headers = {}
@@ -503,6 +515,8 @@ class FreeLimits(CustomLogger):
                 until = parse_reset(header(headers, name), now)
                 if until is not None:
                     break
+        if until is None and dead:
+            until = now + DEAD_BLOCK
         if until is None and DAILY_ERROR.search(text):
             _, until = window_key("day", now, self._offset(route, params))
         if until is None:

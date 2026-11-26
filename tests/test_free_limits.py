@@ -420,6 +420,44 @@ class Hook(unittest.TestCase):
         self.refuse(a, Error(500, "upstream exploded"))
         self.assertEqual(self.pick([a]), ["free/electronhub/a"])
 
+    def test_a_401_blocks_only_that_deployment_for_the_dead_block(self):
+        a, b = dep("gonka", "a"), dep("gonka", "b")
+        self.refuse(a, Error(401, "API key is paused or access disabled"))
+        self.assertEqual(self.pick([a, b, dep("groq", "x")]), ["free/gonka/b", "free/groq/x"])
+        self.now[0] += free_limits.DEAD_BLOCK - 1
+        self.assertEqual(self.pick([a, b]), ["free/gonka/b"])
+        self.now[0] += 1
+        self.assertEqual(self.pick([a, b]), ["free/gonka/a", "free/gonka/b"])
+
+    def test_a_400_saying_the_model_is_deprecated_blocks_that_deployment(self):
+        a, b = dep("neosantara", "a"), dep("neosantara", "b")
+        self.refuse(a, Error(400, "Model 'deepseek-v4.1-flash-free' is deprecated"))
+        self.assertEqual(self.pick([a, b]), ["free/neosantara/b"])
+        self.now[0] += free_limits.DEAD_BLOCK
+        self.assertEqual(len(self.pick([a, b])), 2)
+
+    def test_a_404_blocks_that_deployment(self):
+        a, b = dep("typhoon", "a"), dep("typhoon", "b")
+        self.refuse(a, Error(404, "Not Found"))
+        self.assertEqual(self.pick([a, b]), ["free/typhoon/b"])
+
+    def test_a_plain_400_does_not_block(self):
+        a = dep("neosantara", "a")
+        self.refuse(a, Error(400, "invalid parameter: temperature"))
+        self.assertEqual(self.pick([a]), ["free/neosantara/a"])
+
+    def test_the_limit_refusal_text_never_blocks_even_with_a_dead_status(self):
+        a = dep("electronhub", "a")
+        self.refuse(a, Error(401, free_limits.LIMIT_ERROR))
+        self.assertEqual(self.pick([a]), ["free/electronhub/a"])
+
+    def test_a_dead_copy_with_a_reset_header_is_blocked_until_that_reset(self):
+        a, b = dep("gonka", "a"), dep("gonka", "b")
+        self.refuse(a, Error(403, "Forbidden", {"retry-after": "90"}))
+        self.assertEqual(self.pick([a, b]), ["free/gonka/b"])
+        self.now[0] += 90
+        self.assertEqual(len(self.pick([a, b])), 2)
+
     def test_when_every_copy_is_limited_the_call_fails_at_once(self):
         a = dep("electronhub", "a")
         self.refuse(a, Error(429, headers={"retry-after": "30"}))
