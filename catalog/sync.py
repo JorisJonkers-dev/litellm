@@ -327,7 +327,9 @@ def check_free_limits(rules, source="the routing rules"):
     `free_limits.<route>` holds `deployment` (per-deployment limits copied into litellm_params), `shared`
     (budgets one provider account or IP shares across all its deployments: a list of {requests|tokens, per}),
     `concurrency` (requests in flight across the whole route), `reset` (the daily reset, "HH:MM" UTC),
-    `scope` (what a learned limit blocks: the one deployment or the whole account) and `source`/`status`.
+    `max_input_tokens` (the most input tokens one request may carry: copied into model_info, and config/free_limits.py
+    skips the copy for a bigger request), `scope` (what a learned limit blocks: the one deployment or the whole
+    account) and `source`/`status`.
     """
     limits = (rules or {}).get("free_limits")
     if limits is None:
@@ -355,6 +357,9 @@ def check_free_limits(rules, source="the routing rules"):
                 raise RuntimeError(f"{where}.shared[{index}] must be {{requests|tokens: N, per: {'|'.join(SHARED_WINDOWS)}}}")
         if "concurrency" in entry and (not isinstance(entry["concurrency"], int) or entry["concurrency"] <= 0):
             raise RuntimeError(f"{where}.concurrency must be a positive integer")
+        if "max_input_tokens" in entry and (not isinstance(entry["max_input_tokens"], int)
+                                             or isinstance(entry["max_input_tokens"], bool) or entry["max_input_tokens"] <= 0):
+            raise RuntimeError(f"{where}.max_input_tokens must be a positive integer")
         if "reset" in entry and not (isinstance(entry["reset"], str) and DAILY_RESET.match(entry["reset"])):
             raise RuntimeError(f"{where}.reset must be HH:MM in UTC")
         if entry.get("scope", "deployment") not in LIMIT_SCOPES:
@@ -1114,6 +1119,11 @@ def free_canonical(name, rules):
     return aliases.get(key, key)
 
 
+def free_request_cap(route, rules):
+    """The most input tokens one request may carry to a free route's deployments, or None (free_limits.<route>)."""
+    return ((rules or {}).get("free_limits") or {}).get(route, {}).get("max_input_tokens")
+
+
 def free_limit_params(route, rules):
     """The per-deployment limits of one free route, as LiteLLM 1.109.1 reads them from litellm_params."""
     entry = ((rules or {}).get("free_limits") or {}).get(route) or {}
@@ -1265,7 +1275,7 @@ def account_budgets(rules):
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
-               free_only=False, limits=None):
+               free_only=False, limits=None, request_cap=None):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -1315,6 +1325,9 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # Not "<route>/<upstream id>": the router resolves a model name equal to a deployment id to that one
         # deployment and skips every pre-call filter for it, so "vibe/<id>" would walk past the account cap.
         info["id"] = f"{route}:{upstream_id}"
+    if request_cap:
+        # LiteLLM's own field: the largest input a request may carry to this copy (config/free_limits.py reads it).
+        info["max_input_tokens"] = request_cap
     if chosen["modality"] in MODES:
         info["mode"] = MODES[chosen["modality"]]
     return {
@@ -1448,7 +1461,7 @@ def plan_groups(catalogue, rules):
             # cooldown, never a free/ group.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], budget=budgets.get(route),
-                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN), request_cap=free_request_cap(route, rules)))
         # Every free copy (a free-only route, a paid route's free id, the Google free tier) is reachable only as
         # free/<model> (owner, 2026-11-26): no per-route group, no "<route>-free/", "google-free/" or "public/" copy.
         for route in sorted((free | free_ids | public) & FREE_GROUP_ROUTES):
@@ -1611,7 +1624,7 @@ def free_group(name, members, by_route, rules):
     for route, chosen in sorted(chosen_by_route.items()):
         spec = deployment(group_name(name, chosen["modality"], primary, free_route=FREE_GROUP), name, route,
                           chosen, order.get(route, last), 1, by_route[route], free_only=True,
-                          limits=free_limit_params(route, rules))
+                          limits=free_limit_params(route, rules), request_cap=free_request_cap(route, rules))
         spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{chosen['upstream_id']}"
         specs.append(spec)
     return specs
