@@ -10,16 +10,15 @@ and the route's own upstream key, and classifies the result:
   blocked           the account is refused (region, privacy setting, disabled); the reason text is kept
   unknown           the model is gone or never existed on this provider
   budget-exhausted  credit or quota is spent
-  error             anything else (rate limit, 5xx, timeout); tried again next run
+  error             anything else (rate limit, 5xx, timeout); tried again after a back-off (1 h, doubling, at most --max-age)
   not-chat          the provider lists it as no chat model (embeddings, OCR, transcription)
   unprobed          not probed on purpose (a paid OpenRouter model: the route is used for `:free` ids)
   pending           due for a probe but over this run's cap; probed in a later run
 
-The probe goes to the provider, not through the proxy: a model the proxy does not know yet
+`--probe` goes to the provider, not through the proxy: a model the proxy does not know yet
 cannot be probed through it, and the catalogue is what decides which models the proxy serves.
 
-The result is cached in the catalogue itself (probed_at per model), so a run probes only models
-that are new, errored or older than --max-age. A model that disappears from its provider's list
+The result is cached in the catalogue itself (probed_at per model), so a recorded answer is kept and never re-probed on a timer. A model that disappears from its provider's list
 is kept for one run (metadata.absent_runs) and dropped on the second, so a provider that hiccups
 does not empty the catalogue. metadata.failing_probes counts consecutive blocked or unknown
 probes; two of them drop the model. A model that was usable keeps its place through a transient
@@ -49,11 +48,9 @@ through to the next free copy. assert_free_groups() fails the run when a copy in
 Tier groups: catalog/routing.json's `tier_groups` define the callable tier-* names and their ordered
 steps; validate_tiers() checks them and `--render-tiers` renders them into config/config.yaml.
 
-Probe cost bound: each probe is one minimal request (about 8 input tokens + 16 output tokens), and
-a provider that refuses a small max_tokens is retried once with its own minimum, so a run costs at
-most (models probed) x (about 8 input + 16 output tokens), doubled in the worst case. The models
-of each route are probed once per --max-age (default 24h); free and local models cost nothing.
-Every run prints the number probed so the bound can be checked.
+The sync sends no chat request by itself: a request spends a free tier's daily quota. A model's state comes from
+the live listing (a free call), the public catalogue models.dev joined by id, and real traffic through the proxy
+(see "Where the evidence" at TRAFFIC_WINDOW); `--probe <route/model>` sends one request, for debugging.
 
 Standard library only: it runs in the LiteLLM image as a scheduled Process, and in CI.
 """
@@ -66,6 +63,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 # route, the env names its provider base and key come from (config/config.yaml names the same),
@@ -112,8 +110,10 @@ ROUTES = [
     # and it deploys nothing until the owner writes the field.
     # No free signal in the listing: the free ids are the static list in routing.json (empty until approved,
     # so the candidate scan shows what the provider lists). Cohere and watsonx are not OpenAI-style lists.
-    {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink"},
-    {"route": "cohere", "base_env": "COHERE_LIST_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
+    {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink",
+     "default_base": "https://api.bazaarlink.ai/v1"},
+    {"route": "cohere", "base_env": "COHERE_LIST_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere",
+     "default_base": "https://api.cohere.com/v1"},
     {"route": "plugsky", "base_env": "PLUGSKY_API_BASE", "key_env": "PLUGSKY_API_KEY", "kind": "plugsky"},
     {"route": "poe", "base_env": "POE_API_BASE", "key_env": "POE_API_KEY", "kind": "poe"},
     {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx",
@@ -135,37 +135,26 @@ ROUTES = [
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
-# OpenRouter's free tier allows few requests a day, so only this many free models are probed a run.
-# A limit is per RUN. The catalogue Process runs hourly (deploy/litellm.project.yml, "17 * * * *"), so
-# at worst (a model whose probe errors is retried every run) a route is probed limit x 24 times a day;
-# a healthy model is probed once per --max-age. Each limit keeps that worst case at or under half the
-# provider's daily cap, so real traffic keeps the rest:
-#   groq        10 x 24 = 240    of 1,000 a day          zai        10 x 24 = 240   (1 concurrent; probes are serial)
-#   requesty     4 x 24 =  96    of 200 a day (all free models together, 20 a minute)
-#   naga         2 x 24 =  48    of 100 a day            routeway    4 x 24 =  96   of 200 a day
-#   inferbase    2 x 24 =  48    of 100 managed a day    cloudflare  5 x 24 = 120   (10,000 neurons a day; a probe is a few)
-#   ovh          2 x 24 =  48    at 2 a minute per IP per model: two serial probes of different models
-#   kilo        30 per run, 200 an hour per IP shared with real traffic
-#   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
-#   Second wave (same arithmetic, limit x 24 at most half the cap):
-#   bazaarlink   1 x 24 =  24    of 60 weighted units a day      airforce    1 x 24 = 24   of 1,000 a day (1 a minute: one serial probe)
-#   electronhub  2 x 24 =  48    (no cap published: at most 48 a day, and a healthy id is probed once a day) unorouter   2 x 24 = 48   (queue-throttled, about 1 a minute per model; per IP)
-#   plugsky      4 x 24 =  96    of 500 a day                    sealion     2 x 24 = 48   (10 a minute)
-#   novita       2 x 24 =  48    (a few $0 ids)                  vercel      4 x 24 = 96   (zero-priced ids only; the free credit is not spent by a $0 id)
-#   poe          1 x 24 =  24    (500 RPM; daily points not known, but its free list is empty, so no id is probed) together, typhoon, neosantara, longcat, gonka: 1 x 24 = 24 (one id each, or a small allowance)
-#   watsonx      1 x 24 =  24 probes of about 24 tokens: 0.6K of 300K tokens a month
-#   cohere       0: its cap is 1,000 calls a MONTH, so one probe per run is 720 a month at worst (a failing probe retries every run),
-#                over half. It probes nothing until the owner raises this knowingly; a healthy id is 30 a month.
-DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
-                        "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2,
-                        "bazaarlink": 1, "cohere": 0, "plugsky": 4, "poe": 1, "watsonx": 1, "together": 1, "typhoon": 1,
-                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 2, "unorouter": 2,
-                        "airforce": 1, "vercel": 4, "novita": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
+# A route whose free ids are approved by hand says so: "paid" would hide that the owner can approve the id.
+APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is approved there); it is not probed"
+# Where the evidence for a model comes from, in order (see build()). The sync sends no chat request unless a person asks
+# for one (`--probe <route/model>`, for debugging): on a free tier a request spends the daily quota.
+#   1. the live listing (a free call): chat, free, served, retired;
+#   2. the public catalogue models.dev, joined by id (reference_index()): chat or not, price (0 is free), deprecated;
+#   3. real traffic through the proxy (Prometheus, TRAFFIC_PROMETHEUS_URL): served requests make a deployment usable,
+#      401, 403 or 404 block it until the evidence ages out of the window;
+#   4. the answer already recorded.
+TRAFFIC_WINDOW = "7d"
+DENIED_STATUSES = ("401", "403", "404")
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
 STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
+MODELS_DEV_URL = "https://models.dev/api.json"
+# An answer already recorded (an earlier probe or traffic) is kept; an error or a spent budget is decided again.
+RECORDED = ("usable", "blocked", "unknown")
+STATIC_ROUTES = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in STATIC_KINDS)
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -299,6 +288,13 @@ def load_rules(path=None):
             raise RuntimeError(f"{path}: free_by names {route!r}, which is no route")
         if how not in ("plan", "price"):
             raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
+    free_all = rules.get("free_all") or []
+    if not isinstance(free_all, list) or any(route not in known or route not in STATIC_ROUTES for route in free_all):
+        raise RuntimeError(f"{path}: free_all must list static-list routes (those with `free_ids`) only")
+    reference = rules.get("reference") or {}
+    if not isinstance(reference, dict) or any(not isinstance(v, str) or (k != "_sources" and k not in known) for k, v in reference.items()):
+        raise RuntimeError(f"{path}: reference must map route names to a models.dev provider id")
+    reference.pop("_sources", None)
     return rules
 
 
@@ -419,8 +415,9 @@ def route_base(entry, env):
         parts = {name: "" if value.startswith("REPLACE_WITH") else value for name, value in parts.items()}
         return template.format(**parts) if all(parts.values()) else ""
     value = (env.get(entry["base_env"]) or "").rstrip("/")
-    # A REPLACE_WITH_... value is a placeholder the owner has not filled (BazaarLink's base): no base.
-    return "" if value.startswith("REPLACE_WITH") else value
+    # A REPLACE_WITH_... value is a placeholder the owner has not filled (BazaarLink's base): no value, so the default.
+    value = "" if value.startswith("REPLACE_WITH") else value
+    return (value or entry.get("default_base") or "").rstrip("/")
 
 
 # The Vault API path (the UI shows it as secret/platform/litellm); the env files name it the same way.
@@ -442,7 +439,10 @@ def missing_setting(entry, env):
     env names by the env files; an unset optional field arrives empty.
     """
     template = entry.get("base_template")
-    names = re.findall(r"{(\w+)}", template) if template and not env.get(entry["base_env"]) else [entry["base_env"]]
+    if template and not env.get(entry["base_env"]):
+        names = re.findall(r"{(\w+)}", template)
+    else:
+        names = [] if entry.get("default_base") else [entry["base_env"]]  # a route with a default base needs no field
     for name in names + list(entry.get("needs") or []):
         value = env.get(name) or ""
         if not value or value.startswith("REPLACE_WITH"):
@@ -461,6 +461,67 @@ def free_by(rules, route):
     return ((rules or {}).get("free_by") or {}).get(route, "price")
 
 
+def passed(value, now=None):
+    """Whether a listing's date (epoch seconds, or an ISO date or time) is already behind us; unparsable is not."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    try:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            when = datetime.datetime.fromtimestamp(value, datetime.timezone.utc)
+        else:
+            when = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            when = when if when.tzinfo else when.replace(tzinfo=datetime.timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return False
+    return when <= now
+
+
+def listing_verdict(kind, item):
+    """What the listing alone says about one model without a request: (chat, unavailable).
+
+    chat is True or False when the listing names what the model is for, None when it does not. unavailable is the
+    listing's own reason the model cannot be served (not served yet, out of stock, retired), or "". Sources
+    (fetched 2026-11-26): Naga `kinds` and `availability.status` (served / not_yet_served / out_of_stock) and
+    `deprecates_at`; Routeway `available`, `endpoints` and `retirement`; Requesty `api` and `retires`; Kilo
+    `architecture.output_modalities`, `expiration_date` and `retires_on`."""
+    chat, why = None, ""
+    if kind == "naga":
+        if isinstance(item.get("kinds"), list):
+            chat = "chat" in item["kinds"]
+        status = (item.get("availability") or {}).get("status") if isinstance(item.get("availability"), dict) else None
+        if status and status != "served":
+            why = f"the listing says {status}"
+        elif passed(item.get("deprecates_at")):
+            why = "the listing says it is deprecated"
+    elif kind == "routeway":
+        if isinstance(item.get("endpoints"), list):
+            chat = "/v1/chat/completions" in item["endpoints"]
+        retired = item.get("retirement") if isinstance(item.get("retirement"), dict) else {}
+        if item.get("available") is False:
+            why = "the listing says it is not available"
+        elif passed(retired.get("retires_at")):
+            why = "the listing says it is retired"
+    elif kind == "requesty":
+        if item.get("api"):
+            chat = item["api"] == "chat"
+        if passed(item.get("retires")):
+            why = "the listing says it is retired"
+    elif kind == "kilo":
+        outputs = (item.get("architecture") or {}).get("output_modalities") if isinstance(item.get("architecture"), dict) else None
+        if isinstance(outputs, list):
+            chat = "text" in outputs
+        if passed(item.get("expiration_date")) or passed(item.get("retires_on")):
+            why = "the listing says it is retired"
+    return chat, why
+
+
+def approves_all(rules, route):
+    """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
+    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes only (Groq);
+    a route whose plan frees some ids (Z.ai) or bills per token stays on `free_ids`, because a probe that is
+    answered does not show the id is free, and a zero cost recorded on a paid id would hide the spend."""
+    return route in ((rules or {}).get("free_all") or [])
+
+
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -476,10 +537,19 @@ def modality(kind, item):
         if caps.get("moderation"):
             return "moderation"
         return "chat"
+    if kind == "cohere" and isinstance(item.get("endpoints"), list):
+        return "chat" if "chat" in item["endpoints"] else "other"
+    if kind == "watsonx" and isinstance(item.get("functions"), list):
+        ids = {f.get("id") for f in item["functions"] if isinstance(f, dict)}
+        return "chat" if ids & {"text_chat", "text_generation"} else "other"
+    if any(word in model_id for word in ("whisper", "orpheus", "-tts", "tts-")):
+        return "speech"
     return "embedding" if "embed" in model_id else "chat"
 
 
-BARE_LIST_KINDS = ("together",)
+BARE_LIST_KINDS = ("together", "typhoon")
+IAM_URL = "https://iam.cloud.ibm.com/identity/token"
+WATSONX_SPECS = "/ml/v1/foundation_model_specs?version=2024-05-01&limit=200"
 
 
 def listing_items(body, kind=None):
@@ -487,10 +557,32 @@ def listing_items(body, kind=None):
     (Together only); anything else is None, which the caller reports as a route error, never as zero models."""
     if isinstance(body, dict) and isinstance(body.get("data"), list):
         return body["data"]
+    # Cohere's own list ({"models": [{"name", "endpoints"}]}) and watsonx's specs ({"resources": [{"model_id", "functions"}]}).
+    if kind == "cohere" and isinstance(body, dict) and isinstance(body.get("models"), list):
+        return [dict(m, id=m["name"]) for m in body["models"] if isinstance(m, dict) and m.get("name")]
+    if kind == "watsonx" and isinstance(body, dict) and isinstance(body.get("resources"), list):
+        return [dict(m, id=m["model_id"]) for m in body["resources"] if isinstance(m, dict) and m.get("model_id")]
     return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
 
 
-def list_models(entry, env, http, rules=None):
+def fetch_listing(entry, env, http, base, headers):
+    """(status, body) of one route's model list. Most routes answer GET <base>/models. Cohere's is its own
+    /v1/models (Bearer key). watsonx needs an IAM token first (the API key is exchanged at IBM Cloud IAM) and then
+    lists its foundation model specs."""
+    kind = entry["kind"]
+    if kind == "watsonx":
+        key = env.get(entry["key_env"]) or ""
+        form = "grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey&apikey=" + urllib.parse.quote(key, safe="")
+        status, token = http("POST", IAM_URL, {"Content-Type": "application/x-www-form-urlencoded"}, form)
+        if status != 200 or not isinstance(token, dict) or not token.get("access_token"):
+            return status if status != 200 else 502, "the IAM token exchange failed"
+        return http("GET", f"{base}{WATSONX_SPECS}", {"Authorization": f"Bearer {token['access_token']}"}, None)
+    if kind == "cohere":
+        return http("GET", f"{base}/models?page_size=1000", headers, None)
+    return http("GET", f"{base}/models", headers, None)
+
+
+def list_models(entry, env, http, rules=None, reference=None):
     """The models the provider lists for this route: id, name, context length, free, chat, modality.
 
     A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
@@ -508,7 +600,7 @@ def list_models(entry, env, http, rules=None):
         headers = {"anthropic-version": ANTHROPIC_VERSION, **({"x-api-key": key} if key else {})}
     else:
         headers = {"Authorization": f"Bearer {key}"} if key else {}
-    status, body = http("GET", f"{base}/models", headers, None)
+    status, body = fetch_listing(entry, env, http, base, headers)
     if kind == "openrouter" and key:
         # The account-aware list (models this key may use), when OpenRouter serves it.
         user_status, user_body = http("GET", f"{base}/models/user", headers, None)
@@ -549,7 +641,9 @@ def list_models(entry, env, http, rules=None):
             out["context_length"] = item.get("inputTokenLimit")
         elif kind == "kilo":
             out["context_length"] = item.get("context_length")
-            out["free"] = item.get("isFree") is True
+            # isFree, or a listed price that is an explicit zero on both sides (a "-1" is Kilo's router sentinel, not a zero).
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = item.get("isFree") is True or zero_price(pricing.get("prompt"), pricing.get("completion"))
         elif kind == "requesty":
             out["context_length"] = item.get("context_window") or item.get("context_length")
             out["free"] = zero_price(item.get("input_price"), item.get("output_price"))
@@ -579,7 +673,7 @@ def list_models(entry, env, http, rules=None):
                 # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
                 # deployment needs the real per-token price for the route's budget to fire; an id the
                 # listing does not price is not deployed.
-                out["free"] = model_id in free_ids and price is not None
+                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and price is not None
                 if price is not None:
                     out["price"] = {"input": price[0], "output": price[1]}
             else:
@@ -587,11 +681,32 @@ def list_models(entry, env, http, rules=None):
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
                 # does not apply there: the plan is the signal.
-                out["free"] = model_id in free_ids and (free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
+                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                    free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
             out["free"] = True
+        ref = (reference or {}).get(reference_key(model_id))
+        if ref:
+            # The public catalogue, matched inside this route's own provider: it can only add what the listing lacks.
+            if ref["chat"] is False and out["modality"] == "chat":
+                out["modality"] = "other"
+            if ref["cost"] is not None:
+                if kind == "inferbase":
+                    if "price" not in out:
+                        out["price"] = {"input": ref["cost"][0], "output": ref["cost"][1]}
+                        out["free"] = model_id in free_ids or approves_all(rules, entry["route"])
+                elif kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
+                    out["free"] = True  # the catalogue says 0 and the listing prices nothing above zero
+                    out["free_source"] = "models.dev"
+        verdict_chat, unavailable = listing_verdict(kind, item)
+        if ref and ref["deprecated"] and not unavailable:
+            unavailable = "models.dev lists it as deprecated"
+        if verdict_chat is False:
+            out["modality"] = out["modality"] if out["modality"] != "chat" else "other"
+        if unavailable:
+            out["unavailable"] = unavailable
         if out["modality"] != "chat":
             out["chat"] = False
         found[model_id] = out
@@ -601,7 +716,7 @@ def list_models(entry, env, http, rules=None):
         # cannot: an unlisted id has no price to check.
         for model_id in sorted(free_ids - set(found)):
             found[model_id] = {"id": model_id, "name": model_id, "context_length": None, "free": True, "chat": None,
-                               "modality": "chat"}
+                               "modality": "chat", "unlisted": True}
     return list(found.values())
 
 CLOUDFLARE_ACCOUNTS = "https://api.cloudflare.com/client/v4/accounts"
@@ -720,7 +835,7 @@ def scan_candidates(entry, env, http, rules):
             if not body["result"] or page >= int(info.get("total_pages") or 1):
                 break
     else:
-        status, body = http("GET", f"{base}/models", headers, None)
+        status, body = fetch_listing(entry, env, http, base, headers)
         items = listing_items(body, kind)
         if status != 200 or items is None:
             raise RuntimeError(f"{route}: the model list answered {status}")
@@ -797,13 +912,6 @@ def probe(entry, upstream_id, env, http, meta=None):
             status, answer = http("POST", url, headers, dict(body, max_tokens=int(match[1])))
             text = answer if isinstance(answer, str) else json.dumps(answer)
     return classify(status, text)
-
-
-def parse_age(text):
-    match = re.fullmatch(r"(\d+)([hd])", text)
-    if not match:
-        raise ValueError("--max-age is a number of hours or days, like 24h or 2d")
-    return datetime.timedelta(**{"hours" if match[2] == "h" else "days": int(match[1])})
 
 
 # A leading vendor segment (OpenRouter's "mistralai/mistral-large") and a trailing version stamp
@@ -1492,16 +1600,85 @@ def previous_by_id(catalogue):
     return out
 
 
-def due(previous, now, max_age):
-    """Why a model needs a probe: new, errored, or probed longer ago than max_age. None if fresh."""
-    meta = (previous or {}).get("metadata") or {}
-    if not previous or meta.get("status") in (None, "error", "unprobed"):
-        return 0 if not previous else 1
-    try:
-        probed = datetime.datetime.fromisoformat(meta["probed_at"])
-    except (KeyError, ValueError):
-        return 1
-    return 2 if now - probed >= max_age else None
+def reference_key(model_id):
+    """The spellings of a model id the public catalogues use: lower case, no `models/`, `:free` or `@region` suffix."""
+    base = str(model_id).lower().removeprefix("models/")
+    base = base.split("@", 1)[0].removesuffix(":free")
+    return base
+
+
+def reference_index(rules, env, http, log=None):
+    """{route: {id: {"chat": bool, "deprecated": bool, "cost": (input, output) per token or None}}} from models.dev.
+
+    models.dev (https://models.dev/api.json, OpenCode's model database) lists per provider each model's modalities,
+    `type`, `status` and `cost` (US dollars per million tokens, 0 is free). routing.json `reference` maps a route to its
+    models.dev provider id; a route not named, or a catalogue that cannot be read, gives no reference and the listing
+    alone decides (fail closed: no reference never makes a model free). The id must match inside the route's own provider."""
+    mapping = (rules or {}).get("reference") or {}
+    if not mapping:
+        return {}
+    status, body = http("GET", env.get("MODELS_DEV_URL") or MODELS_DEV_URL, {}, None)
+    if status != 200 or not isinstance(body, dict):
+        if log:
+            log(f"reference: models.dev answered {status}; the listing alone decides")
+        return {}
+    out = {}
+    for route, provider in mapping.items():
+        models = (body.get(provider) or {}).get("models") if isinstance(body.get(provider), dict) else None
+        index = {}
+        for model_id, model in (models or {}).items():
+            if not isinstance(model, dict):
+                continue
+            modalities = model.get("modalities") if isinstance(model.get("modalities"), dict) else {}
+            outputs, inputs = modalities.get("output"), modalities.get("input")
+            chat = model.get("type") in (None, "chat") and (not isinstance(outputs, list) or "text" in outputs) and (
+                not isinstance(inputs, list) or "text" in inputs or "image" in inputs)
+            cost = model.get("cost") if isinstance(model.get("cost"), dict) else {}
+            prices = None
+            if zero_price(cost.get("input"), cost.get("output")) or all(
+                    isinstance(cost.get(k), (int, float)) and not isinstance(cost.get(k), bool) for k in ("input", "output")):
+                prices = (cost["input"] / 1e6, cost["output"] / 1e6)
+            index[reference_key(model_id)] = {"chat": chat, "deprecated": model.get("status") == "deprecated", "cost": prices}
+        out[route] = index
+    return out
+
+
+def traffic_evidence(env, http, log=None):
+    """What real traffic through the proxy says per catalogue id: {id: {"ok": n, "denied": n}}.
+
+    Reads the proxy's own Prometheus series (litellm_proxy_total_requests_metric by status_code,
+    litellm_proxy_failed_requests_metric by exception_status, both labelled model_id = the deployment's
+    model_info.id, `[free/|public/]<route>/<upstream id>`) over TRAFFIC_WINDOW from TRAFFIC_PROMETHEUS_URL. Unset or
+    unreachable means no evidence, never an error: the listing and the recorded answers decide then."""
+    base = (env.get("TRAFFIC_PROMETHEUS_URL") or "").rstrip("/")
+    if not base:
+        return {}
+    out = {}
+
+    def query(promql, label, key):
+        status, body = http("GET", f"{base}/api/v1/query?" + urllib.parse.urlencode({"query": promql}), {}, None)
+        results = (body or {}).get("data", {}).get("result") if status == 200 and isinstance(body, dict) else None
+        if results is None:
+            if log:
+                log(f"traffic evidence: the query for {key} answered {status}")
+            return
+        for row in results:
+            metric = row.get("metric") or {}
+            model = str(metric.get("model_id") or "")
+            for prefix in ("free/", "public/"):
+                model = model.removeprefix(prefix)
+            try:
+                count = float(row["value"][1])
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+            if model and count > 0 and label(metric):
+                out.setdefault(model, {"ok": 0, "denied": 0})[key] += count
+
+    query(f"sum by (model_id, status_code) (increase(litellm_proxy_total_requests_metric[{TRAFFIC_WINDOW}]))",
+          lambda m: str(m.get("status_code")) == "200", "ok")
+    query(f"sum by (model_id, exception_status) (increase(litellm_proxy_failed_requests_metric[{TRAFFIC_WINDOW}]))",
+          lambda m: str(m.get("exception_status")) in DENIED_STATUSES, "denied")
+    return out
 
 
 def stale_provider(old, route, key_env):
@@ -1512,9 +1689,9 @@ def stale_provider(old, route, key_env):
     }
 
 
-def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_limits=None, max_probes=250, rules=None):
-    """The catalogue, and counts. `previous` is the last published catalogue (the cache)."""
-    limits = dict(DEFAULT_ROUTE_LIMITS if route_limits is None else route_limits)
+def build(env, http, previous, now, probe_ids=(), rules=None):
+    """The catalogue, and counts. `previous` is the last published catalogue (the cache). `probe_ids` names
+    `<route>/<model>` ids to send one real chat request to (a person's debugging; the sync never does it by itself)."""
     cache = previous_by_id(previous)
     by_route = {entry["route"]: entry for entry in ROUTES}
     env, account_error = resolve_cloudflare_account(env, http, lambda line: print(line, file=sys.stderr))
@@ -1527,6 +1704,9 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     candidates = {}
     queue = []
     stats["route_errors"] += stats_errors
+    log = lambda line: print(f"catalog: {line}", file=sys.stderr)
+    reference = reference_index(rules, env, http, log)
+    traffic = traffic_evidence(env, http, log)
     for entry in ROUTES:
         route = entry["route"]
         if route == "cloudflare" and account_error:
@@ -1563,7 +1743,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 candidates[route] = []
                 stats["route_errors"].append(f"{route}: candidate scan: {error}"[:200])
         try:
-            listed = list_models(entry, env, http, rules)
+            listed = list_models(entry, env, http, rules, reference.get(route))
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -1583,7 +1763,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 if item.get(field):
                     meta[field] = item[field]
             if old:
-                for k in ("status", "reason", "probed_at", "failing_probes", "was_usable"):
+                for k in ("status", "reason", "probed_at", "failing_probes", "was_usable", "verified_by"):
                     if k in (old.get("metadata") or {}):
                         meta[k] = old["metadata"][k]
             if route == "opencode-go" and any(h in item["id"] for h in OPT_IN_HINTS):
@@ -1595,12 +1775,30 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 meta.update(status="not-chat", reason="")
                 meta.setdefault("probed_at", stamp)
             elif route in FREE_ONLY and not item["free"]:
-                meta.update(status="unprobed", reason=PAID_REASON.get(route, "paid models on a free-only route are not probed"))
+                reason = APPROVAL_REASON if by_route[route]["kind"] in STATIC_KINDS else PAID_REASON.get(route, "paid models on a free-only route are not probed")
+                meta.update(status="unprobed", reason=reason)
                 meta.pop("probed_at", None)
+            elif item.get("unavailable"):
+                # The listing itself says it cannot be served: not deployed, and no request to find out.
+                meta.update(status="unknown", reason=item["unavailable"], failing_probes=2, verified_by="listing")
+                meta.pop("was_usable", None)
             else:
-                why = due(old, now, max_age)
-                if why is not None:
-                    queue.append((why, route, model))
+                seen = (traffic or {}).get(full) or {}
+                if seen.get("ok"):
+                    meta.update(status="usable", reason="", failing_probes=0, verified_by="traffic", probed_at=stamp)
+                elif seen.get("denied"):
+                    # Real traffic was refused (401, 403, 404): blocked while that evidence is inside the window.
+                    meta.update(status="blocked", reason="real requests were refused (401, 403 or 404)", failing_probes=2, verified_by="traffic")
+                    meta.pop("was_usable", None)
+                elif full in probe_ids:
+                    queue.append((route, model))
+                elif meta.get("status") in RECORDED:
+                    pass  # an answer already recorded is kept
+                elif item.get("unlisted"):
+                    # An approved id the list omits has no listing to read: it waits for real traffic or a manual probe.
+                    meta.update(status="pending", reason="not in the provider's list; waiting for real traffic")
+                else:
+                    meta.update(status="usable", reason="", failing_probes=0, verified_by="listing", probed_at=stamp)
         # A model the provider stopped listing is kept for one run: a provider that hiccups must
         # not empty the catalogue, and the proxy must not lose a model over one bad listing.
         present = {model["id"] for model in models}
@@ -1614,16 +1812,13 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             models.append({"id": gone["id"], "description": gone.get("description", ""), "metadata": meta})
         models.sort(key=lambda model: model["id"])
         providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": models}
-    spent = {}
-    for _, route, model in sorted(queue, key=lambda q: (q[0], q[2]["metadata"].get("probed_at", ""))):
-        if stats["probed"] >= max_probes or spent.get(route, 0) >= limits.get(route, max_probes):
-            continue
+    for route, model in queue:
         status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
         meta = model["metadata"]
         meta.update(status=status, reason=reason, probed_at=stamp)
         # Two consecutive blocked or unknown probes are what drops a model.
         meta["failing_probes"] = (meta.get("failing_probes", 0) + 1) if status in ("blocked", "unknown") else 0
-        spent[route] = spent.get(route, 0) + 1
+        meta["verified_by"] = "probe"
         stats["probed"] += 1
     for provider in providers.values():
         counts = {}
@@ -1663,7 +1858,7 @@ def comparable(catalogue):
 
 def make_http(timeout=60):
     def http(method, url, headers, body):
-        data = None if body is None else json.dumps(body).encode()
+        data = None if body is None else body.encode() if isinstance(body, str) else json.dumps(body).encode()
         req = urllib.request.Request(url, data=data, method=method, headers={"Accept": "application/json", "User-Agent": "JorisJonkers-dev/litellm-catalog", **headers})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -1850,8 +2045,8 @@ def without_stamp(text):
 def main(argv=None, env=None, http=None, now=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--output", default="model-catalog.json", help="where the catalogue is written when it is not published")
-    ap.add_argument("--max-age", default="24h")
-    ap.add_argument("--max-probes", type=int, default=250)
+    ap.add_argument("--probe", action="append", default=[], metavar="ROUTE/MODEL",
+                    help="send one real chat request to this model (debugging; it spends the provider's quota)")
     ap.add_argument("--render-tiers", action="store_true", help="rewrite the tiers block of config/config.yaml from routing.json and exit")
     args = ap.parse_args(argv)
     if args.render_tiers:
@@ -1877,8 +2072,8 @@ def main(argv=None, env=None, http=None, now=None):
         previous = json.load(open(args.output))
     previous = previous or {}
     rules = load_rules()
-    catalogue, stats = build(env, http, previous, now, parse_age(args.max_age), None, args.max_probes, rules)
-    print(f"catalog: listed {stats['listed']} models, probed {stats['probed']} (16 tokens max each; bound: at most {args.max_probes} a run)")
+    catalogue, stats = build(env, http, previous, now, args.probe, rules)
+    print(f"catalog: listed {stats['listed']} models, probed {stats['probed']} (only what --probe named; the sync sends no request by itself)")
     for line in stats["route_errors"]:
         print(f"catalog: {line}", file=sys.stderr)
     # The deployments the probes justify, as plain LiteLLM config in git, and the groups the

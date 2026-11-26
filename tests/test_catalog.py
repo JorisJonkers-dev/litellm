@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,6 +16,13 @@ sys.path.insert(0, str(ROOT / "catalog"))
 import sync  # noqa: E402
 import overview  # noqa: E402
 
+class Everything:
+    """A `probe` argument that names every model: the manual `--probe` path, for the tests of the probe itself."""
+    def __contains__(self, item):
+        return True
+
+
+EVERYTHING = Everything()
 NOW = datetime.datetime(2026, 11, 10, 12, 0, tzinfo=datetime.timezone.utc)
 ENV = {
     "MISTRAL_API_BASE": "https://m/v1", "OPENCODE_GO_API_BASE": "https://oc/v1", "OPENROUTER_API_BASE": "https://or/v1",
@@ -208,7 +216,7 @@ class Build(unittest.TestCase):
 
     def test_first_run_probes_each_model_at_its_provider(self):
         http = Http(answers={("https://oc/v1/chat/completions", "deepseek-v4-pro"): (403, '{"error":{"message":"This Go model is hosted outside Europe"}}')})
-        cat, stats = self.run_build(http)
+        cat, stats = self.run_build(http, probe_ids=EVERYTHING)
         models = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
         self.assertEqual(models["opencode-go/glm-5.3-flash"]["status"], "usable")
         self.assertEqual(models["opencode-go/deepseek-v4-pro"]["status"], "blocked")
@@ -224,7 +232,7 @@ class Build(unittest.TestCase):
 
     def test_a_probe_goes_to_the_provider_with_the_route_key_and_16_tokens(self):
         http = Http()
-        self.run_build(http)
+        self.run_build(http, probe_ids=EVERYTHING)
         call = next(c for c in http.calls if c[0] == "POST" and c[1] == "https://oc/v1/chat/completions" and c[3]["model"] == "glm-5.3-flash")
         self.assertEqual(call[3]["model"], "glm-5.3-flash")  # the upstream id, no route prefix
         self.assertEqual(call[3]["max_tokens"], 16)
@@ -246,7 +254,7 @@ class Build(unittest.TestCase):
             {"id": "gemini-4-argon", "api": {"generate-content": {"base_url": "https://oc/google/v1beta"}}},
         ]}})
         http = Http(lists=lists)
-        cat, _ = self.run_build(http)
+        cat, _ = self.run_build(http, probe_ids=EVERYTHING)
         posts = {c[1]: c for c in http.calls if c[0] == "POST" and c[1].startswith("https://oc/")}
         self.assertEqual(sorted(posts), [
             "https://oc/anthropic/v1/messages", "https://oc/google/v1beta/models/gemini-4-argon:generateContent",
@@ -270,7 +278,7 @@ class Build(unittest.TestCase):
     def test_a_probe_retries_once_at_the_providers_minimum(self):
         url = "https://oc/v1/chat/completions"
         http = Http(answers={(url, "glm-5.3-flash"): [(400, '{"error":{"message":"Expected a value >= 32, but got 16"}}'), (200, {})]})
-        cat, _ = self.run_build(http)
+        cat, _ = self.run_build(http, probe_ids=EVERYTHING)
         calls = [c for c in http.calls if c[0] == "POST" and c[1] == url and c[3]["model"] == "glm-5.3-flash"]
         self.assertEqual([c[3]["max_tokens"] for c in calls], [16, 32])
         status = {m["id"]: m["metadata"]["status"] for p in cat["providers"].values() for m in p["models"]}
@@ -280,7 +288,7 @@ class Build(unittest.TestCase):
         url = "https://oc/v1/chat/completions"
         for message in ("Expected a value >= 4096, but got 16", "Expected a value >= 8, but got 16", "bad request"):
             http = Http(answers={(url, "glm-5.3-flash"): (400, json.dumps({"error": {"message": message}}))})
-            self.run_build(http)
+            self.run_build(http, probe_ids=EVERYTHING)
             calls = [c for c in http.calls if c[0] == "POST" and c[1] == url and c[3]["model"] == "glm-5.3-flash"]
             self.assertEqual(len(calls), 1, message)
 
@@ -289,24 +297,185 @@ class Build(unittest.TestCase):
         for secret in ("k-vibe", "k-study", "k-general", "k-study-general", "k-oc", "k-or", "SECRET-RESPONSE"):
             self.assertNotIn(secret, text)
 
-    def test_cache_skips_fresh_models_and_reprobes_stale_errored_and_new(self):
-        first, _ = self.run_build(Http())
-        # fresh: nothing probed
-        http = Http()
-        _, stats = self.run_build(http, first, now=NOW + datetime.timedelta(hours=1))
-        self.assertEqual(http.probed(), [])
-        # a day later: everything probeable again
-        http = Http()
-        self.run_build(http, first, now=NOW + datetime.timedelta(hours=25))
-        self.assertIn("glm-5.3-flash", http.probed_ids())
-        # an errored model is retried at once, a new model is probed at once
-        first["providers"]["opencode-go"]["models"][0]["metadata"]["status"] = "error"
-        lists = dict(LISTS, **{"http://local/v1/models": {"data": [{"id": "qwen3:32b"}, {"id": "new-one"}]}})
+    def prom_http(self, ok=(), denied=(), lists=None):
         http = Http(lists=lists)
-        self.run_build(http, first, now=NOW + datetime.timedelta(hours=1))
-        self.assertIn("new-one", http.probed_ids())
-        self.assertIn("deepseek-v4-pro", http.probed_ids())
-        self.assertNotIn("qwen3:32b", http.probed_ids())
+        plain = http.__call__
+
+        def call(method, url, headers, body):
+            if url.startswith("http://prom/api/v1/query"):
+                http.calls.append((method, url, headers, body))
+                if "total_requests" in url or "total_requests" in urllib.parse.unquote(url):
+                    rows = [{"metric": {"model_id": m, "status_code": "200"}, "value": [0, "3"]} for m in ok]
+                    rows += [{"metric": {"model_id": "x/y", "status_code": "500"}, "value": [0, "9"]}]
+                else:
+                    rows = [{"metric": {"model_id": m, "exception_status": "403"}, "value": [0, "2"]} for m in denied]
+                return 200, {"data": {"result": rows}}
+            return plain(method, url, headers, body)
+        call.probed, call.probed_ids, call.calls = http.probed, http.probed_ids, http.calls
+        return call
+
+    def test_real_traffic_decides_usable_and_blocked_and_costs_no_request(self):
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        http = self.prom_http(ok=["free/openrouter/a/b:free", "opencode-go/glm-5.3-flash"], denied=["opencode-go/deepseek-v4-pro"])
+        cat, _ = sync.build(env, http, {}, NOW, rules={"probe": {"daily_cap": {"openrouter": 5}}})
+        meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+        self.assertEqual((meta["openrouter/a/b:free"]["status"], meta["openrouter/a/b:free"]["verified_by"]), ("usable", "traffic"))
+        self.assertEqual((meta["opencode-go/glm-5.3-flash"]["status"], meta["opencode-go/glm-5.3-flash"]["verified_by"]), ("usable", "traffic"))
+        self.assertEqual((meta["opencode-go/deepseek-v4-pro"]["status"], meta["opencode-go/deepseek-v4-pro"]["verified_by"]), ("blocked", "traffic"))
+        self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["failing_probes"], 2)
+        self.assertNotIn("glm-5.3-flash", http.probed_ids())
+        self.assertNotIn("deepseek-v4-pro", http.probed_ids())
+        # a model refused on real traffic is not deployed
+        self.assertFalse(sync.candidate(meta["opencode-go/deepseek-v4-pro"], "chat", "opencode-go", set()))
+
+    def test_no_traffic_source_means_no_evidence_not_an_error(self):
+        self.assertEqual(sync.traffic_evidence({}, Http()), {})
+        down = Http(lists={})
+        self.assertEqual(sync.traffic_evidence({"TRAFFIC_PROMETHEUS_URL": "http://prom"}, down, lambda line: None), {})
+
+    def test_a_trusted_listing_decides_without_a_request_and_a_listing_that_says_unavailable_blocks(self):
+        lists = {"https://naga/v1/models": {"data": [
+            {"id": "a:free", "kinds": ["chat"], "availability": {"status": "served"}},
+            {"id": "b:free", "kinds": ["chat"], "availability": {"status": "out_of_stock"}},
+            {"id": "c:free", "kinds": ["image"], "availability": {"status": "served"}},
+            {"id": "d:free", "kinds": ["chat"], "availability": {"status": "served"}, "deprecates_at": 1000},
+            {"id": "paid", "kinds": ["chat"], "availability": {"status": "served"}}]}}
+        env = {"NAGA_API_BASE": "https://naga/v1", "NAGA_API_KEY": "k"}
+        rules = {"probe": {"trust_listing": ["naga"]}}
+        http = Http(lists=lists)
+        cat, stats = sync.build(env, http, {}, NOW, rules=rules)
+        self.assertEqual(http.probed(), [])
+        self.assertEqual(stats["probed"], 0)
+        meta = {m["id"].split("/", 1)[1]: m["metadata"] for m in cat["providers"]["naga"]["models"]}
+        self.assertEqual((meta["a:free"]["status"], meta["a:free"]["verified_by"]), ("usable", "listing"))
+        self.assertEqual(meta["b:free"]["status"], "unknown")
+        self.assertIn("out_of_stock", meta["b:free"]["reason"])
+        self.assertEqual(meta["c:free"]["status"], "not-chat")
+        self.assertIn("deprecated", meta["d:free"]["reason"])
+        self.assertEqual(meta["paid"]["status"], "unprobed")
+        self.assertFalse(sync.candidate(meta["b:free"], "chat", "naga", set()))
+        self.assertTrue(sync.candidate(meta["a:free"], "chat", "naga", set()))
+
+    DEV = {
+        "kilo": {"models": {
+            "v/free-one": {"modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 0, "output": 0}},
+            "v/paid-one": {"modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 1, "output": 2}},
+            "v/img": {"modalities": {"input": ["text"], "output": ["image"]}, "cost": {"input": 0, "output": 0}},
+            "v/old": {"status": "deprecated", "modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 0, "output": 0}},
+            "v/priced-in-list": {"modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 0, "output": 0}}}},
+        "inferbase": {"models": {"m": {"modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 0.5, "output": 2}}}},
+        "zai": {"models": {"glm-5": {"modalities": {"input": ["text"], "output": ["text"]}, "cost": {"input": 0, "output": 0}}}},
+    }
+    RULES_DEV = {"reference": {"kilo": "kilo", "inferbase": "inferbase", "zai": "zai"}, "free_all": ["inferbase"]}
+
+    def test_models_dev_adds_free_chat_and_deprecation_to_a_listing_and_fails_closed(self):
+        http = Http(lists={"https://dev/api.json": self.DEV})
+        env = {"MODELS_DEV_URL": "https://dev/api.json"}
+        ref = sync.reference_index(self.RULES_DEV, env, http)
+        self.assertEqual(ref["kilo"]["v/free-one"], {"chat": True, "deprecated": False, "cost": (0.0, 0.0)})
+        self.assertEqual(ref["kilo"]["v/paid-one"]["cost"], (1e-6, 2e-6))
+        self.assertIs(ref["kilo"]["v/img"]["chat"], False)
+        self.assertIs(ref["kilo"]["v/old"]["deprecated"], True)
+        entry = next(e for e in sync.ROUTES if e["route"] == "kilo")
+        items = [{"id": "v/free-one"}, {"id": "v/paid-one"}, {"id": "v/img"}, {"id": "v/old"}, {"id": "v/unknown"},
+                 {"id": "v/priced-in-list", "pricing": {"prompt": "0.000001", "completion": "0"}}]
+        lists = {"https://kilo/v1/models": {"data": items}}
+        found = {m["id"]: m for m in sync.list_models(entry, {"KILO_API_BASE": "https://kilo/v1"}, Http(lists=lists), self.RULES_DEV, ref["kilo"])}
+        self.assertEqual({k: v["free"] for k, v in found.items()},
+                         {"v/free-one": True, "v/paid-one": False, "v/img": True, "v/old": True, "v/unknown": False, "v/priced-in-list": False})
+        self.assertEqual(found["v/free-one"]["free_source"], "models.dev")
+        self.assertEqual(found["v/img"]["chat"], False)
+        self.assertIn("deprecated", found["v/old"]["unavailable"])
+        # no catalogue at all: the listing alone decides, and nothing becomes free
+        self.assertEqual(sync.reference_index(self.RULES_DEV, env, Http(lists={})), {})
+        self.assertEqual(sync.reference_index({}, env, http), {})
+        found = sync.list_models(entry, {"KILO_API_BASE": "https://kilo/v1"}, Http(lists=lists), self.RULES_DEV, None)
+        self.assertFalse(any(m["free"] for m in found))
+
+    def test_inferbase_takes_its_price_from_models_dev_and_zai_stays_gated(self):
+        ref = sync.reference_index(self.RULES_DEV, {"MODELS_DEV_URL": "https://dev/api.json"}, Http(lists={"https://dev/api.json": self.DEV}))
+        entry = next(e for e in sync.ROUTES if e["route"] == "inferbase")
+        found = {m["id"]: m for m in sync.list_models(entry, {"INFERBASE_API_BASE": "https://ib/v1"},
+                 Http(lists={"https://ib/v1/models": {"data": [{"id": "m"}, {"id": "n"}]}}), self.RULES_DEV, ref["inferbase"])}
+        self.assertEqual((found["m"]["free"], found["m"]["price"]), (True, {"input": 5e-07, "output": 2e-06}))
+        self.assertEqual(found["n"]["free"], False)  # no price anywhere: not deployed
+        # a zero cost in the catalogue does not free a hand-approved route's id
+        entry = next(e for e in sync.ROUTES if e["route"] == "zai")
+        found = {m["id"]: m["free"] for m in sync.list_models(entry, {"ZAI_API_BASE": "https://z/v1"},
+                 Http(lists={"https://z/v1/models": {"data": [{"id": "glm-5"}]}}), dict(self.RULES_DEV, free_ids={"zai": []}), ref["zai"])}
+        self.assertEqual(found, {"glm-5": False})
+
+    def test_typhoon_and_together_answer_a_bare_list(self):
+        for route in ("typhoon", "together"):
+            entry = next(e for e in sync.ROUTES if e["route"] == route)
+            http = Http(lists={f"https://{route}/v1/models": [{"id": "m"}]})
+            found = sync.list_models(entry, {entry["base_env"]: f"https://{route}/v1"}, http, {})
+            self.assertEqual([m["id"] for m in found], ["m"], route)
+
+    def test_cohere_lists_at_its_own_models_endpoint_with_the_bearer_key(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "cohere")
+        lists = {"https://api.cohere.com/v1/models?page_size=1000": {"models": [
+            {"name": "command-a", "endpoints": ["chat"], "context_length": 256000}, {"name": "embed-v4", "endpoints": ["embed"]}]}}
+        http = Http(lists=lists)
+        found = {m["id"]: m for m in sync.list_models(entry, {"COHERE_API_KEY": "ck"}, http, {})}
+        self.assertEqual((found["command-a"]["chat"], found["embed-v4"]["chat"]), (None, False))
+        self.assertEqual(http.calls[-1][2], {"Authorization": "Bearer ck"})
+
+    def test_watsonx_exchanges_the_key_for_an_iam_token_then_lists_its_specs(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "watsonx")
+        env = {"WATSONX_API_BASE": "https://w.ml", "WATSONX_API_KEY": "the key/&", "WATSONX_PROJECT_ID": "p"}
+        calls = []
+
+        def http(method, url, headers, body):
+            calls.append((method, url, headers, body))
+            if url == sync.IAM_URL:
+                return 200, {"access_token": "tok"}
+            return 200, {"resources": [{"model_id": "ibm/granite", "functions": [{"id": "text_chat"}]},
+                                       {"model_id": "ibm/slate", "functions": [{"id": "embedding"}]}]}
+        found = {m["id"]: m for m in sync.list_models(entry, env, http, {})}
+        self.assertEqual((found["ibm/granite"]["chat"], found["ibm/slate"]["chat"]), (None, False))
+        method, url, headers, body = calls[0]
+        self.assertEqual((method, url, headers["Content-Type"]), ("POST", sync.IAM_URL, "application/x-www-form-urlencoded"))
+        self.assertIn("grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey", body)
+        self.assertIn("apikey=the%20key%2F%26", body)
+        self.assertEqual(calls[1][1], "https://w.ml" + sync.WATSONX_SPECS)
+        self.assertEqual(calls[1][2], {"Authorization": "Bearer tok"})
+        # a failed exchange is a route error, never an empty list
+        with self.assertRaisesRegex(RuntimeError, "answered 401"):
+            sync.list_models(entry, env, lambda *a: (401, "no"), {})
+
+    def test_listing_verdicts_per_provider(self):
+        v = sync.listing_verdict
+        self.assertEqual(v("routeway", {"available": False, "endpoints": ["/v1/chat/completions"]}), (True, "the listing says it is not available"))
+        self.assertEqual(v("routeway", {"available": True, "endpoints": ["/v1/images/generations"]}), (False, ""))
+        self.assertEqual(v("requesty", {"api": "embeddings", "retires": 4102444800}), (False, ""))
+        self.assertEqual(v("requesty", {"api": "chat", "retires": 1000}), (True, "the listing says it is retired"))
+        self.assertEqual(v("kilo", {"architecture": {"output_modalities": ["image"]}, "retires_on": "2999-01-01"}), (False, ""))
+        self.assertEqual(v("kilo", {"expiration_date": "2020-01-01"}), (None, "the listing says it is retired"))
+        self.assertEqual(v("groq", {}), (None, ""))
+
+    def test_the_sync_sends_no_chat_request_by_itself(self):
+        lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(40)]}})
+        for hours in (0, 1, 25):
+            http = Http(lists=lists)
+            cat, stats = self.run_build(http, now=NOW + datetime.timedelta(hours=hours))
+            self.assertEqual((stats["probed"], http.probed()), (0, []))
+        # a person can ask for one model
+        http = Http(lists=lists)
+        cat, stats = self.run_build(http, probe_ids=["opencode-go/glm-5.3-flash"])
+        self.assertEqual(http.probed_ids(), ["glm-5.3-flash"])
+        # the command line flag
+        with tempfile.TemporaryDirectory() as tmp:
+            http = Http(lists=lists)
+            sync.main(["--output", os.path.join(tmp, "c.json"), "--probe", "local/qwen3:32b"], ENV, http, NOW)
+            self.assertEqual(http.probed_ids(), ["qwen3:32b"])
+
+    def test_unorouter_free_ids_are_decided_by_the_listing_with_no_request(self):
+        lists = {"https://uno/v1/models": {"data": [{"id": f"m{i}:free"} for i in range(20)]}}
+        http = Http(lists=lists)
+        cat, stats = sync.build({"UNOROUTER_API_BASE": "https://uno/v1"}, http, {}, NOW, rules=sync.load_rules())
+        self.assertEqual((stats["probed"], http.probed()), (0, []))
+        self.assertEqual(cat["providers"]["unorouter"]["metadata"]["by_status"], {"usable": 20})
 
     def test_a_vanished_model_is_kept_once_and_dropped_on_the_second_run(self):
         first, _ = self.run_build(Http())
@@ -331,7 +500,7 @@ class Build(unittest.TestCase):
     def test_failing_probes_count_consecutive_blocked_probes(self):
         url = "https://oc/v1/chat/completions"
         blocked = (403, '{"error":{"message":"hosted outside Europe"}}')
-        first, _ = self.run_build(Http(answers={(url, "glm-5.3-flash"): blocked}))
+        first, _ = self.run_build(Http(answers={(url, "glm-5.3-flash"): blocked}), probe_ids=EVERYTHING)
         meta = {m["id"]: m["metadata"] for p in first["providers"].values() for m in p["models"]}
         self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
         self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["failing_probes"], 0)
@@ -339,36 +508,20 @@ class Build(unittest.TestCase):
         fresh, _ = self.run_build(Http(), first, now=NOW + datetime.timedelta(hours=1))
         meta = {m["id"]: m["metadata"] for p in fresh["providers"].values() for m in p["models"]}
         self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
-        # a second blocked probe a day later
-        again, _ = self.run_build(Http(answers={(url, "glm-5.3-flash"): blocked}), first, now=NOW + datetime.timedelta(hours=25))
+        # a blocked answer is not asked again on a timer: only real traffic or the listing changes it
+        http = Http()
+        again, _ = self.run_build(http, first, now=NOW + datetime.timedelta(hours=25))
         meta = {m["id"]: m["metadata"] for p in again["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 2)
-        # a usable answer clears it
-        ok, _ = self.run_build(Http(), again, now=NOW + datetime.timedelta(hours=50))
-        meta = {m["id"]: m["metadata"] for p in ok["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 0)
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["status"], "blocked")
+        self.assertEqual(http.probed(), [])
 
-    def test_probe_limits_and_corrupt_cache(self):
-        http = Http()
-        cat, stats = self.run_build(http, max_probes=3)
-        self.assertEqual(stats["probed"], 3)
-        self.assertIn("pending", {m["metadata"]["status"] for p in cat["providers"].values() for m in p["models"]})
-        http = Http()
-        sync.build(ENV, http, {}, NOW, route_limits={"opencode-go": 1}, max_probes=50)
-        self.assertEqual(len([m for m in http.probed() if m[0] == "https://oc/v1/chat/completions"]), 1)
-        old = {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "usable", "probed_at": "garbage"}}]}}}
-        http = Http()
-        self.run_build(http, old)
-        self.assertIn("qwen3:32b", http.probed_ids())
-        http = Http()
-        self.run_build(http, {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "usable"}}]}}})
-        self.assertIn("qwen3:32b", http.probed_ids())
-
-    def test_openrouter_free_probes_are_capped_per_run(self):
-        lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(40)]}})
-        http = Http(lists=lists)
-        self.run_build(http)
-        self.assertEqual(len([m for m in http.probed() if m[0] == "https://or/v1/chat/completions"]), 30)
+    def test_a_recorded_answer_with_a_corrupt_stamp_is_kept_and_one_with_no_status_is_decided_from_the_listing(self):
+        old = {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "blocked", "probed_at": "garbage"}}]}}}
+        cat, _ = self.run_build(Http(), old)
+        self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "blocked")
+        cat, _ = self.run_build(Http(), {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {}}]}}})
+        self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["verified_by"], "listing")
 
     def test_a_route_that_cannot_be_listed_keeps_its_last_entries(self):
         first, _ = self.run_build(Http())
@@ -385,7 +538,7 @@ class Build(unittest.TestCase):
 
     def test_opencode_probe_carries_a_session_header_and_hints_are_flagged(self):
         http = Http()
-        cat, _ = self.run_build(http, route_limits={})
+        cat, _ = self.run_build(http, probe_ids=EVERYTHING)
         call = next(c for c in http.calls if c[0] == "POST" and c[1] == "https://oc/v1/chat/completions")
         self.assertEqual(call[2]["x-opencode-session"], "litellm-catalog-probe")
         hinted = {m["id"]: m["metadata"].get("needs_org_setting_hint") for m in cat["providers"]["opencode-go"]["models"]}
@@ -407,16 +560,6 @@ class Build(unittest.TestCase):
             "opencode-go/zai-glm-5.3", "vibe-api/glm-5.3", "vibe-study-api/glm-5.3", "vibe-study/glm-5.3", "vibe/glm-5.3",
         ]])
         self.assertEqual(self.run_build(Http())[0]["possible_duplicates"], [])
-
-    def test_age(self):
-        self.assertEqual(sync.parse_age("2d"), datetime.timedelta(days=2))
-        self.assertEqual(sync.parse_age("6h"), datetime.timedelta(hours=6))
-        with self.assertRaises(ValueError):
-            sync.parse_age("soon")
-
-
-class Grace(unittest.TestCase):
-    """A model that was usable keeps its place through a transient state, and through one absence."""
 
     def meta(self, **kw):
         return dict({"status": "usable", "was_usable": True}, **kw)
@@ -454,17 +597,19 @@ class Grace(unittest.TestCase):
         meta = {m["id"]: m["metadata"] for p in fresh["providers"].values() for m in p["models"]}
         self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
 
-    def test_build_clears_the_mark_after_two_blocked_probes(self):
-        url = "https://oc/v1/chat/completions"
-        blocked = (403, '{"error":{"message":"hosted outside Europe"}}')
+    def test_build_clears_the_mark_when_real_traffic_is_refused(self):
         first, _ = sync.build(ENV, Http(), {}, NOW)
         meta = {m["id"]: m["metadata"] for p in first["providers"].values() for m in p["models"]}
         self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
-        second, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), first, NOW + datetime.timedelta(hours=25))
+        # a transient state keeps the place (one bad probe, or a listing that hiccups)
+        meta["opencode-go/glm-5.3-flash"]["status"] = "error"
+        second, _ = sync.build(ENV, Http(), first, NOW + datetime.timedelta(hours=25))
         meta = {m["id"]: m["metadata"] for p in second["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
-        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)  # one bad probe keeps its place
-        third, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), second, NOW + datetime.timedelta(hours=50))
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
+        # real traffic refused with 403: blocked, and the mark is gone
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        helper = Build()
+        third, _ = sync.build(env, helper.prom_http(denied=["opencode-go/glm-5.3-flash"]), second, NOW + datetime.timedelta(hours=50))
         meta = {m["id"]: m["metadata"] for p in third["providers"].values() for m in p["models"]}
         self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 2)
         self.assertNotIn("was_usable", meta["opencode-go/glm-5.3-flash"])
@@ -591,8 +736,13 @@ class Main(unittest.TestCase):
             gh = Gh({"model-catalog.json": json.dumps(cat)})
             sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=1))
             self.assertEqual([p for p, _ in gh.puts if p == "model-catalog.json"], [])
-            gh = Gh({"model-catalog.json": json.dumps(cat)})
+            gh = Gh({"model-catalog.json": json.dumps(cat)}, )
+            # a day later nothing is re-asked, so nothing changed; a new listed model is a change
             sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=25))
+            self.assertEqual([p for p, _ in gh.puts if p == "model-catalog.json"], [])
+            gh = Gh({"model-catalog.json": json.dumps(cat)})
+            gh.lists["https://oc/v1/models"] = {"data": [{"id": "glm-5.3-flash"}, {"id": "deepseek-v4-pro"}, {"id": "new-model"}]}
+            sync.main(["--output", out], env, gh, NOW + datetime.timedelta(hours=26))
             puts = [b for p, b in gh.puts if p == "model-catalog.json"]
             self.assertEqual(len(puts), 1)
             self.assertEqual(puts[0]["sha"], "sha-model-catalog.json")
@@ -814,6 +964,39 @@ class FreeSignals(unittest.TestCase):
             free, _ = self.listed(route, [{"id": "m:free"}, {"id": "m"}])
             self.assertEqual(free, {"m:free": True, "m": False}, route)
 
+    def test_kilo_zero_price_is_a_candidate_but_the_router_sentinel_and_a_priced_id_are_not(self):
+        z = {"prompt": "0", "completion": "0"}
+        free, _ = self.listed("kilo", [{"id": "zero", "pricing": z}, {"id": "auto", "pricing": {"prompt": "-1", "completion": "-1"}},
+                                       {"id": "half", "pricing": {"prompt": "0", "completion": "0.1"}}, {"id": "none"}])
+        self.assertEqual(free, {"zero": True, "auto": False, "half": False, "none": False})
+
+    def test_a_free_all_route_makes_every_listed_chat_model_a_candidate_and_the_probe_decides(self):
+        rules = {"free_all": ["groq"], "free_by": {"groq": "plan"}}
+        free, _ = self.listed("groq", [{"id": "llama"}, {"id": "whisper-large-v4"}, {"id": "orpheus-v1-english"}, {"id": "x-embed"}], rules)
+        self.assertEqual(free, {"llama": True, "whisper-large-v4": True, "orpheus-v1-english": True, "x-embed": True})
+        env = {"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}
+        lists = {"https://groq/v1/models": {"data": [{"id": "llama"}, {"id": "whisper-large-v4"}]}}
+        http = Http(lists=lists, answers={("https://groq/v1/chat/completions", "llama"): (403, '{"error":{"message":"Model access blocked"}}')})
+        cat, _ = sync.build(env, http, {}, NOW, rules=rules)
+        status = {m["id"]: m["metadata"]["status"] for m in cat["providers"]["groq"]["models"]}
+        self.assertEqual(status, {"groq/llama": "usable", "groq/whisper-large-v4": "not-chat"})
+        self.assertEqual(http.probed_ids(), [])
+        cat, _ = sync.build(env, http, {}, NOW, probe_ids=["groq/llama"], rules=rules)  # a manual probe that is refused
+        self.assertEqual({m["id"]: m["metadata"]["status"] for m in cat["providers"]["groq"]["models"]}["groq/llama"], "blocked")
+
+    def test_free_all_is_for_static_routes_only_and_a_price_route_keeps_its_approval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "r.json")
+            for bad in (["nope"], ["kilo"], "groq"):
+                with open(path, "w") as out:
+                    json.dump({"free_all": bad}, out)
+                with self.assertRaises(RuntimeError):
+                    sync.load_rules(path)
+        # Z.ai is not in free_all: a probe that is answered would not show the id is free
+        free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
+        self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
+        self.assertEqual(sync.load_rules()["free_all"], ["groq", "inferbase"])
+
     def test_nvidia_lists_only_free_models(self):
         free, _ = self.listed("nvidia", [{"id": "nvidia/a"}, {"id": "nvidia/embed-x"}])
         self.assertEqual(free, {"nvidia/a": True, "nvidia/embed-x": True})
@@ -857,7 +1040,7 @@ class FreeSignals(unittest.TestCase):
             self.assertTrue(next(e for e in sync.ROUTES if e["route"] == route)["anonymous"])
         env = {"KILO_API_BASE": "https://kilo/v1"}
         http = Http(lists={"https://kilo/v1/models": {"data": [{"id": "a:free", "isFree": True}, {"id": "paid"}]}})
-        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, probe_ids=EVERYTHING, rules={})
         self.assertEqual(stats["route_errors"], [])
         # Listed and probed, no Authorization anywhere; the paid id is not probed.
         requests = [c for c in http.calls if c[1].startswith("https://kilo/v1")]
@@ -950,7 +1133,7 @@ class FreeSignals(unittest.TestCase):
     def test_unorouter_is_anonymous_and_a_keyed_second_wave_route_is_skipped_without_its_key(self):
         env = {"UNOROUTER_API_BASE": "https://uno/v1"}
         http = Http(lists={"https://uno/v1/models": {"data": [{"id": "a:free"}, {"id": "paid"}]}})
-        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, probe_ids=EVERYTHING, rules={})
         self.assertEqual(stats["route_errors"], [])
         self.assertEqual(http.probed_ids(), ["a:free"])
         for call in http.calls:
@@ -1083,12 +1266,13 @@ class PlanFreeRoutes(unittest.TestCase):
         self.assertEqual(self.listed("typhoon", [{"id": "x"}], {"free_ids": {"typhoon": ["gone"]}}), {"x": False})
 
     def test_a_priced_groq_id_is_probed_and_deployed_once_usable(self):
-        rules = dict(sync.load_rules(), free_ids={"groq": ["approved"]})
+        rules = dict(sync.load_rules(), free_ids={"groq": ["approved"]}, free_all=[])
         http = Http(lists={"https://groq/v1/models": {"data": self.PRICED}})
         cat, _ = sync.build({"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}, http, {}, NOW, rules=rules)
         meta = {m["id"]: m["metadata"] for m in cat["providers"]["groq"]["models"]}
         self.assertEqual((meta["groq/approved"]["free"], meta["groq/approved"]["status"]), (True, "usable"))
         self.assertEqual(meta["groq/other"]["status"], "unprobed")
+        self.assertIn("free_ids", meta["groq/other"]["reason"])
         self.assertTrue(any("approved" in d["model_info"]["id"] for d in sync.plan_groups(cat, rules)))
 
 
@@ -1145,16 +1329,17 @@ class CandidatesAreChatModels(unittest.TestCase):
 
 class InjectedApprovedIds(unittest.TestCase):
     RULES = dict(sync.load_rules(), free_ids={"zai": ["glm-4.7-flash"]})
+    # Z.ai's list does not carry the flash ids, so the listing has nothing to say about it: it needs one probe, within the cap.
 
     def build(self):
         http = Http(lists={"https://zai/v1/models": {"data": [{"id": "glm-5"}]}})
-        return sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW, rules=self.RULES, max_probes=0)
+        return sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW, rules=self.RULES)
 
     def deployed(self, cat):
         return [d["model_info"]["id"] for d in sync.plan_groups(cat, self.RULES) if "glm-4.7-flash" in d["model_info"]["id"]]
 
-    def test_an_unlisted_id_is_not_deployed_until_a_probe_found_it_usable(self):
-        cat, _ = self.build()  # no probe ran: pending
+    def test_an_unlisted_id_is_not_deployed_until_traffic_or_a_probe_found_it_usable(self):
+        cat, _ = self.build()  # nothing asked: pending
         meta = next(m["metadata"] for m in cat["providers"]["zai"]["models"] if m["id"].endswith("flash"))
         self.assertEqual((meta["free"], meta["status"]), (True, "pending"))
         self.assertEqual(self.deployed(cat), [])
@@ -1166,8 +1351,9 @@ class InjectedApprovedIds(unittest.TestCase):
 
     def test_a_probed_usable_injected_id_deploys(self):
         http = Http(lists={"https://zai/v1/models": {"data": [{"id": "glm-5"}]}})
-        cat, _ = sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW, rules=self.RULES)
-        self.assertIn("glm-4.7-flash", "".join(http.probed_ids()))
+        cat, _ = sync.build({"ZAI_API_BASE": "https://zai/v1", "ZAI_API_KEY": "k"}, http, {}, NOW,
+                            probe_ids=["zai/glm-4.7-flash"], rules=self.RULES)
+        self.assertEqual(http.probed_ids(), ["glm-4.7-flash"])
         self.assertTrue(self.deployed(cat))
 
 
@@ -1197,4 +1383,7 @@ class SettingsEverywhere(unittest.TestCase):
     def test_cohere_has_its_own_list_base_name(self):
         entry = next(e for e in sync.ROUTES if e["route"] == "cohere")
         self.assertEqual(entry["base_env"], "COHERE_LIST_BASE")
-        self.assertEqual(sync.missing_setting(entry, {}), "COHERE_LIST_BASE is not set; write the Vault field cohere_api_base at secret/data/platform/litellm")
+        # Cohere lists at its own API by default: no Vault field is needed
+        self.assertEqual(sync.missing_setting(entry, {}), "")
+        self.assertEqual(sync.route_base(entry, {}), "https://api.cohere.com/v1")
+        self.assertEqual(sync.route_base(entry, {"COHERE_LIST_BASE": "https://x/v1"}), "https://x/v1")

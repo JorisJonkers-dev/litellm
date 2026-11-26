@@ -194,7 +194,7 @@ applications:
           # The same Vault path as the proxy: the provider keys list and probe each provider's
           # models, catalog_publish_token writes the catalogue repository, and catalog_pr_token
           # opens the pull request with the generated routing in this repository. local_llm_api_key
-          # lists and probes the GPU workstation's models through its keyed gate.
+          # lists the GPU workstation's models through its keyed gate.
           - path: secret/data/platform/litellm
             keys:
               - vibe_api_key

@@ -573,7 +573,7 @@ class Routes(unittest.TestCase):
         self.assertEqual(meta["vibe/mistral-ocr-latest"]["status"], "not-chat")
 
     def test_the_sync_plans_the_whole_catalogue_without_a_proxy(self):
-        cat, _ = sync.build(ENV, Http(), {}, NOW)
+        cat, _ = sync.build(ENV, Http(), {}, NOW, rules=dict(RULES, probe={"daily_cap": {"openrouter": 30}}))
         specs = per_route_plan(cat, RULES)
         names = {s["name"] for s in specs}
         # Gemini is served only by Google's free tier, so it has only its public group.
@@ -655,7 +655,6 @@ class FreeRoutesWave1(unittest.TestCase):
     def test_every_route_has_limits_cooldowns_and_the_real_rules_agree(self):
         rules = sync.load_rules()
         for route in self.ROUTES:
-            self.assertIn(route, sync.DEFAULT_ROUTE_LIMITS)
             self.assertIn(route, rules["cooldowns"])
         # Free routes are outside the tiers, so no rule makes one a fallback of a paid group.
         tiered = {route for tier in rules["tiers"] for route, _ in tier}
@@ -673,15 +672,13 @@ class FreeRoutesWave1(unittest.TestCase):
         for route in ("cloudflare", "inferbase", "axforge"):
             self.assertEqual(free_ids[route], [], route)
 
-    def test_probe_limits_stay_under_half_of_each_daily_cap_at_an_hourly_sync(self):
+    def test_the_sync_sends_no_chat_request_and_maps_routes_to_models_dev(self):
         project = (ROOT / "deploy" / "litellm.project.yml").read_text()
-        self.assertIn('schedule: "17 * * * *"', project)  # hourly: 24 runs a day
-        daily_caps = {"groq": 1000, "requesty": 200, "naga": 100, "routeway": 200, "inferbase": 100}
-        for route, cap in daily_caps.items():
-            self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
-        # OVH allows 2 a minute per IP per model, and its probes are serial: never more than 2 a run.
-        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["ovh"], 2)
-        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["axforge"], 0)
+        self.assertIn('schedule: "17 * * * *"', project)
+        reference = sync.load_rules()["reference"]
+        for route in ("kilo", "groq", "zai", "ovh", "requesty", "unorouter", "nvidia"):
+            self.assertIn(route, reference, route)
+        self.assertNotIn("openrouter", reference)  # never as new work, and never a source of "free"
 
     def test_inferbase_deploys_at_its_real_price_under_its_daily_budget(self):
         specs = self.plan(("inferbase", "m", "usable", {"free": True, "price": {"input": 5e-7, "output": 2e-6}}))
@@ -766,7 +763,6 @@ class FreeRoutesWave2(unittest.TestCase):
     def test_every_route_has_a_limit_a_cooldown_a_candidate_list_where_static_and_stays_out_of_the_tiers(self):
         rules = sync.load_rules()
         for route in self.ROUTES:
-            self.assertIn(route, sync.DEFAULT_ROUTE_LIMITS)
             self.assertIn(route, rules["cooldowns"])
             kind = entry(route)["kind"]
             self.assertEqual(kind in sync.STATIC_KINDS, route in rules["free_ids"], route)
@@ -784,17 +780,6 @@ class FreeRoutesWave2(unittest.TestCase):
         for route in ("bazaarlink", "cohere", "plugsky", "poe", "watsonx", "sealion", "gonka", "longcat"):
             self.assertEqual(free_ids[route], [], route)
 
-    def test_probe_limits_stay_under_half_of_each_daily_cap_at_an_hourly_sync(self):
-        daily = {"bazaarlink": 60, "airforce": 1000, "plugsky": 500}
-        for route, cap in daily.items():
-            self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS[route] * 24, cap / 2, route)
-        # No cap is published for Electron Hub and Poe's points are unknown: keep the worst case to 48 and 24 a day.
-        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["electronhub"] * 24, 48)
-        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["poe"] * 24, 24)
-        # Cohere's cap is 1,000 calls a month: one probe per run is 720 a month, so it probes nothing.
-        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS["cohere"], 0)
-        self.assertLessEqual(sync.DEFAULT_ROUTE_LIMITS["airforce"], 1)  # 1 request a minute
-
     def test_no_base_is_invented_and_a_setting_comes_from_its_vault_field(self):
         for name in ("litellm", "litellm-catalog"):
             text = (ROOT / "deploy" / "env" / name / "base.env").read_text()
@@ -806,16 +791,16 @@ class FreeRoutesWave2(unittest.TestCase):
                     self.assertFalse([l for l in text.splitlines() if l.startswith(("COHERE_API_BASE", "COHERE_LIST_BASE"))])  # LiteLLM would read COHERE_API_BASE
                     continue
                 self.assertIn(f"{env_name}=${{secret:secret/data/platform/litellm#{field}}}\n", text)
+        # BazaarLink's base defaults to its documented one; a placeholder is no value
         route = entry("bazaarlink")
-        self.assertEqual(sync.route_base(route, {}), "")
-        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "")
-        with self.assertRaisesRegex(RuntimeError, "Vault field bazaarlink_api_base"):
-            sync.list_models(route, {"BAZAARLINK_API_KEY": "k"}, Http({}), {})
+        self.assertEqual(sync.route_base(route, {}), "https://api.bazaarlink.ai/v1")
+        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "https://api.bazaarlink.ai/v1")
+        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "https://b/v1/"}), "https://b/v1")
+        with self.assertRaisesRegex(RuntimeError, "Vault field watsonx_project_id"):
+            sync.list_models(entry("watsonx"), {"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, Http({}), {})
 
     def test_a_route_with_a_key_and_no_setting_is_skipped_with_one_error_naming_the_field(self):
-        cases = {"bazaarlink": ({"BAZAARLINK_API_KEY": "k"}, "bazaarlink_api_base"),
-                 "cohere": ({"COHERE_API_KEY": "k"}, "cohere_api_base"),
-                 "watsonx": ({"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, "watsonx_project_id")}
+        cases = {"watsonx": ({"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, "watsonx_project_id")}
         for route, (env, field) in cases.items():
             cat, stats = sync.build(env, Http({}), {}, NOW, rules={})
             errors = [e for e in stats["route_errors"] if e.startswith(route)]
