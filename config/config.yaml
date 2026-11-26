@@ -236,6 +236,7 @@ router_settings:
   # copy of the group, which free_limits.py has just taken the dead one out of the pick for.
   retry_policy:
     AuthenticationErrorRetries: 2
+    NotFoundErrorRetries: 2
     BadRequestErrorRetries: 1
     RateLimitErrorRetries: 2
     TimeoutErrorRetries: 2
