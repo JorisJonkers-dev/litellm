@@ -45,6 +45,11 @@
     "longcat": [],
     "neosantara": ["gemini-3.1-flash-lite"]
   },
+  "probe": {
+    "_sources": "Listing signals, fetched 2026-11-26 from each provider's own /models (no key for Kilo, Requesty, Naga, Routeway, Inferbase): Naga kinds + availability.status (served | not_yet_served | out_of_stock) + deprecates_at; Routeway available + endpoints + retirement; Requesty api + retires + zero prices; Kilo isFree + pricing + architecture.output_modalities + expiration_date + retires_on; Inferbase lists only id and supported_parameters. Groq, Z.ai, OVH, UnoRouter, NVIDIA and Google are listed with a key the sync holds in-cluster only (see AGENTS.md, Probing).",
+    "trust_listing": ["groq", "zai", "kilo", "requesty", "naga", "routeway", "inferbase", "ovh", "unorouter", "electronhub", "airforce", "vercel", "novita", "plugsky", "bazaarlink", "poe", "watsonx", "together", "typhoon", "sealion", "gonka", "longcat", "neosantara", "cloudflare", "cohere", "axforge", "local"],
+    "daily_cap": {"nvidia": 5, "zai": 3}
+  },
   "free_all": ["groq", "inferbase"],
   "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan"},
   "free_order": {

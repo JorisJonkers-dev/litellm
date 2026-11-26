@@ -83,3 +83,7 @@ The ladder is free, then Vibe, then Go. GLM-5.3, Kimi K3.1 Pro and GPT-6 Luna ar
   `vibe-tier` and `opencode-go-tier` are access groups of the budgeted copies. No tier key holds `vibe/*` or `opencode-go/*`, so a tier key cannot reach the unbudgeted wildcards.
 
 `tests/test_tiers.py` loads the rendered block into LiteLLM's Router (mocked upstream, run in the image), walks every chain with each step rate-limited in turn, and proves that a spent Go budget stops `tier-go-cheap`. `tests/image.test.mjs` boots the real image with this config and calls the tiers through the proxy.
+
+## Probing
+
+A probe is a real chat request and spends a free tier's daily quota, so the sync decides from the listing and from real traffic first; see "Listing, traffic and (rarely) a probe" in README.md. `catalog/routing.json` `probe` holds `trust_listing` (routes whose list is enough), `daily_cap` (probes a route may spend a day, for a new model with no other signal, once per model) and the sources of the listing signals. To feed traffic evidence, set `TRAFFIC_PROMETHEUS_URL` in the catalogue Process to the in-cluster Prometheus (the Process needs egress to it); unset, the sync runs on the listing alone.

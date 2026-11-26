@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -289,75 +290,124 @@ class Build(unittest.TestCase):
         for secret in ("k-vibe", "k-study", "k-general", "k-study-general", "k-oc", "k-or", "SECRET-RESPONSE"):
             self.assertNotIn(secret, text)
 
-    def test_cache_skips_fresh_models_and_reprobes_stale_errored_and_new(self):
+    def test_a_recorded_answer_is_never_re_probed_on_a_timer_and_a_new_model_is_probed_once(self):
         first, _ = self.run_build(Http())
-        # fresh: nothing probed
-        http = Http()
-        _, stats = self.run_build(http, first, now=NOW + datetime.timedelta(hours=1))
-        self.assertEqual(http.probed(), [])
-        # a day later: everything probeable again
-        http = Http()
-        self.run_build(http, first, now=NOW + datetime.timedelta(hours=25))
-        self.assertIn("glm-5.3-flash", http.probed_ids())
-        # an errored model is retried at once, a new model is probed at once
+        for hours in (1, 25, 24 * 30):
+            http = Http()
+            self.run_build(http, first, now=NOW + datetime.timedelta(hours=hours))
+            self.assertEqual(http.probed(), [], hours)
+        # an errored model is not retried either; a model that is new is probed, once
         first["providers"]["opencode-go"]["models"][0]["metadata"]["status"] = "error"
         lists = dict(LISTS, **{"http://local/v1/models": {"data": [{"id": "qwen3:32b"}, {"id": "new-one"}]}})
         http = Http(lists=lists)
-        self.run_build(http, first, now=NOW + datetime.timedelta(hours=1))
-        self.assertIn("new-one", http.probed_ids())
-        self.assertIn("deepseek-v4-pro", http.probed_ids())
-        self.assertNotIn("qwen3:32b", http.probed_ids())
+        second, _ = self.run_build(http, first, now=NOW + datetime.timedelta(hours=1))
+        self.assertEqual(http.probed_ids(), ["new-one"])
+        http = Http(lists=lists)
+        self.run_build(http, second, now=NOW + datetime.timedelta(hours=2))
+        self.assertEqual(http.probed(), [])
 
-    def test_a_failing_model_backs_off_instead_of_spending_a_probe_every_run(self):
-        url = "https://oc/v1/chat/completions"
-        always = {(url, "deepseek-v4-pro"): [(429, "")] * 10}
-        cat, _ = self.run_build(Http(answers=dict(always)))
-        meta = lambda c: {m["id"]: m["metadata"] for m in c["providers"]["opencode-go"]["models"]}["opencode-go/deepseek-v4-pro"]
-        self.assertEqual((meta(cat)["status"], meta(cat)["error_probes"]), ("error", 1))
-        probed_at, runs = [], 0
-        for hour in range(1, 25):
-            http = Http(answers=dict(always))
-            cat, _ = self.run_build(http, cat, now=NOW + datetime.timedelta(hours=hour))
-            if "deepseek-v4-pro" in http.probed_ids():
-                runs += 1
-                probed_at.append(hour)
-        # waits of 1h, 2h, 4h, 8h, then capped at the 24h max age: 1, 3, 7, 15, not 24 probes
-        self.assertEqual(probed_at, [1, 3, 7, 15])
-        self.assertEqual(meta(cat)["error_probes"], 5)
-        # the first answer that is not an error ends the back-off
-        cat, _ = self.run_build(Http(), cat, now=NOW + datetime.timedelta(hours=48))
-        self.assertEqual(meta(cat)["status"], "usable")
-        self.assertNotIn("error_probes", meta(cat))
+    def prom_http(self, ok=(), denied=(), lists=None):
+        http = Http(lists=lists)
+        plain = http.__call__
 
-    def test_due_orders_by_error_wait(self):
-        iso = lambda t: t.strftime("%Y-%m-%dT%H:%M:%SZ")
-        prev = {"metadata": {"status": "error", "error_probes": 3, "probed_at": iso(NOW)}}
-        day = datetime.timedelta(hours=24)
-        self.assertIsNone(sync.due(prev, NOW + datetime.timedelta(hours=3), day))
-        self.assertEqual(sync.due(prev, NOW + datetime.timedelta(hours=3, minutes=56), day), 1)
-        # a model that was never probed (a pending one) is always due, a fresh usable one is not
-        self.assertEqual(sync.due({"metadata": {}}, NOW, day), 1)
-        self.assertIsNone(sync.due({"metadata": {"status": "usable", "probed_at": iso(NOW)}}, NOW, day))
+        def call(method, url, headers, body):
+            if url.startswith("http://prom/api/v1/query"):
+                http.calls.append((method, url, headers, body))
+                if "total_requests" in url or "total_requests" in urllib.parse.unquote(url):
+                    rows = [{"metric": {"model_id": m, "status_code": "200"}, "value": [0, "3"]} for m in ok]
+                    rows += [{"metric": {"model_id": "x/y", "status_code": "500"}, "value": [0, "9"]}]
+                else:
+                    rows = [{"metric": {"model_id": m, "exception_status": "403"}, "value": [0, "2"]} for m in denied]
+                return 200, {"data": {"result": rows}}
+            return plain(method, url, headers, body)
+        call.probed, call.probed_ids, call.calls = http.probed, http.probed_ids, http.calls
+        return call
+
+    def test_real_traffic_decides_usable_and_blocked_and_costs_no_request(self):
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        http = self.prom_http(ok=["free/openrouter/a/b:free", "opencode-go/glm-5.3-flash"], denied=["opencode-go/deepseek-v4-pro"])
+        cat, _ = sync.build(env, http, {}, NOW, rules={"probe": {"daily_cap": {"openrouter": 5}}})
+        meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+        self.assertEqual((meta["openrouter/a/b:free"]["status"], meta["openrouter/a/b:free"]["verified_by"]), ("usable", "traffic"))
+        self.assertEqual((meta["opencode-go/glm-5.3-flash"]["status"], meta["opencode-go/glm-5.3-flash"]["verified_by"]), ("usable", "traffic"))
+        self.assertEqual((meta["opencode-go/deepseek-v4-pro"]["status"], meta["opencode-go/deepseek-v4-pro"]["verified_by"]), ("blocked", "traffic"))
+        self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["failing_probes"], 2)
+        self.assertNotIn("glm-5.3-flash", http.probed_ids())
+        self.assertNotIn("deepseek-v4-pro", http.probed_ids())
+        # a model refused on real traffic is not deployed
+        self.assertFalse(sync.candidate(meta["opencode-go/deepseek-v4-pro"], "chat", "opencode-go", set()))
+
+    def test_no_traffic_source_means_no_evidence_not_an_error(self):
+        self.assertEqual(sync.traffic_evidence({}, Http()), {})
+        down = Http(lists={})
+        self.assertEqual(sync.traffic_evidence({"TRAFFIC_PROMETHEUS_URL": "http://prom"}, down, lambda line: None), {})
+
+    def test_a_trusted_listing_decides_without_a_request_and_a_listing_that_says_unavailable_blocks(self):
+        lists = {"https://naga/v1/models": {"data": [
+            {"id": "a:free", "kinds": ["chat"], "availability": {"status": "served"}},
+            {"id": "b:free", "kinds": ["chat"], "availability": {"status": "out_of_stock"}},
+            {"id": "c:free", "kinds": ["image"], "availability": {"status": "served"}},
+            {"id": "d:free", "kinds": ["chat"], "availability": {"status": "served"}, "deprecates_at": 1000},
+            {"id": "paid", "kinds": ["chat"], "availability": {"status": "served"}}]}}
+        env = {"NAGA_API_BASE": "https://naga/v1", "NAGA_API_KEY": "k"}
+        rules = {"probe": {"trust_listing": ["naga"]}}
+        http = Http(lists=lists)
+        cat, stats = sync.build(env, http, {}, NOW, rules=rules)
+        self.assertEqual(http.probed(), [])
+        self.assertEqual(stats["probed"], 0)
+        meta = {m["id"].split("/", 1)[1]: m["metadata"] for m in cat["providers"]["naga"]["models"]}
+        self.assertEqual((meta["a:free"]["status"], meta["a:free"]["verified_by"]), ("usable", "listing"))
+        self.assertEqual(meta["b:free"]["status"], "unknown")
+        self.assertIn("out_of_stock", meta["b:free"]["reason"])
+        self.assertEqual(meta["c:free"]["status"], "not-chat")
+        self.assertIn("deprecated", meta["d:free"]["reason"])
+        self.assertEqual(meta["paid"]["status"], "unprobed")
+        self.assertFalse(sync.candidate(meta["b:free"], "chat", "naga", set()))
+        self.assertTrue(sync.candidate(meta["a:free"], "chat", "naga", set()))
+
+    def test_listing_verdicts_per_provider(self):
+        v = sync.listing_verdict
+        self.assertEqual(v("routeway", {"available": False, "endpoints": ["/v1/chat/completions"]}), (True, "the listing says it is not available"))
+        self.assertEqual(v("routeway", {"available": True, "endpoints": ["/v1/images/generations"]}), (False, ""))
+        self.assertEqual(v("requesty", {"api": "embeddings", "retires": 4102444800}), (False, ""))
+        self.assertEqual(v("requesty", {"api": "chat", "retires": 1000}), (True, "the listing says it is retired"))
+        self.assertEqual(v("kilo", {"architecture": {"output_modalities": ["image"]}, "retires_on": "2999-01-01"}), (False, ""))
+        self.assertEqual(v("kilo", {"expiration_date": "2020-01-01"}), (None, "the listing says it is retired"))
+        self.assertEqual(v("groq", {}), (None, ""))
+
+    def test_a_daily_probe_cap_holds_across_runs_and_a_model_is_probed_once(self):
+        lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(40)]}})
+        rules = {"probe": {"daily_cap": {"openrouter": 30}}}
+        cat, _ = self.run_build(Http(lists=lists), rules=rules)
+        count = lambda c: sum(1 for m in c["providers"]["openrouter"]["models"] if m["metadata"].get("verified_by") == "probe")
+        self.assertEqual(count(cat), 30)
+        http = Http(lists=lists)
+        again, _ = self.run_build(http, cat, now=NOW + datetime.timedelta(hours=1), rules=rules)
+        self.assertEqual([m for m in http.probed() if m[0].startswith("https://or")], [])  # the day's cap is spent
+        http = Http(lists=lists)
+        tomorrow, _ = self.run_build(http, again, now=NOW + datetime.timedelta(days=1, hours=1), rules=rules)
+        self.assertEqual(len([m for m in http.probed() if m[0].startswith("https://or")]), 10)  # only the ones never probed
+        self.assertEqual(count(tomorrow), 40)
+        # nothing is probed on a free-only route that names no cap
+        http = Http(lists=lists)
+        self.run_build(http)
+        self.assertEqual([m for m in http.probed() if m[0].startswith("https://or")], [])
 
     def test_a_binding_global_budget_is_shared_between_routes(self):
         lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(10)]}})
         http = Http(lists=lists)
-        self.run_build(http, max_probes=4)
+        self.run_build(http, max_probes=4, rules={"probe": {"daily_cap": {"openrouter": 10}}})
         urls = [u for u, _ in http.probed()]
         self.assertEqual(len(urls), 4)
         # openrouter lists first and has 10 due; without turn-taking it would take all 4
         self.assertLess(urls.count("https://or/v1/chat/completions"), 4)
 
-    def test_never_probed_unorouter_ids_are_probed_six_a_run_and_cover_the_backlog(self):
+    def test_unorouter_free_ids_are_decided_by_the_listing_with_no_request(self):
         lists = {"https://uno/v1/models": {"data": [{"id": f"m{i}:free"} for i in range(20)]}}
-        env = {"UNOROUTER_API_BASE": "https://uno/v1"}
-        cat = {}
-        for hour in range(4):
-            http = Http(lists=lists)
-            cat, stats = sync.build(env, http, cat, NOW + datetime.timedelta(hours=hour))
-            self.assertEqual(stats["probed"], 6 if hour < 3 else 2)
-        counts = cat["providers"]["unorouter"]["metadata"]["by_status"]
-        self.assertEqual(counts, {"usable": 20})
+        http = Http(lists=lists)
+        cat, stats = sync.build({"UNOROUTER_API_BASE": "https://uno/v1"}, http, {}, NOW, rules=sync.load_rules())
+        self.assertEqual((stats["probed"], http.probed()), (0, []))
+        self.assertEqual(cat["providers"]["unorouter"]["metadata"]["by_status"], {"usable": 20})
 
     def test_a_vanished_model_is_kept_once_and_dropped_on_the_second_run(self):
         first, _ = self.run_build(Http())
@@ -390,14 +440,13 @@ class Build(unittest.TestCase):
         fresh, _ = self.run_build(Http(), first, now=NOW + datetime.timedelta(hours=1))
         meta = {m["id"]: m["metadata"] for p in fresh["providers"].values() for m in p["models"]}
         self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
-        # a second blocked probe a day later
-        again, _ = self.run_build(Http(answers={(url, "glm-5.3-flash"): blocked}), first, now=NOW + datetime.timedelta(hours=25))
+        # a blocked answer is not asked again on a timer: only real traffic or the listing changes it
+        http = Http()
+        again, _ = self.run_build(http, first, now=NOW + datetime.timedelta(hours=25))
         meta = {m["id"]: m["metadata"] for p in again["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 2)
-        # a usable answer clears it
-        ok, _ = self.run_build(Http(), again, now=NOW + datetime.timedelta(hours=50))
-        meta = {m["id"]: m["metadata"] for p in ok["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 0)
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
+        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["status"], "blocked")
+        self.assertEqual(http.probed(), [])
 
     def test_probe_limits_and_corrupt_cache(self):
         http = Http()
@@ -407,19 +456,14 @@ class Build(unittest.TestCase):
         http = Http()
         sync.build(ENV, http, {}, NOW, route_limits={"opencode-go": 1}, max_probes=50)
         self.assertEqual(len([m for m in http.probed() if m[0] == "https://oc/v1/chat/completions"]), 1)
+        # a recorded answer with a corrupt stamp is kept as it is, and one with no status is decided again
         old = {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "usable", "probed_at": "garbage"}}]}}}
         http = Http()
         self.run_build(http, old)
-        self.assertIn("qwen3:32b", http.probed_ids())
+        self.assertNotIn("qwen3:32b", http.probed_ids())
         http = Http()
-        self.run_build(http, {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "usable"}}]}}})
+        self.run_build(http, {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {}}]}}})
         self.assertIn("qwen3:32b", http.probed_ids())
-
-    def test_openrouter_free_probes_are_capped_per_run(self):
-        lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(40)]}})
-        http = Http(lists=lists)
-        self.run_build(http)
-        self.assertEqual(len([m for m in http.probed() if m[0] == "https://or/v1/chat/completions"]), 30)
 
     def test_a_route_that_cannot_be_listed_keeps_its_last_entries(self):
         first, _ = self.run_build(Http())
@@ -505,17 +549,19 @@ class Grace(unittest.TestCase):
         meta = {m["id"]: m["metadata"] for p in fresh["providers"].values() for m in p["models"]}
         self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
 
-    def test_build_clears_the_mark_after_two_blocked_probes(self):
-        url = "https://oc/v1/chat/completions"
-        blocked = (403, '{"error":{"message":"hosted outside Europe"}}')
+    def test_build_clears_the_mark_when_real_traffic_is_refused(self):
         first, _ = sync.build(ENV, Http(), {}, NOW)
         meta = {m["id"]: m["metadata"] for p in first["providers"].values() for m in p["models"]}
         self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
-        second, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), first, NOW + datetime.timedelta(hours=25))
+        # a transient state keeps the place (one bad probe, or a listing that hiccups)
+        meta["opencode-go/glm-5.3-flash"]["status"] = "error"
+        second, _ = sync.build(ENV, Http(), first, NOW + datetime.timedelta(hours=25))
         meta = {m["id"]: m["metadata"] for p in second["providers"].values() for m in p["models"]}
-        self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 1)
-        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)  # one bad probe keeps its place
-        third, _ = sync.build(ENV, Http(answers={(url, "glm-5.3-flash"): blocked}), second, NOW + datetime.timedelta(hours=50))
+        self.assertIs(meta["opencode-go/glm-5.3-flash"]["was_usable"], True)
+        # real traffic refused with 403: blocked, and the mark is gone
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        helper = Build()
+        third, _ = sync.build(env, helper.prom_http(denied=["opencode-go/glm-5.3-flash"]), second, NOW + datetime.timedelta(hours=50))
         meta = {m["id"]: m["metadata"] for p in third["providers"].values() for m in p["models"]}
         self.assertEqual(meta["opencode-go/glm-5.3-flash"]["failing_probes"], 2)
         self.assertNotIn("was_usable", meta["opencode-go/glm-5.3-flash"])
@@ -872,7 +918,7 @@ class FreeSignals(unittest.TestCase):
         self.assertEqual(free, {"zero": True, "auto": False, "half": False, "none": False})
 
     def test_a_free_all_route_makes_every_listed_chat_model_a_candidate_and_the_probe_decides(self):
-        rules = {"free_all": ["groq"], "free_by": {"groq": "plan"}}
+        rules = {"free_all": ["groq"], "free_by": {"groq": "plan"}, "probe": {"daily_cap": {"groq": 5}}}
         free, _ = self.listed("groq", [{"id": "llama"}, {"id": "whisper-large-v4"}, {"id": "orpheus-v1-english"}, {"id": "x-embed"}], rules)
         self.assertEqual(free, {"llama": True, "whisper-large-v4": True, "orpheus-v1-english": True, "x-embed": True})
         env = {"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}
@@ -939,7 +985,7 @@ class FreeSignals(unittest.TestCase):
             self.assertTrue(next(e for e in sync.ROUTES if e["route"] == route)["anonymous"])
         env = {"KILO_API_BASE": "https://kilo/v1"}
         http = Http(lists={"https://kilo/v1/models": {"data": [{"id": "a:free", "isFree": True}, {"id": "paid"}]}})
-        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={"probe": {"daily_cap": {"kilo": 5}}})
         self.assertEqual(stats["route_errors"], [])
         # Listed and probed, no Authorization anywhere; the paid id is not probed.
         requests = [c for c in http.calls if c[1].startswith("https://kilo/v1")]
@@ -1032,7 +1078,7 @@ class FreeSignals(unittest.TestCase):
     def test_unorouter_is_anonymous_and_a_keyed_second_wave_route_is_skipped_without_its_key(self):
         env = {"UNOROUTER_API_BASE": "https://uno/v1"}
         http = Http(lists={"https://uno/v1/models": {"data": [{"id": "a:free"}, {"id": "paid"}]}})
-        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={})
+        cat, stats = sync.build(env, http, {"providers": {}}, NOW, rules={"probe": {"daily_cap": {"unorouter": 5}}})
         self.assertEqual(stats["route_errors"], [])
         self.assertEqual(http.probed_ids(), ["a:free"])
         for call in http.calls:
@@ -1228,6 +1274,7 @@ class CandidatesAreChatModels(unittest.TestCase):
 
 class InjectedApprovedIds(unittest.TestCase):
     RULES = dict(sync.load_rules(), free_ids={"zai": ["glm-4.7-flash"]})
+    # Z.ai's list does not carry the flash ids, so the listing has nothing to say about it: it needs one probe, within the cap.
 
     def build(self):
         http = Http(lists={"https://zai/v1/models": {"data": [{"id": "glm-5"}]}})
