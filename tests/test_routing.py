@@ -672,16 +672,13 @@ class FreeRoutesWave1(unittest.TestCase):
         for route in ("cloudflare", "inferbase", "axforge"):
             self.assertEqual(free_ids[route], [], route)
 
-    def test_probe_caps_are_a_small_fraction_of_each_daily_cap(self):
+    def test_the_sync_sends_no_chat_request_and_maps_routes_to_models_dev(self):
         project = (ROOT / "deploy" / "litellm.project.yml").read_text()
-        self.assertIn('schedule: "17 * * * *"', project)  # hourly: a daily cap is shared by 24 runs
-        probe = sync.load_rules()["probe"]
-        daily_caps = {"groq": 1000, "requesty": 200, "naga": 100, "routeway": 200, "inferbase": 100, "zai": 1000}
-        for route, cap in daily_caps.items():
-            # Decided by the listing: no active probe at all, and never more than 2% of the provider's cap.
-            self.assertIn(route, probe["trust_listing"], route)
-            self.assertLessEqual(probe.get("daily_cap", {}).get(route, 0), cap * 0.02, route)
-        self.assertEqual(sync.DEFAULT_ROUTE_LIMITS.get("axforge", 0), 0)
+        self.assertIn('schedule: "17 * * * *"', project)
+        reference = sync.load_rules()["reference"]
+        for route in ("kilo", "groq", "zai", "ovh", "requesty", "unorouter", "nvidia"):
+            self.assertIn(route, reference, route)
+        self.assertNotIn("openrouter", reference)  # never as new work, and never a source of "free"
 
     def test_inferbase_deploys_at_its_real_price_under_its_daily_budget(self):
         specs = self.plan(("inferbase", "m", "usable", {"free": True, "price": {"input": 5e-7, "output": 2e-6}}))
@@ -782,17 +779,6 @@ class FreeRoutesWave2(unittest.TestCase):
         # No free id is named for these: the scan lists what each provider offers and the owner approves.
         for route in ("bazaarlink", "cohere", "plugsky", "poe", "watsonx", "sealion", "gonka", "longcat"):
             self.assertEqual(free_ids[route], [], route)
-
-    def test_wave_two_probe_caps_are_a_small_fraction_of_each_daily_cap(self):
-        probe = sync.load_rules()["probe"]
-        daily = {"bazaarlink": 60, "airforce": 1000, "plugsky": 500}
-        for route, cap in daily.items():
-            self.assertLessEqual(probe.get("daily_cap", {}).get(route, 0), cap * 0.02, route)
-        # Cohere's cap is 1,000 calls a month: nothing is ever probed there.
-        self.assertEqual(probe.get("daily_cap", {}).get("cohere", 0), 0)
-        # Every free-only route is either decided by its listing or has an explicit daily cap, never a default spend.
-        for route in self.ROUTES:
-            self.assertTrue(route in probe["trust_listing"] or route in probe.get("daily_cap", {}), route)
 
     def test_no_base_is_invented_and_a_setting_comes_from_its_vault_field(self):
         for name in ("litellm", "litellm-catalog"):

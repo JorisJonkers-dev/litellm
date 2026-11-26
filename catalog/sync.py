@@ -15,7 +15,7 @@ and the route's own upstream key, and classifies the result:
   unprobed          not probed on purpose (a paid OpenRouter model: the route is used for `:free` ids)
   pending           due for a probe but over this run's cap; probed in a later run
 
-The probe goes to the provider, not through the proxy: a model the proxy does not know yet
+`--probe` goes to the provider, not through the proxy: a model the proxy does not know yet
 cannot be probed through it, and the catalogue is what decides which models the proxy serves.
 
 The result is cached in the catalogue itself (probed_at per model), so a recorded answer is kept and never re-probed on a timer. A model that disappears from its provider's list
@@ -48,10 +48,9 @@ through to the next free copy. assert_free_groups() fails the run when a copy in
 Tier groups: catalog/routing.json's `tier_groups` define the callable tier-* names and their ordered
 steps; validate_tiers() checks them and `--render-tiers` renders them into config/config.yaml.
 
-Probes cost free-tier messages, so they are the last resort (see "Where the evidence ... comes from" at
-PAID_DAILY_CAP): the listing and real traffic decide, and a probe is one minimal request (about 8 input + 16
-output tokens) for a new model with no other signal, once per model, within the route's daily cap
-(routing.json `probe.daily_cap`; nothing for a free-only route unless named). Every run prints the number probed.
+The sync sends no chat request by itself: a request spends a free tier's daily quota. A model's state comes from
+the live listing (a free call), the public catalogue models.dev joined by id, and real traffic through the proxy
+(see "Where the evidence" at TRAFFIC_WINDOW); `--probe <route/model>` sends one request, for debugging.
 
 Standard library only: it runs in the LiteLLM image as a scheduled Process, and in CI.
 """
@@ -134,30 +133,24 @@ ROUTES = [
 # OpenCode Go models the docs say need an organisation setting (a privacy opt-in or a region):
 # flagged in the catalogue as a hint; the probe still decides what the account can use.
 OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
-# Daily probe caps when routing.json names none (`probe.daily_cap` overrides): nothing for a free-only route, which
-# is decided by its listing and by traffic. NVIDIA's listing says nothing about entitlement, so it gets a few.
-DEFAULT_ROUTE_LIMITS = {"nvidia": 5}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 # A route whose free ids are approved by hand says so: "paid" would hide that the owner can approve the id.
 APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is approved there); it is not probed"
-# Where the evidence for "this key may use this model" comes from, in order (see build()):
-#   1. the listing says it is unavailable, retired or not chat: never deployed, no request;
-#   2. real traffic through the proxy (Prometheus, TRAFFIC_PROMETHEUS_URL): a deployment that served requests is
-#      usable, one that real traffic got 401/403/404 on is blocked until the evidence ages out of the window;
-#   3. the answer already recorded (never re-probed on a timer);
-#   4. the listing itself, on a route `probe.trust_listing` names in routing.json (its list says chat, free, served);
-#   5. one probe, once per model, for a new model about to be deployed with no other signal, within the route's
-#      daily cap (`probe.daily_cap`, a few percent of the provider's quota at most, 0 for a free-only route unless named).
+# Where the evidence for a model comes from, in order (see build()). The sync sends no chat request unless a person asks
+# for one (`--probe <route/model>`, for debugging): on a free tier a request spends the daily quota.
+#   1. the live listing (a free call): chat, free, served, retired;
+#   2. the public catalogue models.dev, joined by id (reference_index()): chat or not, price (0 is free), deprecated;
+#   3. real traffic through the proxy (Prometheus, TRAFFIC_PROMETHEUS_URL): served requests make a deployment usable,
+#      401, 403 or 404 block it until the evidence ages out of the window;
+#   4. the answer already recorded.
 TRAFFIC_WINDOW = "7d"
 DENIED_STATUSES = ("401", "403", "404")
-# A route not named in `probe.daily_cap`: a free-only route spends nothing, a paid account one probe per new model.
-PAID_DAILY_CAP = 10
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
 STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
-# The recorded answers that are kept as they are. An error or a spent budget is kept too, unless the route's own listing
-# decides (a trusted route); a model with no answer is decided by traffic, the listing, or one probe.
+MODELS_DEV_URL = "https://models.dev/api.json"
+# An answer already recorded (an earlier probe or traffic) is kept; an error or a spent budget is decided again.
 RECORDED = ("usable", "blocked", "unknown")
 STATIC_ROUTES = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in STATIC_KINDS)
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
@@ -296,6 +289,10 @@ def load_rules(path=None):
     free_all = rules.get("free_all") or []
     if not isinstance(free_all, list) or any(route not in known or route not in STATIC_ROUTES for route in free_all):
         raise RuntimeError(f"{path}: free_all must list static-list routes (those with `free_ids`) only")
+    reference = rules.get("reference") or {}
+    if not isinstance(reference, dict) or any(not isinstance(v, str) or (k != "_sources" and k not in known) for k, v in reference.items()):
+        raise RuntimeError(f"{path}: reference must map route names to a models.dev provider id")
+    reference.pop("_sources", None)
     return rules
 
 
@@ -550,7 +547,7 @@ def listing_items(body, kind=None):
     return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
 
 
-def list_models(entry, env, http, rules=None):
+def list_models(entry, env, http, rules=None, reference=None):
     """The models the provider lists for this route: id, name, context length, free, chat, modality.
 
     A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
@@ -655,7 +652,22 @@ def list_models(entry, env, http, rules=None):
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
             out["free"] = True
+        ref = (reference or {}).get(reference_key(model_id))
+        if ref:
+            # The public catalogue, matched inside this route's own provider: it can only add what the listing lacks.
+            if ref["chat"] is False and out["modality"] == "chat":
+                out["modality"] = "other"
+            if ref["cost"] is not None:
+                if kind == "inferbase":
+                    if "price" not in out:
+                        out["price"] = {"input": ref["cost"][0], "output": ref["cost"][1]}
+                        out["free"] = model_id in free_ids or approves_all(rules, entry["route"])
+                elif kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
+                    out["free"] = True  # the catalogue says 0 and the listing prices nothing above zero
+                    out["free_source"] = "models.dev"
         verdict_chat, unavailable = listing_verdict(kind, item)
+        if ref and ref["deprecated"] and not unavailable:
+            unavailable = "models.dev lists it as deprecated"
         if verdict_chat is False:
             out["modality"] = out["modality"] if out["modality"] != "chat" else "other"
         if unavailable:
@@ -865,13 +877,6 @@ def probe(entry, upstream_id, env, http, meta=None):
             status, answer = http("POST", url, headers, dict(body, max_tokens=int(match[1])))
             text = answer if isinstance(answer, str) else json.dumps(answer)
     return classify(status, text)
-
-
-def parse_age(text):
-    match = re.fullmatch(r"(\d+)([hd])", text)
-    if not match:
-        raise ValueError("--max-age is a number of hours or days, like 24h or 2d")
-    return datetime.timedelta(**{"hours" if match[2] == "h" else "days": int(match[1])})
 
 
 # A leading vendor segment (OpenRouter's "mistralai/mistral-large") and a trailing version stamp
@@ -1560,6 +1565,49 @@ def previous_by_id(catalogue):
     return out
 
 
+def reference_key(model_id):
+    """The spellings of a model id the public catalogues use: lower case, no `models/`, `:free` or `@region` suffix."""
+    base = str(model_id).lower().removeprefix("models/")
+    base = base.split("@", 1)[0].removesuffix(":free")
+    return base
+
+
+def reference_index(rules, env, http, log=None):
+    """{route: {id: {"chat": bool, "deprecated": bool, "cost": (input, output) per token or None}}} from models.dev.
+
+    models.dev (https://models.dev/api.json, OpenCode's model database) lists per provider each model's modalities,
+    `type`, `status` and `cost` (US dollars per million tokens, 0 is free). routing.json `reference` maps a route to its
+    models.dev provider id; a route not named, or a catalogue that cannot be read, gives no reference and the listing
+    alone decides (fail closed: no reference never makes a model free). The id must match inside the route's own provider."""
+    mapping = (rules or {}).get("reference") or {}
+    if not mapping:
+        return {}
+    status, body = http("GET", env.get("MODELS_DEV_URL") or MODELS_DEV_URL, {}, None)
+    if status != 200 or not isinstance(body, dict):
+        if log:
+            log(f"reference: models.dev answered {status}; the listing alone decides")
+        return {}
+    out = {}
+    for route, provider in mapping.items():
+        models = (body.get(provider) or {}).get("models") if isinstance(body.get(provider), dict) else None
+        index = {}
+        for model_id, model in (models or {}).items():
+            if not isinstance(model, dict):
+                continue
+            modalities = model.get("modalities") if isinstance(model.get("modalities"), dict) else {}
+            outputs, inputs = modalities.get("output"), modalities.get("input")
+            chat = model.get("type") in (None, "chat") and (not isinstance(outputs, list) or "text" in outputs) and (
+                not isinstance(inputs, list) or "text" in inputs or "image" in inputs)
+            cost = model.get("cost") if isinstance(model.get("cost"), dict) else {}
+            prices = None
+            if zero_price(cost.get("input"), cost.get("output")) or all(
+                    isinstance(cost.get(k), (int, float)) and not isinstance(cost.get(k), bool) for k in ("input", "output")):
+                prices = (cost["input"] / 1e6, cost["output"] / 1e6)
+            index[reference_key(model_id)] = {"chat": chat, "deprecated": model.get("status") == "deprecated", "cost": prices}
+        out[route] = index
+    return out
+
+
 def traffic_evidence(env, http, log=None):
     """What real traffic through the proxy says per catalogue id: {id: {"ok": n, "denied": n}}.
 
@@ -1606,8 +1654,9 @@ def stale_provider(old, route, key_env):
     }
 
 
-def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_limits=None, max_probes=250, rules=None):
-    """The catalogue, and counts. `previous` is the last published catalogue (the cache)."""
+def build(env, http, previous, now, probe_ids=(), rules=None):
+    """The catalogue, and counts. `previous` is the last published catalogue (the cache). `probe_ids` names
+    `<route>/<model>` ids to send one real chat request to (a person's debugging; the sync never does it by itself)."""
     cache = previous_by_id(previous)
     by_route = {entry["route"]: entry for entry in ROUTES}
     env, account_error = resolve_cloudflare_account(env, http, lambda line: print(line, file=sys.stderr))
@@ -1620,12 +1669,9 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
     candidates = {}
     queue = []
     stats["route_errors"] += stats_errors
-    probe_rules = (rules or {}).get("probe") or {}
-    trusted = set(probe_rules.get("trust_listing") or [])
-    caps = dict(DEFAULT_ROUTE_LIMITS if route_limits is None else route_limits)
-    caps.update(probe_rules.get("daily_cap") or {})
-    traffic = traffic_evidence(env, http, lambda line: print(f"catalog: {line}", file=sys.stderr))
-    today = now.strftime("%Y-%m-%d")
+    log = lambda line: print(f"catalog: {line}", file=sys.stderr)
+    reference = reference_index(rules, env, http, log)
+    traffic = traffic_evidence(env, http, log)
     for entry in ROUTES:
         route = entry["route"]
         if route == "cloudflare" and account_error:
@@ -1662,7 +1708,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 candidates[route] = []
                 stats["route_errors"].append(f"{route}: candidate scan: {error}"[:200])
         try:
-            listed = list_models(entry, env, http, rules)
+            listed = list_models(entry, env, http, rules, reference.get(route))
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -1709,14 +1755,15 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                     # Real traffic was refused (401, 403, 404): blocked while that evidence is inside the window.
                     meta.update(status="blocked", reason="real requests were refused (401, 403 or 404)", failing_probes=2, verified_by="traffic")
                     meta.pop("was_usable", None)
+                elif full in probe_ids:
+                    queue.append((route, model))
                 elif meta.get("status") in RECORDED:
-                    pass  # an answer already recorded is kept: no timed re-probe
-                elif route in trusted and not item.get("unlisted"):  # an id the list omits has no listing to trust
-                    meta.update(status="usable", reason="", failing_probes=0, verified_by="listing", probed_at=stamp)
-                elif meta.get("status") in ("error", "budget-exhausted"):
-                    pass  # asked once already: not asked again on a timer, only traffic or the listing changes it
+                    pass  # an answer already recorded is kept
+                elif item.get("unlisted"):
+                    # An approved id the list omits has no listing to read: it waits for real traffic or a manual probe.
+                    meta.update(status="pending", reason="not in the provider's list; waiting for real traffic")
                 else:
-                    queue.append((0, route, model))
+                    meta.update(status="usable", reason="", failing_probes=0, verified_by="listing", probed_at=stamp)
         # A model the provider stopped listing is kept for one run: a provider that hiccups must
         # not empty the catalogue, and the proxy must not lose a model over one bad listing.
         present = {model["id"] for model in models}
@@ -1730,27 +1777,13 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
             models.append({"id": gone["id"], "description": gone.get("description", ""), "metadata": meta})
         models.sort(key=lambda model: model["id"])
         providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": models}
-    # Daily caps: today's spend so far is carried in the route's own metadata, and a probe is once per model.
-    spent = {}
-    for route in by_route:
-        old_meta = ((previous.get("providers") or {}).get(route) or {}).get("metadata") or {}
-        spent[route] = old_meta.get("probes_today", 0) if old_meta.get("probes_day") == today else 0
-    # Never-probed models first, then the longest unprobed, and a route's models take turns with the other routes'
-    # (rank within the route), so a global --max-probes that binds cuts every route a little, not the last routes whole.
-    ranked, seen_rank = [], {}
-    for why, route, model in sorted(queue, key=lambda q: (q[0], q[2]["metadata"].get("probed_at", ""))):
-        ranked.append((why, seen_rank.get((why, route), 0), route, model))
-        seen_rank[(why, route)] = seen_rank.get((why, route), 0) + 1
-    for _, _, route, model in sorted(ranked, key=lambda q: (q[0], q[1])):
-        if stats["probed"] >= max_probes or spent.get(route, 0) >= caps.get(route, 0 if route in FREE_ONLY else PAID_DAILY_CAP):
-            continue
+    for route, model in queue:
         status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
         meta = model["metadata"]
         meta.update(status=status, reason=reason, probed_at=stamp)
         # Two consecutive blocked or unknown probes are what drops a model.
         meta["failing_probes"] = (meta.get("failing_probes", 0) + 1) if status in ("blocked", "unknown") else 0
         meta["verified_by"] = "probe"
-        spent[route] = spent.get(route, 0) + 1
         stats["probed"] += 1
     for provider in providers.values():
         counts = {}
@@ -1766,10 +1799,6 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 meta.pop("was_usable", None)
             counts[status] = counts.get(status, 0) + 1
         provider["metadata"].update(count=len(provider["models"]), by_status=counts)
-        # Today's probe count, so the daily cap holds across the hourly runs.
-        route_name = provider["metadata"].get("route")
-        if spent.get(route_name):
-            provider["metadata"].update(probes_day=today, probes_today=spent[route_name])
     catalogue = {
         "version": 1,
         "updated_at": stamp,
@@ -1981,8 +2010,8 @@ def without_stamp(text):
 def main(argv=None, env=None, http=None, now=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--output", default="model-catalog.json", help="where the catalogue is written when it is not published")
-    ap.add_argument("--max-age", default="24h")
-    ap.add_argument("--max-probes", type=int, default=250)
+    ap.add_argument("--probe", action="append", default=[], metavar="ROUTE/MODEL",
+                    help="send one real chat request to this model (debugging; it spends the provider's quota)")
     ap.add_argument("--render-tiers", action="store_true", help="rewrite the tiers block of config/config.yaml from routing.json and exit")
     args = ap.parse_args(argv)
     if args.render_tiers:
@@ -2008,8 +2037,8 @@ def main(argv=None, env=None, http=None, now=None):
         previous = json.load(open(args.output))
     previous = previous or {}
     rules = load_rules()
-    catalogue, stats = build(env, http, previous, now, parse_age(args.max_age), None, args.max_probes, rules)
-    print(f"catalog: listed {stats['listed']} models, probed {stats['probed']} (16 tokens max each; bound: at most {args.max_probes} a run)")
+    catalogue, stats = build(env, http, previous, now, args.probe, rules)
+    print(f"catalog: listed {stats['listed']} models, probed {stats['probed']} (only what --probe named; the sync sends no request by itself)")
     for line in stats["route_errors"]:
         print(f"catalog: {line}", file=sys.stderr)
     # The deployments the probes justify, as plain LiteLLM config in git, and the groups the
