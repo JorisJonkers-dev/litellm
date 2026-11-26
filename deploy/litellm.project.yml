@@ -189,7 +189,10 @@ applications:
             Lists and probes models at the Mistral, OpenCode Go, OpenRouter, Google, Anthropic and free-only provider APIs (both waves),
             publishes the catalogue to GitHub and opens the routing pull request there. It lists the GPU
             workstation's models at its keyed gate too, which this declaration does not cover (see the
-            proxy's egress above).
+            proxy's egress above). It reads the estate Prometheus in-cluster (the dependsOn edge below) for the
+            proxy's real-traffic series, which marks a deployment usable or blocked.
+        dependsOn:
+          - { application: prometheus, surface: http }
         secrets:
           # The same Vault path as the proxy: the provider keys list and probe each provider's
           # models, catalog_publish_token writes the catalogue repository, and catalog_pr_token

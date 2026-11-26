@@ -447,7 +447,9 @@ test('the provider keys the config names are Vault keys the Project grants', () 
 test('the catalogue Process needs no proxy and no master key', () => {
   assert.match(CATALOG, /catalog_pr_token/)
   assert.doesNotMatch(CATALOG, /master_key/)
-  assert.doesNotMatch(CATALOG, /dependsOn/)
+  // Its one edge is the estate Prometheus, for the real-traffic series; never the proxy.
+  assert.match(CATALOG, /dependsOn:\n\s+- \{ application: prometheus, surface: http \}\n/)
+  assert.equal([...CATALOG.matchAll(/application: (\S+?),/g)].map((m) => m[1]).join(), 'prometheus')
 })
 
 test('the Project declares the scrape, the dashboard and the catalogue sync', () => {
