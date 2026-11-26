@@ -175,6 +175,7 @@ RETRY_SLACK = datetime.timedelta(minutes=5)
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
 STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
+STATIC_ROUTES = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in STATIC_KINDS)
 STATUSES = ("usable", "blocked", "unknown", "budget-exhausted", "error", "not-chat", "unprobed", "pending")
 # The states a model that was usable keeps its place through: one bad probe is not a removal.
 TRANSIENT = ("error", "budget-exhausted", "pending", "blocked", "unknown")
@@ -308,6 +309,9 @@ def load_rules(path=None):
             raise RuntimeError(f"{path}: free_by names {route!r}, which is no route")
         if how not in ("plan", "price"):
             raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
+    free_all = rules.get("free_all") or []
+    if not isinstance(free_all, list) or any(route not in known or route not in STATIC_ROUTES for route in free_all):
+        raise RuntimeError(f"{path}: free_all must list static-list routes (those with `free_ids`) only")
     return rules
 
 
@@ -470,6 +474,14 @@ def free_by(rules, route):
     return ((rules or {}).get("free_by") or {}).get(route, "price")
 
 
+def approves_all(rules, route):
+    """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
+    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes only (Groq);
+    a route whose plan frees some ids (Z.ai) or bills per token stays on `free_ids`, because a probe that is
+    answered does not show the id is free, and a zero cost recorded on a paid id would hide the spend."""
+    return route in ((rules or {}).get("free_all") or [])
+
+
 def modality(kind, item):
     """What a listed model is for. A chat model is probed; the rest is deployed only where the
     rules say the paid key serves it, because a list alone does not prove a chat model."""
@@ -485,6 +497,8 @@ def modality(kind, item):
         if caps.get("moderation"):
             return "moderation"
         return "chat"
+    if any(word in model_id for word in ("whisper", "orpheus", "-tts", "tts-")):
+        return "speech"
     return "embedding" if "embed" in model_id else "chat"
 
 
@@ -558,7 +572,9 @@ def list_models(entry, env, http, rules=None):
             out["context_length"] = item.get("inputTokenLimit")
         elif kind == "kilo":
             out["context_length"] = item.get("context_length")
-            out["free"] = item.get("isFree") is True
+            # isFree, or a listed price that is an explicit zero on both sides (a "-1" is Kilo's router sentinel, not a zero).
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            out["free"] = item.get("isFree") is True or zero_price(pricing.get("prompt"), pricing.get("completion"))
         elif kind == "requesty":
             out["context_length"] = item.get("context_window") or item.get("context_length")
             out["free"] = zero_price(item.get("input_price"), item.get("output_price"))
@@ -588,7 +604,7 @@ def list_models(entry, env, http, rules=None):
                 # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
                 # deployment needs the real per-token price for the route's budget to fire; an id the
                 # listing does not price is not deployed.
-                out["free"] = model_id in free_ids and price is not None
+                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and price is not None
                 if price is not None:
                     out["price"] = {"input": price[0], "output": price[1]}
             else:
@@ -596,7 +612,8 @@ def list_models(entry, env, http, rules=None):
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
                 # does not apply there: the plan is the signal.
-                out["free"] = model_id in free_ids and (free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
+                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                    free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":

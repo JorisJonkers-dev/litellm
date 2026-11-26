@@ -865,6 +865,37 @@ class FreeSignals(unittest.TestCase):
             free, _ = self.listed(route, [{"id": "m:free"}, {"id": "m"}])
             self.assertEqual(free, {"m:free": True, "m": False}, route)
 
+    def test_kilo_zero_price_is_a_candidate_but_the_router_sentinel_and_a_priced_id_are_not(self):
+        z = {"prompt": "0", "completion": "0"}
+        free, _ = self.listed("kilo", [{"id": "zero", "pricing": z}, {"id": "auto", "pricing": {"prompt": "-1", "completion": "-1"}},
+                                       {"id": "half", "pricing": {"prompt": "0", "completion": "0.1"}}, {"id": "none"}])
+        self.assertEqual(free, {"zero": True, "auto": False, "half": False, "none": False})
+
+    def test_a_free_all_route_makes_every_listed_chat_model_a_candidate_and_the_probe_decides(self):
+        rules = {"free_all": ["groq"], "free_by": {"groq": "plan"}}
+        free, _ = self.listed("groq", [{"id": "llama"}, {"id": "whisper-large-v4"}, {"id": "orpheus-v1-english"}, {"id": "x-embed"}], rules)
+        self.assertEqual(free, {"llama": True, "whisper-large-v4": True, "orpheus-v1-english": True, "x-embed": True})
+        env = {"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}
+        lists = {"https://groq/v1/models": {"data": [{"id": "llama"}, {"id": "whisper-large-v4"}]}}
+        http = Http(lists=lists, answers={("https://groq/v1/chat/completions", "llama"): (403, '{"error":{"message":"Model access blocked"}}')})
+        cat, _ = sync.build(env, http, {}, NOW, rules=rules)
+        status = {m["id"]: m["metadata"]["status"] for m in cat["providers"]["groq"]["models"]}
+        self.assertEqual(status, {"groq/llama": "blocked", "groq/whisper-large-v4": "not-chat"})
+        self.assertEqual(http.probed_ids(), ["llama"])
+
+    def test_free_all_is_for_static_routes_only_and_a_price_route_keeps_its_approval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "r.json")
+            for bad in (["nope"], ["kilo"], "groq"):
+                with open(path, "w") as out:
+                    json.dump({"free_all": bad}, out)
+                with self.assertRaises(RuntimeError):
+                    sync.load_rules(path)
+        # Z.ai is not in free_all: a probe that is answered would not show the id is free
+        free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
+        self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
+        self.assertEqual(sync.load_rules()["free_all"], ["groq", "inferbase"])
+
     def test_nvidia_lists_only_free_models(self):
         free, _ = self.listed("nvidia", [{"id": "nvidia/a"}, {"id": "nvidia/embed-x"}])
         self.assertEqual(free, {"nvidia/a": True, "nvidia/embed-x": True})
@@ -1134,7 +1165,7 @@ class PlanFreeRoutes(unittest.TestCase):
         self.assertEqual(self.listed("typhoon", [{"id": "x"}], {"free_ids": {"typhoon": ["gone"]}}), {"x": False})
 
     def test_a_priced_groq_id_is_probed_and_deployed_once_usable(self):
-        rules = dict(sync.load_rules(), free_ids={"groq": ["approved"]})
+        rules = dict(sync.load_rules(), free_ids={"groq": ["approved"]}, free_all=[])
         http = Http(lists={"https://groq/v1/models": {"data": self.PRICED}})
         cat, _ = sync.build({"GROQ_API_BASE": "https://groq/v1", "GROQ_API_KEY": "k"}, http, {}, NOW, rules=rules)
         meta = {m["id"]: m["metadata"] for m in cat["providers"]["groq"]["models"]}
