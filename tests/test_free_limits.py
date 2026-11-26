@@ -119,6 +119,38 @@ class Clustering(unittest.TestCase):
         self.assertEqual(group(specs, "free/gpt-oss-120b"), ["groq"])
 
 
+class PaidOnly(unittest.TestCase):
+    """Cloudflare's paid-plan models (routing.json paid_only, from its pricing page) are never free."""
+
+    def test_a_paid_plan_model_is_never_planned_even_when_recorded_usable(self):
+        rules = dict(BASE_RULES, paid_only=REAL["paid_only"], free_aliases=REAL["free_aliases"])
+        specs = plan(free("cloudflare", "@cf/zai-org/glm-5.3"), free("cloudflare", "@cf/deepseek-ai/deepseek-v4.1-flash-1017"),
+                     free("cloudflare", "@cf/zai-org/glm-4.7-flash"), free("electronhub", "glm-5.3:free"), rules=rules)
+        self.assertEqual({s["upstream_id"] for s in specs if s["route"] == "cloudflare"}, {"@cf/zai-org/glm-4.7-flash"})
+        self.assertFalse(any("glm-5.3" in s["upstream_id"] or "deepseek" in s["upstream_id"] for s in specs if s["route"] == "cloudflare"))
+        self.assertEqual(group(specs, "free/glm-5.3"), ["electronhub"])
+
+    def test_the_listing_marks_it_not_free_and_the_sync_does_not_make_it_usable(self):
+        from unittest import mock
+        entry = next(e for e in sync.ROUTES if e["route"] == "cloudflare")
+        items = [{"id": "@cf/zai-org/glm-5.3", "task": {"name": "Text Generation"}},
+                 {"id": "@cf/zai-org/glm-4.7-flash", "task": {"name": "Text Generation"}}]
+        with mock.patch.object(sync, "fetch_listing", return_value=(200, {"data": items})):
+            listed = {m["id"]: m for m in sync.list_models(entry, {"CLOUDFLARE_API_KEY": "k", "CLOUDFLARE_ACCOUNT_ID": "a",
+                                                                   "CLOUDFLARE_API_BASE": "https://cf.invalid/v1"},
+                                                             lambda *a: (200, {}), REAL)}
+        self.assertFalse(listed["@cf/zai-org/glm-5.3"]["free"])
+        self.assertTrue(listed["@cf/zai-org/glm-5.3"]["paid_only"])
+        self.assertNotIn("paid_only", listed["@cf/zai-org/glm-4.7-flash"])
+
+    def test_the_generated_file_holds_none(self):
+        paid = set(REAL["paid_only"]["cloudflare"])
+        self.assertTrue(paid)
+        for entry in GENERATED:
+            if entry["model_info"].get("route") == "cloudflare":
+                self.assertNotIn(entry["litellm_params"]["model"].removeprefix("cloudflare/"), paid)
+
+
 class Generated(unittest.TestCase):
     """The committed config/models.generated.yaml."""
 

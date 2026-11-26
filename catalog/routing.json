@@ -25,6 +25,12 @@
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
+  "paid_only": {
+    "_source": "Models a free route's provider says need a paid plan: never free, never probed, never deployed, whatever the listing shows. Cloudflare: https://developers.cloudflare.com/workers-ai/platform/pricing/ (read 2026-11-26): 'Some models require a paid billing method. This applies to' the ids below; 'You can access these models with either the Workers Paid plan or prepaid AI Gateway credits.' The /ai/models/search listing the sync reads has no documented field for this (the limits page says each model page states it), so the list is kept here and checked by hand when the pricing page changes.",
+    "cloudflare": ["@cf/moonshotai/kimi-k2.6", "@cf/moonshotai/kimi-k2.7-code", "@cf/zai-org/glm-5.2", "@cf/zai-org/glm-5.3",
+                   "@cf/zai-org/glm-5.3-flash", "@cf/deepseek-ai/deepseek-v4-flash-0731", "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+                   "@cf/deepseek-ai/deepseek-v4-pro-0813", "@cf/thinkingmachines/inkling-2-small"]
+  },
   "free_exclusions": [{"match": "^gemini-2\\.5-(pro|flash)(?!-lite)(?=$|-)", "routes": ["google"]}],
   "accounts": {
     "vibe": {"routes": ["vibe"], "max_budget": 255, "window": {"calendar": "month"}},

@@ -138,6 +138,7 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 # A route whose free ids are approved by hand says so: "paid" would hide that the owner can approve the id.
+PAID_ONLY_REASON = "the provider lists it as needing a paid plan (paid_only in catalog/routing.json); it is not probed"
 APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is approved there); it is not probed"
 # Where the evidence for a model comes from, in order (see build()). The sync sends no chat request unless a person asks
 # for one (`--probe <route/model>`, for debugging): on a free tier a request spends the daily quota.
@@ -296,6 +297,11 @@ def load_rules(path=None):
         raise RuntimeError(f"{path}: reference must map route names to a models.dev provider id")
     reference.pop("_sources", None)
     check_free_limits(rules, path)
+    for route, ids in (rules.get("paid_only") or {}).items():
+        if route.startswith("_"):
+            continue
+        if route not in known or not isinstance(ids, list) or not all(isinstance(i, str) and i for i in ids):
+            raise RuntimeError(f"{path}: paid_only.{route} must be a list of upstream ids of a known route")
     return rules
 
 
@@ -573,6 +579,11 @@ def listing_verdict(kind, item):
     return chat, why
 
 
+def paid_only(rules, route):
+    """The ids a free route's provider names as needing a paid plan (routing.json `paid_only`): never free."""
+    return frozenset(((rules or {}).get("paid_only") or {}).get(route) or [])
+
+
 def approves_all(rules, route):
     """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
     decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes (Groq, and the no-card accounts) and `listed` routes (zero price in the listing);
@@ -805,6 +816,10 @@ def list_models(entry, env, http, rules=None, reference=None):
             out["unavailable"] = unavailable
         if out["modality"] != "chat":
             out["chat"] = False
+        if model_id in paid_only(rules, entry["route"]):
+            # The provider says this model needs a paid plan: never free, whatever the plan or listing suggests.
+            out["free"] = False
+            out["paid_only"] = True
         found[model_id] = out
     if kind in STATIC_KINDS and kind != "inferbase" and free_by(rules, entry["route"]) == "plan":
         # A plan-free provider may leave its free ids out of the list (Z.ai's /models omits the *-flash ids): an
@@ -1317,6 +1332,8 @@ def plan_groups(catalogue, rules):
             if not candidate(meta, kind, route, api_only):
                 continue
             upstream_id = str(model["id"]).split("/", 1)[1]
+            if upstream_id in paid_only(rules, route):
+                continue  # a paid-plan model on a free route: refused even when an older run recorded it usable
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
             if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
@@ -1916,6 +1933,10 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             if item["chat"] is False:
                 meta.update(status="not-chat", reason="")
                 meta.setdefault("probed_at", stamp)
+            elif route in FREE_ONLY and item.get("paid_only"):
+                meta.update(status="unprobed", reason=PAID_ONLY_REASON)
+                meta.pop("probed_at", None)
+                meta.pop("was_usable", None)
             elif route in FREE_ONLY and not item["free"]:
                 reason = APPROVAL_REASON if by_route[route]["kind"] in STATIC_KINDS else PAID_REASON.get(route, "paid models on a free-only route are not probed")
                 meta.update(status="unprobed", reason=reason)

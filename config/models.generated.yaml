@@ -1094,30 +1094,6 @@
       }
     },
     {
-      "model_name": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash",
-      "litellm_params": {
-        "model": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "litellm_credential_name": "cloudflare",
-        "order": 1,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "route": "cloudflare",
-        "canonical": "@cf/deepseek-ai/deepseek-v4.1-flash",
-        "access_groups": [
-          "cloudflare-free-public",
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "cloudflare/@cf/google/gemma-4-26b-a4b-it",
       "litellm_params": {
         "model": "cloudflare/@cf/google/gemma-4-26b-a4b-it",
@@ -1430,30 +1406,6 @@
       }
     },
     {
-      "model_name": "cloudflare/@cf/thinkingmachines/inkling-2-small",
-      "litellm_params": {
-        "model": "cloudflare/@cf/thinkingmachines/inkling-2-small",
-        "litellm_credential_name": "cloudflare",
-        "order": 1,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "cloudflare/@cf/thinkingmachines/inkling-2-small",
-        "route": "cloudflare",
-        "canonical": "@cf/thinkingmachines/inkling-2-small",
-        "access_groups": [
-          "cloudflare-free-public",
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "cloudflare/@cf/utter-project/eurollm-9b-it",
       "litellm_params": {
         "model": "cloudflare/@cf/utter-project/eurollm-9b-it",
@@ -1492,30 +1444,6 @@
         "id": "cloudflare/@cf/zai-org/glm-4.7-flash",
         "route": "cloudflare",
         "canonical": "@cf/zai-org/glm-4.7-flash",
-        "access_groups": [
-          "cloudflare-free-public",
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "cloudflare/@cf/zai-org/glm-5.3",
-      "litellm_params": {
-        "model": "cloudflare/@cf/zai-org/glm-5.3",
-        "litellm_credential_name": "cloudflare",
-        "order": 1,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "cloudflare/@cf/zai-org/glm-5.3",
-        "route": "cloudflare",
-        "canonical": "@cf/zai-org/glm-5.3",
         "access_groups": [
           "cloudflare-free-public",
           "free"
@@ -4063,26 +3991,6 @@
     {
       "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
-        "model": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "litellm_credential_name": "cloudflare",
-        "order": 2,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "free/cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "route": "cloudflare",
-        "canonical": "deepseek-v4.1-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/deepseek-v4.1-flash",
-      "litellm_params": {
         "model": "openai/deepseek-v4.1-flash:free",
         "litellm_credential_name": "electronhub",
         "order": 4,
@@ -5522,29 +5430,6 @@
       }
     },
     {
-      "model_name": "free/glm-5.3",
-      "litellm_params": {
-        "model": "cloudflare/@cf/zai-org/glm-5.3",
-        "litellm_credential_name": "cloudflare",
-        "order": 2,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "free/cloudflare/@cf/zai-org/glm-5.3",
-        "route": "cloudflare",
-        "canonical": "glm-5.3",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/glm-5.3-flash",
       "litellm_params": {
         "model": "openai/glm-5.3-flash:free",
@@ -6134,29 +6019,6 @@
         "id": "free/opencode-go/iceman-contributor-free",
         "route": "opencode-go",
         "canonical": "iceman-contributor",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/inkling-2-small",
-      "litellm_params": {
-        "model": "cloudflare/@cf/thinkingmachines/inkling-2-small",
-        "litellm_credential_name": "cloudflare",
-        "order": 2,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "free/cloudflare/@cf/thinkingmachines/inkling-2-small",
-        "route": "cloudflare",
-        "canonical": "inkling-2-small",
         "access_groups": [
           "free"
         ],
