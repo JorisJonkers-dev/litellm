@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.3...v1.10.0) (2026-11-26)
+
+
+### Features
+
+* **catalog:** decide usable from listings, models.dev and real traffic; no automatic probes ([#92](https://github.com/JorisJonkers-dev/litellm/issues/92)) ([1e389be](https://github.com/JorisJonkers-dev/litellm/commit/1e389be1d38937b572aee0c74eca31d96131e7dc))
+
 ## [1.9.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.9.2...v1.9.3) (2026-11-25)
 
 
