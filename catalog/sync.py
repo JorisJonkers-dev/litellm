@@ -2027,7 +2027,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                     meta.update(status="usable", reason="", failing_probes=0, verified_by="traffic", probed_at=stamp)
                 elif seen.get("denied"):
                     # Real traffic was refused (401, 403, 404): blocked while that evidence is inside the window.
-                    meta.update(status="blocked", reason="real requests were refused (401, 403 or 404)", failing_probes=2, verified_by="traffic")
+                    meta.update(status="blocked", reason="real traffic was refused (401, 403 or 404)", failing_probes=2, verified_by="traffic")
                     meta.pop("was_usable", None)
                 elif full in probe_ids:
                     queue.append((route, model))

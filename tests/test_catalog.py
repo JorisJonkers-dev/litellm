@@ -333,6 +333,40 @@ class Build(unittest.TestCase):
         down = Http(lists={})
         self.assertEqual(sync.traffic_evidence({"TRAFFIC_PROMETHEUS_URL": "http://prom"}, down, lambda line: None), {})
 
+    def test_recorded_prometheus_series_are_read_as_served_and_refused(self):
+        # The series as the proxy's Prometheus answers them: the exact JSON shape of an instant query.
+        def recorded(method, url, headers, body):
+            if "total_requests" in urllib.parse.unquote(url):
+                rows = [{"metric": {"model_id": "free/route/x", "status_code": "200"}, "value": [0, "5"]}]
+            else:
+                rows = [{"metric": {"model_id": "free/route/x", "exception_status": "403"}, "value": [0, "2"]},
+                        {"metric": {"model_id": "public/route/y", "exception_status": "404"}, "value": [0, "1"]}]
+            return 200, {"status": "success", "data": {"resultType": "vector", "result": rows}}
+        seen = sync.traffic_evidence({"TRAFFIC_PROMETHEUS_URL": "http://prom/"}, recorded)
+        self.assertEqual(seen, {"route/x": {"ok": 5, "denied": 2}, "route/y": {"ok": 0, "denied": 1}})
+
+    def test_repeated_refusals_block_a_deployment_with_a_reason_naming_traffic(self):
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        cat, _ = sync.build(env, Build().prom_http(denied=["opencode-go/deepseek-v4-pro"]), {}, NOW)
+        meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+        self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["status"], "blocked")
+        self.assertIn("traffic", meta["opencode-go/deepseek-v4-pro"]["reason"])
+
+    def test_a_blocked_deployment_that_serves_traffic_becomes_usable(self):
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+        blocked, _ = sync.build(env, Build().prom_http(denied=["opencode-go/deepseek-v4-pro"]), {}, NOW)
+        usable, _ = sync.build(env, Build().prom_http(ok=["opencode-go/deepseek-v4-pro"]), blocked, NOW + datetime.timedelta(hours=1))
+        meta = {m["id"]: m["metadata"] for p in usable["providers"].values() for m in p["models"]}
+        self.assertEqual((meta["opencode-go/deepseek-v4-pro"]["status"], meta["opencode-go/deepseek-v4-pro"]["verified_by"]), ("usable", "traffic"))
+        self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["reason"], "")
+
+    def test_without_the_url_the_build_reads_no_traffic_and_decides_as_before(self):
+        http = Http()
+        cat, _ = sync.build(ENV, http, {}, NOW)
+        self.assertFalse([call for call in http.calls if "/api/v1/query" in call[1]])
+        meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+        self.assertNotIn("traffic", {m.get("verified_by") for m in meta.values()})
+
     def test_a_trusted_listing_decides_without_a_request_and_a_listing_that_says_unavailable_blocks(self):
         lists = {"https://naga/v1/models": {"data": [
             {"id": "a:free", "kinds": ["chat"], "availability": {"status": "served"}},
