@@ -1,0 +1,149 @@
+"""The paid/<model> chains: one group per chat model across the paid routes, in routing.json's order."""
+import copy
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "catalog"))
+sys.path.insert(0, str(ROOT / "tests"))
+import sync  # noqa: E402
+from test_routing import ENV, RULES, Http, catalogue, entry  # noqa: E402
+
+PAID_ROUTES = ["vibe-study", "vibe", "opencode-go", "vibe-study-api", "vibe-api"]
+PAID_RULES = dict(
+    RULES,
+    paid_route_order=PAID_ROUTES,
+    accounts={route: {"routes": [route], "max_budget": 10, "window": {"days": 30}} for route in PAID_ROUTES},
+    cooldowns=dict(RULES["cooldowns"], **{route: 3600 for route in PAID_ROUTES}),
+)
+ALL_FIVE = [("vibe-study", "deepseek-v4.1-flash-1017"), ("vibe", "deepseek-v4.1-flash-1017"),
+            ("opencode-go", "deepseek-v4.1-flash"), ("vibe-study-api", "deepseek-v4.1-flash"),
+            ("vibe-api", "deepseek-v4.1-flash")]
+
+
+def plan(*models, rules=PAID_RULES):
+    return sync.plan_groups(catalogue(*models), rules)
+
+
+def chain(specs, name):
+    return [(spec["route"], spec["order"]) for spec in specs if spec["name"] == f"paid/{name}"]
+
+
+def usable(route, model_id, **meta):
+    return (route, model_id, "usable", dict(meta))
+
+
+class PaidChains(unittest.TestCase):
+    def test_the_five_routes_try_in_the_fixed_order_and_a_route_without_the_model_is_skipped(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE])
+        self.assertEqual(chain(specs, "deepseek-v4.1-flash"),
+                         [("vibe-study", 1), ("vibe", 2), ("opencode-go", 3), ("vibe-study-api", 4), ("vibe-api", 5)])
+        # glm-5.3-flash is served by the Vibe plans and Go only: the API keys have no copy, so no step to skip
+        glm = [usable("vibe-study", "glm-5.3-flash"), usable("vibe", "glm-5.3-flash"),
+               usable("opencode-go", "glm-5.3-flash")]
+        self.assertEqual(chain(plan(*glm), "glm-5.3-flash"), [("vibe-study", 1), ("vibe", 2), ("opencode-go", 3)])
+
+    def test_the_chain_is_the_routing_file_order_not_a_hard_coded_one(self):
+        rules = dict(PAID_RULES, paid_route_order=list(reversed(PAID_ROUTES)))
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE], rules=rules)
+        self.assertEqual([route for route, _ in chain(specs, "deepseek-v4.1-flash")], list(reversed(PAID_ROUTES)))
+
+    def test_a_paid_copy_is_the_routes_own_budgeted_deployment(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE])
+        canonical = {spec["model_info"]["id"]: spec for spec in specs if not spec["name"].startswith("paid/")}
+        copies = [spec for spec in specs if spec["name"].startswith("paid/")]
+        self.assertEqual(len(copies), 5)
+        for copy_spec in copies:
+            self.assertEqual(copy_spec["litellm_params"]["max_budget"], 10)
+            self.assertTrue(copy_spec["model_info"].get("account"))
+            origin = canonical.get(copy_spec["model_info"]["id"])
+            if origin is not None:
+                # Where the route also has a canonical deployment, the copy shares its id, budget and cooldown.
+                self.assertEqual(copy_spec["litellm_params"]["model"], origin["litellm_params"]["model"])
+                self.assertEqual(copy_spec["litellm_params"].get("cooldown_time"), origin["litellm_params"].get("cooldown_time"))
+        # backup_only drops opencode-go from the canonical group where Vibe serves the model; the chain keeps it
+        self.assertNotIn("opencode-go", {spec["route"] for spec in specs if spec["name"] == "deepseek-v4.1-flash"})
+        self.assertIn(("opencode-go", 3), chain(specs, "deepseek-v4.1-flash"))
+
+
+class MistralReleases(unittest.TestCase):
+    def test_a_mistral_model_has_one_name_and_the_newest_release(self):
+        specs = plan(usable("vibe", "mistral-large-2411"), usable("vibe", "mistral-large-2512"),
+                     usable("vibe-study", "mistral-large-2411"),
+                     usable("vibe", "mistral-large-latest", resolves_to="mistral-large-2512"))
+        mistral = [spec for spec in specs if spec["route"] in ("vibe", "vibe-study")]
+        self.assertEqual({spec["name"] for spec in mistral}, {"mistral-large", "paid/mistral-large"})
+        vibe = [spec for spec in mistral if spec["route"] == "vibe"]
+        self.assertEqual({spec["upstream_id"] for spec in vibe}, {"mistral-large-2512"})
+
+    def test_no_latest_alias_is_deployed_and_an_unresolved_one_is_dropped(self):
+        specs = plan(usable("vibe", "mistral-large-latest"), usable("vibe", "mistral-small-2603"),
+                     usable("vibe-study", "mistral-small-latest", resolves_to="mistral-small-2603"))
+        self.assertFalse([spec for spec in specs if spec["upstream_id"].endswith("-latest")])
+        self.assertFalse([spec for spec in specs if spec["name"].startswith("paid/mistral-large")])
+        self.assertEqual(chain(specs, "mistral-small"), [("vibe-study", 1), ("vibe", 2)])
+
+    def test_the_listing_resolves_a_latest_alias_to_the_release_that_names_it(self):
+        # test_routing's listing: "mistral-large-2411" lists "mistral-large-latest" in its aliases
+        found = {m["id"]: m for m in sync.list_models(entry("vibe"), ENV, Http())}
+        self.assertEqual(found["mistral-large-latest"]["resolves_to"], "mistral-large-2411")
+        self.assertNotIn("resolves_to", found["mistral-large-2411"])
+
+
+class PaidGuards(unittest.TestCase):
+    def test_no_paid_group_holds_an_openrouter_deployment(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE],
+                     ("openrouter", "deepseek/deepseek-v4.1-flash:free", "usable", {"free": True}))
+        self.assertFalse([spec for spec in specs if spec["name"].startswith("paid/") and spec["route"] == "openrouter"])
+        self.assertTrue([spec for spec in specs if spec["name"] == "free/deepseek-v4.1-flash"])
+
+    def test_openrouter_is_refused_as_a_paid_route(self):
+        with self.assertRaisesRegex(RuntimeError, "not a paid route"):
+            sync.paid_route_order({"paid_route_order": ["openrouter"]})
+
+    def test_the_sync_refuses_an_openrouter_copy_in_a_paid_group(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE])
+        bad = copy.deepcopy(next(spec for spec in specs if spec["name"].startswith("paid/")))
+        bad["route"] = "openrouter"
+        with self.assertRaisesRegex(RuntimeError, "OpenRouter"):
+            sync.assert_paid_groups(specs + [bad], PAID_RULES)
+
+    def test_the_sync_refuses_an_unbudgeted_copy_in_a_paid_group(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE])
+        bad = copy.deepcopy(next(spec for spec in specs if spec["name"].startswith("paid/")))
+        bad["litellm_params"].pop("max_budget")
+        with self.assertRaisesRegex(RuntimeError, "not budgeted"):
+            sync.assert_paid_groups(specs + [bad], PAID_RULES)
+
+    def test_a_paid_group_never_reaches_a_free_group(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE],
+                     ("openrouter", "deepseek/deepseek-v4.1-flash:free", "usable", {"free": True}))
+        free_ids = {spec["model_info"]["id"] for spec in specs if spec["name"].startswith("free/")}
+        for spec in specs:
+            if spec["name"].startswith("paid/"):
+                self.assertNotIn(spec["model_info"]["id"], free_ids)
+                self.assertNotIn(spec["route"], sync.FREE_ONLY)
+                self.assertIn("max_budget", spec["litellm_params"])
+                self.assertEqual(spec["model_info"]["access_groups"], ["paid"])
+
+
+class ClaudeAccess(unittest.TestCase):
+    def test_a_claude_deployment_carries_only_the_anthropic_group(self):
+        specs = plan(usable("anthropic", "claude-sonnet-4-5-20250929"), usable("vibe", "mistral-large-2411"))
+        claude = [spec for spec in specs if spec["model_info"]["canonical"].startswith("claude")]
+        self.assertTrue(claude)
+        for spec in claude:
+            self.assertEqual(spec["model_info"]["access_groups"], ["anthropic"])
+        self.assertFalse([spec for spec in specs if spec["name"].startswith("paid/claude")])
+
+    def test_the_sync_refuses_a_claude_deployment_in_another_group(self):
+        specs = plan(usable("anthropic", "claude-sonnet-4-5-20250929"))
+        bad = copy.deepcopy(next(spec for spec in specs if spec["route"] == "anthropic"))
+        bad["model_info"]["access_groups"] = ["canonical"]
+        with self.assertRaisesRegex(RuntimeError, "anthropic"):
+            sync.assert_paid_groups(specs + [bad], PAID_RULES)
+
+
+if __name__ == "__main__":
+    unittest.main()

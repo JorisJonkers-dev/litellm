@@ -714,6 +714,12 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
         # 599 is this client's own: no HTTP answer (DNS, connect, TLS, timeout); the body is the transport error.
         detail = f" ({body})" if status == 599 and isinstance(body, str) and body else ""
         raise RuntimeError(f"{entry['route']}: the model list answered {status}{detail}")
+    latest_of = {}
+    if kind == "mistral":
+        for item in items:
+            if isinstance(item, dict) and item.get("id"):
+                for alias in item.get("aliases") or []:
+                    latest_of[str(alias)] = str(item["id"])
     found = {}
     for item in items:
         if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
@@ -739,6 +745,9 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             caps = item.get("capabilities") or {}
             out["chat"] = bool(caps.get("completion_chat")) if "completion_chat" in caps else None
             out["context_length"] = item.get("max_context_length")
+            # A moving "-latest" alias names the release it points at in that release's "aliases" list.
+            if model_id in latest_of:
+                out["resolves_to"] = latest_of[model_id]
         elif kind == "openrouter":
             out["context_length"] = item.get("context_length")
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
@@ -1375,11 +1384,15 @@ def plan_groups(catalogue, rules):
             if not candidate(meta, kind, route, api_only):
                 continue
             upstream_id = str(model["id"]).split("/", 1)[1]
+            if by_route[route]["kind"] == "mistral":
+                upstream_id = mistral_release(upstream_id, meta)
+                if upstream_id is None:
+                    continue  # a "-latest" alias the listing does not resolve: it moves, so it is not deployed
             if upstream_id in paid_only(rules, route):
                 continue  # a paid-plan model on a free route: refused even when an older run recorded it usable
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
-            if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
+            if chosen is None or newer_upstream(by_route[route]["kind"], upstream_id, chosen["upstream_id"]):
                 # The free groups keep a dated snapshot apart from its base model (no alias, no merge).
                 dated = canonical_name(route, upstream_id, rules, meta.get("canonical_id"), strip_version=False)
                 groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
@@ -1387,8 +1400,12 @@ def plan_groups(catalogue, rules):
     specs = []
     # free/<model> -> route -> the free copies that route serves of it (one canonical name or several)
     free_members = {}
+    # paid/<model> -> route -> the chat copy that paid route serves of it, before backup_only drops any route
+    paid_members = {}
+    paid_order = paid_route_order(rules)
     for name, routes in sorted(groups.items()):
         serving = set(routes)
+        all_routes = set(routes)
         # A free id is in a public group of its own, so no paid route makes it a backup.
         own_group = {route for route in serving if route in FREE_ID_ROUTES and routes[route].get("free")}
         # A backup route is in the group only when nothing better serves the model in the same mode: an
@@ -1412,6 +1429,13 @@ def plan_groups(catalogue, rules):
         # A free-tier route the rules exclude for this model serves it in no group at all: the
         # model is refused on the free tier, and a paid route that also serves it is not affected.
         serving -= {route for route in serving & public_routes if free_excluded(name, route, rules)}
+        # A paid chain tries every paid route that serves the model in rules' order, backups included (the
+        # canonical group's backup_only rule does not apply to it); an exclusive model stays on its own routes.
+        paid_serving = {route for route in all_routes & set(paid_order) if routes[route]["modality"] == "chat"}
+        if only:
+            paid_serving &= only
+        if paid_serving:
+            paid_members[name] = {route: routes[route] for route in paid_serving}
         if not serving:
             continue
         primary = primary_mode({route: routes[route] for route in serving})
@@ -1445,6 +1469,7 @@ def plan_groups(catalogue, rules):
         specs.extend(free_group(key, members, by_route, rules))
     if rules.get("tier_groups"):
         specs.extend(tier_copies(specs, rules))
+    specs.extend(paid_groups(paid_members, by_route, rules))
     # A group of one deployment has nothing to fall back to: it must cool down on a 402 or 429
     # itself, which LiteLLM only does with an explicit allowed-fails entry.
     counts = {}
@@ -1464,7 +1489,103 @@ def plan_groups(catalogue, rules):
     assert_free_groups(specs)
     assert_tier_copies(specs, rules)
     assert_no_tier_shadow(specs, rules)
+    assert_paid_groups(specs, rules)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
+
+
+PAID_GROUP = "paid"
+PAID_ACCESS_GROUP = "paid"
+RELEASE_STAMP = re.compile(r"-(\d{4,8})$")
+
+
+def paid_route_order(rules):
+    """The paid routes, in the order a paid/<model> chain tries them: rules["paid_route_order"], lowest first.
+
+    Returns route -> order (1 first). A route that is no paid route (unknown, OpenRouter, a free-only route) fails the sync.
+    """
+    kinds = {entry["route"]: entry["kind"] for entry in ROUTES}
+    names = list((rules or {}).get("paid_route_order") or [])
+    if len(set(names)) != len(names):
+        raise RuntimeError(f"paid_route_order repeats a route: {names}")
+    for route in names:
+        if kinds.get(route) in (None, "openrouter") or route in FREE_ONLY:
+            raise RuntimeError(f"paid_route_order names {route}, which is not a paid route")
+    return {route: index + 1 for index, route in enumerate(names)}
+
+
+def mistral_release(upstream_id, meta):
+    """The id a Mistral route deploys for one listed id: never a moving "-latest" alias.
+
+    A "-latest" id is deployed as the release its listing names (`resolves_to`, from the entry's "aliases"), and
+    not at all when the listing names none. A dated or numbered id is its own release.
+    """
+    if not upstream_id.endswith("-latest"):
+        return upstream_id
+    return meta.get("resolves_to")
+
+
+def newer_upstream(kind, upstream_id, than):
+    """Whether upstream_id is the id a route deploys over `than` (both name one canonical model).
+
+    A Mistral route names its newest release: the largest date stamp wins. Every other route keeps the shortest
+    spelling, as before.
+    """
+    if kind == "mistral":
+        stamp = RELEASE_STAMP.search(upstream_id)
+        other = RELEASE_STAMP.search(than)
+        newest, oldest = int(stamp.group(1)) if stamp else 0, int(other.group(1)) if other else 0
+        if newest != oldest:
+            return newest > oldest
+    return len(upstream_id) < len(than)
+
+
+def paid_groups(members, by_route, rules):
+    """The paid/<model> groups: one group per chat model, its deployments in paid_route_order.
+
+    `members` is canonical name -> route -> the chosen chat copy that route serves of it. Each deployment is the
+    route's own budgeted deployment: the same model_info.id, account, budget and cooldown as its canonical copy, so a
+    paid/ call and a direct call draw on one counter. Its `order` is the route's place in paid_route_order (lowest
+    first), so a route that answers 402 or 429 falls through to the next, and a route that does not serve the model
+    has no deployment and is skipped. Access group "paid" alone.
+    """
+    order = paid_route_order(rules)
+    budgets, cooldowns = account_budgets(rules), (rules or {}).get("cooldowns") or {}
+    specs = []
+    for name, routes in sorted(members.items()):
+        for route in sorted(routes, key=lambda r: order[r]):
+            spec = deployment(f"{PAID_GROUP}/{name}", name, route, routes[route], order[route], 1, by_route[route],
+                              budget=budgets.get(route), cooldown=cooldowns.get(route))
+            spec["model_info"]["access_groups"] = [PAID_ACCESS_GROUP]
+            specs.append(spec)
+    return specs
+
+
+def assert_paid_groups(specs, rules):
+    """Fail the sync when a paid/* deployment is not a budgeted paid route, or a Claude deployment has another group.
+
+    A paid chain holds only the paid routes (never OpenRouter, never a free route, never a free id): every paid/*
+    deployment carries a budget (a budget is a price) and the access group "paid" alone. A Claude deployment carries
+    the "anthropic" access group alone, wherever it sits.
+    """
+    paid = paid_route_order(rules)
+    kinds = {entry["route"]: entry["kind"] for entry in ROUTES}
+    for spec in specs:
+        params, info = spec["litellm_params"], spec["model_info"]
+        problems = []
+        if spec["name"].startswith(PAID_GROUP + "/"):
+            if spec["route"] not in paid:
+                problems.append("its route is not a paid route")
+            if kinds.get(spec["route"]) == "openrouter":
+                problems.append("it is an OpenRouter deployment")
+            if spec["route"] in FREE_ONLY or "max_budget" not in params:
+                problems.append("it is not budgeted, so it is not a paid copy")
+            if info.get("access_groups") != [PAID_ACCESS_GROUP]:
+                problems.append("its access groups are not exactly the paid group")
+        if str(info.get("canonical", "")).startswith("claude") or spec["route"] == "anthropic":
+            if info.get("access_groups") != [GATED_ACCESS_GROUPS["anthropic"]]:
+                problems.append("a Claude deployment carries an access group other than anthropic")
+        if problems:
+            raise RuntimeError(f"{info.get('id')} may not join {spec['name']}: " + "; ".join(problems))
 
 
 def free_group(name, members, by_route, rules):
@@ -1994,7 +2115,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            for field in ("canonical_id", "api", "api_base", "price", "chat_evidence"):
+            for field in ("canonical_id", "resolves_to", "api", "api_base", "price", "chat_evidence"):
                 if item.get(field):
                     meta[field] = item[field]
             if old and not stale_answer(old.get("metadata") or {}, key_changed, now):
