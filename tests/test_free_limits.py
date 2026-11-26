@@ -86,6 +86,16 @@ class Clustering(unittest.TestCase):
         self.assertEqual(group(specs, "free/gemma-4-31b-it"), ["openrouter", "unorouter"])
         self.assertEqual(group(specs, "free/nemotron-3.5-lightning"), ["bazaarlink", "requesty"])
 
+    def test_a_dated_snapshot_joins_its_base_only_through_an_alias_and_a_glued_free_is_a_marker(self):
+        specs = plan(free("cloudflare", "@cf/deepseek-ai/deepseek-v4.1-flash-1017"), free("electronhub", "deepseek-v4.1-flash:free"),
+                     free("neosantara", "deepseek-v4.1-flash-free"), free("bazaarlink", "deepseek/deepseek-v4-flash-0731free:free"),
+                     free("gonka", "deepseek-ai/DeepSeek-V4-Flash-0731"), free("unorouter", "deepseek-v4-flash:free"),
+                     rules=dict(BASE_RULES, aliases=REAL["aliases"], free_aliases=REAL["free_aliases"], free_order=REAL["free_order"]))
+        self.assertEqual(group(specs, "free/deepseek-v4.1-flash"), ["cloudflare", "electronhub", "neosantara"])
+        self.assertEqual(group(specs, "free/deepseek-v4-flash-0731"), ["bazaarlink", "gonka"])
+        # No alias says v4-flash (April) is the 0731 snapshot: it stays apart.
+        self.assertEqual(group(specs, "free/deepseek-v4-flash"), ["unorouter"])
+
     def test_a_router_endpoint_is_not_a_model(self):
         specs = plan(free("openrouter", "openrouter/free"), free("kilo", "kilo/free"))
         self.assertEqual(group(specs, "free/free"), [])
@@ -135,6 +145,27 @@ class Generated(unittest.TestCase):
         for name in ("free/glm-4.7-flash", "free/gpt-oss-120b", "free/gemma-4-31b-it", "free/nemotron-3.5-lightning"):
             self.assertGreaterEqual(sizes.get(name, 0), 3, name)
         self.assertNotIn("free/gemma-4-31b", sizes)
+
+    # Near misses the audit kept apart on purpose, with the reason (see AGENTS.md, Free groups).
+    KEPT_APART = {
+        frozenset({"codestral", "codestral-2508"}): "codestral is a moving alias (models.dev: 2024-05 or 25.08 by provider)",
+        frozenset({"qwen2.5-coder-32b", "qwen2.5-coder-32b-instruct"}): "Qwen2.5-Coder-32B is the base model, -instruct the chat tune",
+        frozenset({"typhoon-ocr", "typhoon-ocr-preview"}): "one provider lists both as separate models",
+    }
+
+    def test_no_free_group_is_a_near_miss_of_another(self):
+        """Two free groups whose ids differ only by a date stamp, punctuation or a variant marker are one model or a listed exception."""
+        import re
+        def loose(name):
+            name = re.sub(r"free$", "", name.split(":")[0])
+            name = re.sub(r"[-_.]?(\d{4}|\d{6}|\d{8})$", "", name)
+            name = re.sub(r"[-_](it|instruct|chat|preview|latest|exp)$", "", name)
+            return re.sub(r"[^a-z0-9]", "", name)
+        by_key = {}
+        for name in {e["model_name"][len("free/"):] for e in self.free_entries()}:
+            by_key.setdefault(loose(name), set()).add(name)
+        clashes = [frozenset(names) for names in by_key.values() if len(names) > 1]
+        self.assertEqual([c for c in clashes if c not in self.KEPT_APART], [])
 
     def test_each_free_deployment_carries_its_routes_limits(self):
         for entry in self.free_entries():

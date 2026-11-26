@@ -4006,6 +4006,25 @@
     {
       "model_name": "free/deepseek-v4-flash-0731",
       "litellm_params": {
+        "model": "openai/deepseek/deepseek-v4-flash-0731free:free",
+        "litellm_credential_name": "bazaarlink",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/bazaarlink/deepseek/deepseek-v4-flash-0731free:free",
+        "route": "bazaarlink",
+        "canonical": "deepseek-v4-flash-0731",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-flash-0731",
+      "litellm_params": {
         "model": "neosantara/deepseek-v4-flash-0731-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -4042,25 +4061,23 @@
       }
     },
     {
-      "model_name": "free/deepseek-v4-flash-0731free",
+      "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
-        "model": "openai/deepseek/deepseek-v4-flash-0731free:free",
-        "litellm_credential_name": "bazaarlink",
-        "order": 6,
+        "model": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+        "litellm_credential_name": "cloudflare",
+        "order": 2,
         "weight": 1,
         "input_cost_per_token": 0,
-        "output_cost_per_token": 0
+        "output_cost_per_token": 0,
+        "rpm": 300
       },
       "model_info": {
-        "id": "free/bazaarlink/deepseek/deepseek-v4-flash-0731free:free",
-        "route": "bazaarlink",
-        "canonical": "deepseek-v4-flash-0731free",
+        "id": "free/cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+        "route": "cloudflare",
+        "canonical": "deepseek-v4.1-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -4119,29 +4136,6 @@
         "access_groups": [
           "free"
         ]
-      }
-    },
-    {
-      "model_name": "free/deepseek-v4.1-flash-1017",
-      "litellm_params": {
-        "model": "cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "litellm_credential_name": "cloudflare",
-        "order": 2,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 300
-      },
-      "model_info": {
-        "id": "free/cloudflare/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-        "route": "cloudflare",
-        "canonical": "deepseek-v4.1-flash-1017",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
       }
     },
     {

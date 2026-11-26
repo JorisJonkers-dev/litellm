@@ -1029,10 +1029,11 @@ def canonical_name(route, upstream_id, rules, canonical_id=None, strip_version=T
 
 # A free group joins every free copy of one model however its provider spells the id: Cloudflare's "@cf/"
 # and "@hf/" catalogue prefixes, any vendor path (the last segment is the model), a ":free" or "-free"
-# suffix that only marks the free variant. Nothing else is stripped: a quantisation (-fp8, -awq), a
+# suffix (or a "free" glued to a trailing date or version) that only marks the free variant. Nothing else is stripped: a quantisation (-fp8, -awq), a
 # distillation, a size, a fine-tune or a dated snapshot stays its own model unless routing.json's
 # `aliases` says otherwise.
 CATALOGUE_PREFIX = re.compile(r"^@(cf|hf)/")
+GLUED_FREE = re.compile(r"(?<=\d)free$")
 # Router endpoints that pick a different model per request: not one model, so never a free group.
 FREE_ROUTER_NAMES = frozenset({"free", "auto", "router"})
 
@@ -1045,6 +1046,8 @@ def free_canonical(name, rules):
     key = key.removesuffix(":free")
     if key.endswith("-free") and key != "-free":
         key = key[: -len("-free")]
+    # "free" glued to a date or version ("deepseek-v4-flash-0731free"): the same marker without its hyphen.
+    key = GLUED_FREE.sub("", key)
     return aliases.get(key, key)
 
 

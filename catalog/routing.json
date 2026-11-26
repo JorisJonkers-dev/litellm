@@ -13,6 +13,7 @@
     "glm-5-2": "glm-5.2",
     "zai-glm-5": "glm-5",
     "deepseek-v4-1-flash-1017": "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017": "deepseek-v4.1-flash",
     "mistral-medium-3-5": "mistral-medium-3.5"
   },
   "free_aliases": {
