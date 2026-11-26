@@ -231,6 +231,15 @@ router_settings:
   # num_retries stays above 0: inside a free/<canonical> group a 429 cools the copy that answered it
   # (its own cooldown_time), and the retry is what lands on the next free copy.
   num_retries: 2
+  # LiteLLM does not retry an authentication or bad-request error by default, so a dead copy (a paused key,
+  # a retired model) would fail the whole request. These per-exception counts let the retry land on the next
+  # copy of the group, which free_limits.py has just taken the dead one out of the pick for.
+  retry_policy:
+    AuthenticationErrorRetries: 2
+    BadRequestErrorRetries: 1
+    RateLimitErrorRetries: 2
+    TimeoutErrorRetries: 2
+    InternalServerErrorRetries: 2
   # Tier names (tier-free, tier-vibe, tier-go-cheap, tier-strong-open, tier-review): each is an alias of
   # its first step, and its other steps are its ordered fallbacks. The tiers are defined in
   # catalog/routing.json (tier_groups) and this block is rendered from them. There is no
