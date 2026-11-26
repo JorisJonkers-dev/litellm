@@ -581,15 +581,6 @@ def listing_verdict(kind, item):
     return chat, why
 
 
-def google_free_tier(rules, model_id):
-    """Whether Google's pricing page says this chat model is free of charge on the free tier (routing.json
-    `google_free_tier`: exact ids and one regex). Fail closed: a model the page does not name is not free."""
-    tier = (rules or {}).get("google_free_tier") or {}
-    if model_id in (tier.get("ids") or []):
-        return True
-    return bool(tier.get("match")) and re.search(tier["match"], model_id) is not None
-
-
 def paid_only(rules, route):
     """The ids a free route's provider names as needing a paid plan (routing.json `paid_only`): never free."""
     return frozenset(((rules or {}).get("paid_only") or {}).get(route) or [])
@@ -750,7 +741,9 @@ def list_models(entry, env, http, rules=None, reference=None, any_provider=None)
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
-            out["free"] = google_free_tier(rules, model_id)
+            # The AI Studio key's project has no billing account (owner, 2026-11-26): nothing can bill, a model the free
+            # tier does not serve is refused. A moving "-latest" alias is not one model, so it is never free here.
+            out["free"] = not model_id.endswith("-latest")
         elif kind == "kilo":
             out["context_length"] = item.get("context_length")
             # isFree, or a listed price that is an explicit zero on both sides (a "-1" is Kilo's router sentinel, not a zero).
@@ -1082,7 +1075,7 @@ FREE_NON_CHAT = re.compile(
     r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
     r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
     r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
-    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie", re.I)
+    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie|antigravity|gemini-omni|(?:^|[-_])streaming(?:[-_]|$)", re.I)
 
 
 def free_chat(route, chosen, rules):
@@ -1095,8 +1088,9 @@ def free_chat(route, chosen, rules):
     if chosen.get("modality") != "chat" or FREE_NON_CHAT.search(chosen["upstream_id"]):
         return False
     if route in ((rules or {}).get("public_routes") or []):
-        # Google: only the chat models its pricing page says are free of charge on the free tier (google_free_tier).
-        return google_free_tier(rules, chosen["upstream_id"])
+        # Google's key has no billing account (owner, 2026-11-26): every chat model joins, a moving "-latest" alias
+        # does not (it is not one model), and models.dev's "not chat" already set the mode in the listing.
+        return not chosen["upstream_id"].endswith("-latest")
     if approves_all(rules, route):
         return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
     return True
