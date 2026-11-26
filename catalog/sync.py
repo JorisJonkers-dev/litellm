@@ -58,6 +58,7 @@ import argparse
 import base64
 import copy as copy_module
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -138,6 +139,7 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
 # A route whose free ids are approved by hand says so: "paid" would hide that the owner can approve the id.
+PAID_ONLY_REASON = "the provider lists it as needing a paid plan (paid_only in catalog/routing.json); it is not probed"
 APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is approved there); it is not probed"
 # Where the evidence for a model comes from, in order (see build()). The sync sends no chat request unless a person asks
 # for one (`--probe <route/model>`, for debugging): on a free tier a request spends the daily quota.
@@ -190,7 +192,9 @@ FREE_ONLY = frozenset(entry["route"] for entry in ROUTES if entry["kind"] in FRE
 FREE_ACCESS_GROUPS = {entry["route"]: f"{entry['route']}-free-public" for entry in ROUTES if entry["kind"] in FREE_KINDS}
 # A free deployment the price map does not know records a real cost of 0, not an unknown. Inferbase's
 # free share is a dollar allowance, so its deployments keep their price and the route's budget caps it.
-FREE_PRICED = frozenset({"inferbase"})
+# Empty since the owner's decision of 2026-11-26: Inferbase's account has no payment method, so it is free and
+# rate limited like every no-card route. The mechanism stays for a route that bills an allowance again.
+FREE_PRICED = frozenset()
 assert set(FREE_ACCESS_GROUPS) == FREE_ONLY
 # The routes whose deployments may join a shared "free/<canonical>" group (agent-kit#916, litellm#60):
 # the free-only routes that record a zero cost, plus the free ids of a paid route (FREE_ID_ROUTES).
@@ -211,7 +215,9 @@ GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # own free access group, alone, with no budget. The "<route>-free" prefix keeps the name clear of
 # the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
 FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
-FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES)
+# The Google free tier joins too (owner, 2026-11-26): like every free route it is public work only.
+FREE_PUBLIC_ROUTES = frozenset({"google"})
+FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES) | FREE_PUBLIC_ROUTES
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -295,7 +301,71 @@ def load_rules(path=None):
     if not isinstance(reference, dict) or any(not isinstance(v, str) or (k != "_sources" and k not in known) for k, v in reference.items()):
         raise RuntimeError(f"{path}: reference must map route names to a models.dev provider id")
     reference.pop("_sources", None)
+    check_free_limits(rules, path)
+    for route, ids in (rules.get("paid_only") or {}).items():
+        if route.startswith("_"):
+            continue
+        if route not in known or not isinstance(ids, list) or not all(isinstance(i, str) and i for i in ids):
+            raise RuntimeError(f"{path}: paid_only.{route} must be a list of upstream ids of a known route")
     return rules
+
+
+# The per-deployment limits LiteLLM 1.109.1 reads from litellm_params (GenericLiteLLMParams: rpm, tpm, rpd, tpd,
+# daily_reset_time, max_parallel_requests) and enforces with router_settings.optional_pre_call_checks
+# [enforce_model_rate_limits] (router_utils/pre_call_checks/model_rate_limit_check.py). rpd/tpd count per UTC day
+# shifted by daily_reset_time ("HH:MM", UTC).
+DEPLOYMENT_LIMITS = ("rpm", "tpm", "rpd", "tpd", "max_parallel_requests")
+# The windows of a provider-wide (shared) budget that config/free_limits.py counts across every deployment of a route.
+SHARED_WINDOWS = ("minute", "hour", "day", "month")
+LIMIT_SCOPES = ("deployment", "account")
+DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def check_free_limits(rules, source="the routing rules"):
+    """Refuse a free_limits entry that LiteLLM or config/free_limits.py could not apply as written.
+
+    `free_limits.<route>` holds `deployment` (per-deployment limits copied into litellm_params), `shared`
+    (budgets one provider account or IP shares across all its deployments: a list of {requests|tokens, per}),
+    `concurrency` (requests in flight across the whole route), `reset` (the daily reset, "HH:MM" UTC),
+    `scope` (what a learned limit blocks: the one deployment or the whole account) and `source`/`status`.
+    """
+    limits = (rules or {}).get("free_limits")
+    if limits is None:
+        return
+    if not isinstance(limits, dict):
+        raise RuntimeError(f"{source}: free_limits must be an object of route -> limits")
+    known = {entry["route"] for entry in ROUTES}
+    for route, entry in limits.items():
+        if route.startswith("_"):
+            continue
+        where = f"{source}: free_limits.{route}"
+        if route not in known:
+            raise RuntimeError(f"{where} names no route")
+        if route not in FREE_GROUP_ROUTES:
+            raise RuntimeError(f"{where}: only a free route has free limits")
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"{where} is not an object")
+        for key, value in (entry.get("deployment") or {}).items():
+            if key not in DEPLOYMENT_LIMITS or not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise RuntimeError(f"{where}.deployment.{key} must be one of {DEPLOYMENT_LIMITS} with a positive integer")
+        for index, window in enumerate(entry.get("shared") or []):
+            amounts = [k for k in ("requests", "tokens") if k in window]
+            if (len(amounts) != 1 or window.get("per") not in SHARED_WINDOWS or not isinstance(window[amounts[0]], int)
+                    or window[amounts[0]] <= 0 or set(window) - {"requests", "tokens", "per", "note"}):
+                raise RuntimeError(f"{where}.shared[{index}] must be {{requests|tokens: N, per: {'|'.join(SHARED_WINDOWS)}}}")
+        if "concurrency" in entry and (not isinstance(entry["concurrency"], int) or entry["concurrency"] <= 0):
+            raise RuntimeError(f"{where}.concurrency must be a positive integer")
+        if "reset" in entry and not (isinstance(entry["reset"], str) and DAILY_RESET.match(entry["reset"])):
+            raise RuntimeError(f"{where}.reset must be HH:MM in UTC")
+        if entry.get("scope", "deployment") not in LIMIT_SCOPES:
+            raise RuntimeError(f"{where}.scope must be one of {LIMIT_SCOPES}")
+        if "account_match" in entry:
+            try:
+                re.compile(entry["account_match"])
+            except (re.error, TypeError) as error:
+                raise RuntimeError(f"{where}.account_match is not a valid regex: {error}")
+        if entry.get("status") not in ("confirmed", "partial", "unconfirmed"):
+            raise RuntimeError(f"{where}.status must be confirmed, partial or unconfirmed")
 
 
 def check_free_exclusions(rules, source="the routing rules"):
@@ -514,6 +584,11 @@ def listing_verdict(kind, item):
     return chat, why
 
 
+def paid_only(rules, route):
+    """The ids a free route's provider names as needing a paid plan (routing.json `paid_only`): never free."""
+    return frozenset(((rules or {}).get("paid_only") or {}).get(route) or [])
+
+
 def approves_all(rules, route):
     """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
     decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes (Groq, and the no-card accounts) and `listed` routes (zero price in the listing);
@@ -610,7 +685,7 @@ def fetch_listing(entry, env, http, base, headers):
     return http("GET", f"{base}/models", headers, None)
 
 
-def list_models(entry, env, http, rules=None, reference=None):
+def list_models(entry, env, http, rules=None, reference=None, any_provider=None):
     """The models the provider lists for this route: id, name, context length, free, chat, modality.
 
     A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
@@ -669,6 +744,9 @@ def list_models(entry, env, http, rules=None, reference=None):
             out["free"] = item["id"].endswith(":free") or is_free_price(item.get("pricing"))
         elif kind == "google":
             out["context_length"] = item.get("inputTokenLimit")
+            # The AI Studio key's project has no billing account (owner, 2026-11-26): nothing can bill, a model the free
+            # tier does not serve is refused. A moving "-latest" alias is not one model, so it is never free here.
+            out["free"] = not model_id.endswith("-latest")
         elif kind == "kilo":
             out["context_length"] = item.get("context_length")
             # isFree, or a listed price that is an explicit zero on both sides (a "-1" is Kilo's router sentinel, not a zero).
@@ -699,14 +777,7 @@ def list_models(entry, env, http, rules=None, reference=None):
             # The plan is free, so the list is the signal; a listing that prices the id above zero
             # overrides it (fail closed): the plan is not free for that model.
             price = listed_prices(item)
-            if kind == "inferbase":
-                # Inferbase's free share is a dollar allowance, so its ids are priced above zero and a
-                # deployment needs the real per-token price for the route's budget to fire; an id the
-                # listing does not price is not deployed.
-                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and price is not None
-                if price is not None:
-                    out["price"] = {"input": price[0], "output": price[1]}
-            else:
+            if True:  # Inferbase too: its account has no payment method (owner, 2026-11-26), so the plan is the signal
                 # Pay-per-token hosts name one approved free id (Together, Typhoon, Neosantara): a listing that
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
@@ -730,11 +801,7 @@ def list_models(entry, env, http, rules=None, reference=None):
             if ref["chat"] is False and out["modality"] == "chat":
                 out["modality"] = "other"
             if ref["cost"] is not None:
-                if kind == "inferbase":
-                    if "price" not in out:
-                        out["price"] = {"input": ref["cost"][0], "output": ref["cost"][1]}
-                        out["free"] = model_id in free_ids or approves_all(rules, entry["route"])
-                elif kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
+                if kind not in STATIC_KINDS and not out["free"] and ref["cost"] == (0, 0) and not priced_above_zero(item):
                     out["free"] = True  # the catalogue says 0 and the listing prices nothing above zero
                     out["free_source"] = "models.dev"
         verdict_chat, unavailable = listing_verdict(kind, item)
@@ -746,8 +813,24 @@ def list_models(entry, env, http, rules=None, reference=None):
             out["unavailable"] = unavailable
         if out["modality"] != "chat":
             out["chat"] = False
+        # What shows this is a chat-completion model, for a route whose listing says nothing (free_chat()).
+        typed = verdict_chat is True or (kind == "cloudflare" and isinstance(item.get("task"), dict)) or (
+            kind == "cohere" and isinstance(item.get("endpoints"), list)) or (kind == "watsonx" and isinstance(item.get("functions"), list))
+        if out["modality"] == "chat":
+            if typed:
+                out["chat_evidence"] = "listing"
+            elif ref and ref["chat"] is True:
+                out["chat_evidence"] = "models.dev"
+            elif not ref and ((any_provider or {}).get(free_canonical(model_id, rules)) or {}).get("chat") is True:
+                out["chat_evidence"] = "models.dev (other providers)"
+            elif model_id in free_ids:
+                out["chat_evidence"] = "approved"
+        if model_id in paid_only(rules, entry["route"]):
+            # The provider says this model needs a paid plan: never free, whatever the plan or listing suggests.
+            out["free"] = False
+            out["paid_only"] = True
         found[model_id] = out
-    if kind in STATIC_KINDS and kind != "inferbase" and free_by(rules, entry["route"]) == "plan":
+    if kind in STATIC_KINDS and free_by(rules, entry["route"]) == "plan":
         # A plan-free provider may leave its free ids out of the list (Z.ai's /models omits the *-flash ids): an
         # approved id still joins, and the probe decides whether the account can use it. A price-guarded route
         # cannot: an unlisted id has no price to check.
@@ -948,7 +1031,7 @@ VENDOR = re.compile(r"^[a-z0-9][a-z0-9._-]*/")
 VERSION = re.compile(r"-\d{4,8}$")
 
 
-def canonical_name(route, upstream_id, rules, canonical_id=None):
+def canonical_name(route, upstream_id, rules, canonical_id=None, strip_version=True):
     """The canonical model an upstream id serves: one name per model, whichever route serves it.
 
     Deterministic and conservative: only a vendor prefix, a `:free` suffix, `-latest` and a version
@@ -962,8 +1045,73 @@ def canonical_name(route, upstream_id, rules, canonical_id=None):
     if source in aliases:
         return aliases[source]
     name = source.lower().removeprefix("models/")
-    name = VERSION.sub("", VENDOR.sub("", name, count=1).removesuffix(":free").removesuffix("-latest"))
+    name = VENDOR.sub("", name, count=1).removesuffix(":free").removesuffix("-latest")
+    if strip_version:
+        name = VERSION.sub("", name)
     return aliases.get(name, name)
+
+
+# A free group joins every free copy of one model however its provider spells the id: Cloudflare's "@cf/"
+# and "@hf/" catalogue prefixes, any vendor path (the last segment is the model), a ":free" or "-free"
+# suffix (or a "free" glued to a trailing date or version) that only marks the free variant. Nothing else is stripped: a quantisation (-fp8, -awq), a
+# distillation, a size, a fine-tune or a dated snapshot stays its own model unless routing.json's
+# `aliases` says otherwise.
+CATALOGUE_PREFIX = re.compile(r"^@(cf|hf)/")
+GLUED_FREE = re.compile(r"(?<=\d)free$")
+# Last-resort names of models that are not chat completions, for the free groups: image generators, embeddings and
+# rerankers, speech, transcription and translation-only models, OCR and document parsers, music, and guard or
+# classifier models. Used only when nothing better (a typed listing, models.dev) says what a model is.
+FREE_NON_CHAT = re.compile(
+    r"dreamshaper|juggernaut|(?:^|[-_])pony(?:[-_]|$)|ponyxl|rev-?animated|swampony|nova-anime|(?:^|[-/])wai-|icbinp|cyberrealistic|"
+    r"deliberate|quiet-goodnight|ntr-mix|animerge|fustercluck|stable-diffusion|sdxl|(?:^|[-/])flux|dall-?e|imagen|"
+    r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
+    r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
+    r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
+    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie|antigravity|gemini-omni|native-audio|(?:^|[-_])streaming(?:[-_]|$)", re.I)
+
+
+def free_chat(route, chosen, rules):
+    """Whether a free copy is a chat-completion model, so it may serve a free/<model> group (fail closed).
+
+    Never one whose mode is not chat or whose name says it is something else (FREE_NON_CHAT). On a route whose
+    listing names no model type (`free_all` routes: everything listed is a candidate), it needs positive
+    evidence too: a typed listing, models.dev saying text chat, or the owner's approval in `free_ids`.
+    """
+    if chosen.get("modality") != "chat" or FREE_NON_CHAT.search(chosen["upstream_id"]):
+        return False
+    if route in ((rules or {}).get("public_routes") or []):
+        # Google's key has no billing account (owner, 2026-11-26): every chat model joins, a moving "-latest" alias
+        # does not (it is not one model), and models.dev's "not chat" already set the mode in the listing.
+        return not chosen["upstream_id"].endswith("-latest")
+    if approves_all(rules, route):
+        return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
+    return True
+
+
+# Router endpoints that pick a different model per request: not one model, so never a free group.
+FREE_ROUTER_NAMES = frozenset({"free", "auto", "router"})
+
+
+def free_canonical(name, rules):
+    """The model a free deployment serves, for the shared free/<model> group (see CATALOGUE_PREFIX)."""
+    # `free_aliases` merges spellings for the free groups only (the paid groups keep their names).
+    aliases = {**((rules or {}).get("aliases") or {}), **((rules or {}).get("free_aliases") or {})}
+    key = CATALOGUE_PREFIX.sub("", name.lower()).rsplit("/", 1)[-1]
+    key = key.removesuffix(":free")
+    if key.endswith("-free") and key != "-free":
+        key = key[: -len("-free")]
+    # "free" glued to a date or version ("deepseek-v4-flash-0731free"): the same marker without its hyphen.
+    key = GLUED_FREE.sub("", key)
+    return aliases.get(key, key)
+
+
+def free_limit_params(route, rules):
+    """The per-deployment limits of one free route, as LiteLLM 1.109.1 reads them from litellm_params."""
+    entry = ((rules or {}).get("free_limits") or {}).get(route) or {}
+    params = dict(entry.get("deployment") or {})
+    if params.get("rpd") or params.get("tpd"):
+        params["daily_reset_time"] = entry.get("reset", "00:00")
+    return params
 
 
 def loose_key(name):
@@ -1108,7 +1256,7 @@ def account_budgets(rules):
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
-               free_only=False):
+               free_only=False, limits=None):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -1120,7 +1268,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
-    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")):
+    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")) or (
+            free_only and route in FREE_PUBLIC_ROUTES):
         params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
     elif route in FREE_PRICED and chosen.get("price"):
         params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
@@ -1128,8 +1277,13 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params.update({key: budget[key] for key in ("max_budget", "budget_duration")})
     if cooldown:
         params["cooldown_time"] = cooldown
+    if limits:
+        params.update(limits)
     if free_only:
         groups = [FREE_ACCESS_GROUP]
+    elif route in FREE_PRICED:
+        # Priced (a dollar allowance), so never in the access group free: only a key holding its own group reaches it.
+        groups = [FREE_ACCESS_GROUPS[route]]
     elif route in FREE_ACCESS_GROUPS:
         groups = [FREE_ACCESS_GROUPS[route], FREE_ACCESS_GROUP]
     elif route in FREE_ID_ROUTES and chosen.get("free"):
@@ -1221,12 +1375,18 @@ def plan_groups(catalogue, rules):
             if not candidate(meta, kind, route, api_only):
                 continue
             upstream_id = str(model["id"]).split("/", 1)[1]
+            if upstream_id in paid_only(rules, route):
+                continue  # a paid-plan model on a free route: refused even when an older run recorded it usable
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
             if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
+                # The free groups keep a dated snapshot apart from its base model (no alias, no merge).
+                dated = canonical_name(route, upstream_id, rules, meta.get("canonical_id"), strip_version=False)
                 groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
-                                      "price": meta.get("price")}
+                                      "price": meta.get("price"), "free_name": dated, "chat_evidence": meta.get("chat_evidence")}
     specs = []
+    # free/<model> -> route -> the free copies that route serves of it (one canonical name or several)
+    free_members = {}
     for name, routes in sorted(groups.items()):
         serving = set(routes)
         # A free id is in a public group of its own, so no paid route makes it a backup.
@@ -1259,17 +1419,18 @@ def plan_groups(catalogue, rules):
         free_ids = serving & own_group
         normal = serving - public_routes - FREE_ONLY - free_ids
         public = serving & public_routes
-        for route in sorted(free):
-            # Its own group, alone: public work only, and nothing paid behind it.
+        for route in sorted(free & FREE_PRICED):
+            # A dollar-allowance route (Inferbase) is budgeted and priced, not free: its own group, its budget and
+            # cooldown, never a free/ group.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], budget=budgets.get(route),
                                     cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
-        for route in sorted(free_ids):
-            # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
-            group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
-            specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
-                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
-        specs.extend(free_group(name, routes, primary, (free | free_ids) & FREE_GROUP_ROUTES, by_route, rules))
+        # Every free copy (a free-only route, a paid route's free id, the Google free tier) is reachable only as
+        # free/<model> (owner, 2026-11-26): no per-route group, no "<route>-free/", "google-free/" or "public/" copy.
+        for route in sorted((free | free_ids | public) & FREE_GROUP_ROUTES):
+            if name not in FREE_ROUTER_NAMES and free_chat(route, routes[route], rules):
+                key = free_canonical(routes[route].get("free_name") or name, rules)
+                free_members.setdefault(key, {}).setdefault(route, []).append(routes[route])
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
         levels = sorted({rank.get(route, unranked)[0] for route in normal})
         order_of = {level: index + 1 for index, level in enumerate(levels)}
@@ -1280,22 +1441,8 @@ def plan_groups(catalogue, rules):
         for route, order, weight in planned:
             specs.append(deployment(group_name(name, routes[route]["modality"], primary), name, route, routes[route],
                                     order, weight, by_route[route], budget=budgets.get(route), cooldown=cooldowns.get(route)))
-        for route in sorted(public):
-            # The free tier alone, in the free access group: public work only, and no paid
-            # deployment behind it, so a refusal fails instead of billing. Chat models only.
-            if routes[route]["modality"] == "chat":
-                specs.append(deployment(group_name(name, "chat", "chat", free_route=GOOGLE_FREE_ROUTE), name, route,
-                                        routes[route], 1, 1, by_route[route], cooldown=PUBLIC_COOLDOWN, free_only=True))
-        if public:
-            # The free tier is public work only: its own group, first, with the normal deployments
-            # behind it, and no budget of its own.
-            for route in sorted(public):
-                specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
-                                        routes[route], 1, 1, by_route[route], public=True, cooldown=PUBLIC_COOLDOWN))
-            for route, order, weight in planned:
-                specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
-                                        routes[route], order + 1, weight, by_route[route], public=True,
-                                        budget=budgets.get(route), cooldown=cooldowns.get(route)))
+    for key, members in sorted(free_members.items()):
+        specs.extend(free_group(key, members, by_route, rules))
     if rules.get("tier_groups"):
         specs.extend(tier_copies(specs, rules))
     # A group of one deployment has nothing to fall back to: it must cool down on a 402 or 429
@@ -1304,7 +1451,8 @@ def plan_groups(catalogue, rules):
     for spec in specs:
         counts[spec["name"]] = counts.get(spec["name"], 0) + 1
     for spec in specs:
-        if counts[spec["name"]] == 1 and "cooldown_time" in spec["litellm_params"]:
+        cools = "cooldown_time" in spec["litellm_params"] or spec["route"] in FREE_ONLY or spec["name"].startswith(FREE_GROUP + "/")
+        if counts[spec["name"]] == 1 and cools:
             spec["model_info"]["allowed_fails_policy"] = {"RateLimitErrorAllowedFails": 0}
     # Rules may add a per-route policy: Anthropic answers an exhausted spend limit with a 400, which
     # LiteLLM only cools down on with an explicit entry (a malformed request counts too, hence the
@@ -1319,27 +1467,31 @@ def plan_groups(catalogue, rules):
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
 
 
-def free_group(name, routes, primary, serving, by_route, rules):
-    """The shared "free/<canonical>" group: every zero-cost copy of one canonical model.
+def free_group(name, members, by_route, rules):
+    """The shared "free/<model>" group: every zero-cost copy of one model, on every free route.
 
-    The per-route groups ("<route>/<canonical>") stay, for a key that holds one route's access
-    group; this group is the one a 429 falls through. Its deployments are ordered by allowance
-    (rules["free_order"]: the route with the biggest allowance first; a route the rules do not
-    name comes last) and cool down on their own (litellm_params.cooldown_time), so a rate-limited
-    copy is skipped for its cooldown and the next free copy serves. The copy has its own
-    model_info.id, because LiteLLM keeps cooldown state per deployment id. Which models are "the
-    same" is decided by canonical_name() alone: the ids differ per provider, and an id the
-    stripping does not unify is named in rules["aliases"] (sync reports near duplicates).
+    `members` is route -> the free copies (chosen entries) that route serves of the model; the model is
+    free_canonical() of their canonical names, so "@cf/openai/gpt-oss-120b", "openai/gpt-oss-120b" and
+    "gpt-oss-120b:free" meet, and an id the stripping does not unify is named in rules["aliases"]. A route
+    serving the model under two ids keeps the shortest. The per-route groups ("<route>/<canonical>") stay.
+
+    Order: rules["free_order"] (lowest first; a route it does not name comes last), so the per-minute
+    providers are tried before the scarce daily and monthly ones. Each copy has its own model_info.id and no
+    cooldown_time: a 429 cools it for the provider's Retry-After, and config/free_limits.py takes it out of
+    the pick while its known or learned limit lasts. litellm_params carries the route's per-deployment
+    limits (free_limits in routing.json) for LiteLLM's enforce_model_rate_limits.
     """
-    order = (rules or {}).get("free_order") or {}
-    cooldowns = (rules or {}).get("cooldowns") or {}
+    order = {route: rank for route, rank in ((rules or {}).get("free_order") or {}).items() if isinstance(rank, int)}
     last = max(order.values(), default=0) + 1
+    chosen_by_route = {route: min(copies, key=lambda c: (len(c["upstream_id"]), c["upstream_id"]))
+                       for route, copies in members.items()}
+    primary = primary_mode(chosen_by_route)
     specs = []
-    for route in sorted(serving):
-        spec = deployment(group_name(name, routes[route]["modality"], primary, free_route=FREE_GROUP), name, route,
-                          routes[route], order.get(route, last), 1, by_route[route], free_only=True,
-                          cooldown=cooldowns.get(route, PUBLIC_COOLDOWN))
-        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{routes[route]['upstream_id']}"
+    for route, chosen in sorted(chosen_by_route.items()):
+        spec = deployment(group_name(name, chosen["modality"], primary, free_route=FREE_GROUP), name, route,
+                          chosen, order.get(route, last), 1, by_route[route], free_only=True,
+                          limits=free_limit_params(route, rules))
+        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{chosen['upstream_id']}"
         specs.append(spec)
     return specs
 
@@ -1635,6 +1787,9 @@ def reference_key(model_id):
     return base
 
 
+ANY_PROVIDER = "_any"
+
+
 def reference_index(rules, env, http, log=None):
     """{route: {id: {"chat": bool, "deprecated": bool, "cost": (input, output) per token or None}}} from models.dev.
 
@@ -1668,6 +1823,21 @@ def reference_index(rules, env, http, log=None):
                 prices = (cost["input"] / 1e6, cost["output"] / 1e6)
             index[reference_key(model_id)] = {"chat": chat, "deprecated": model.get("status") == "deprecated", "cost": prices}
         out[route] = index
+    # Across every provider: whether models.dev calls a model (by its free_canonical name) a text chat model. Only the
+    # chat evidence of a free copy whose own provider models.dev does not cover reads it (list_models): a majority of
+    # the providers listing that model must call it chat, so one provider's mislabel decides nothing.
+    votes = {}
+    for provider in body.values():
+        for model_id, model in ((provider.get("models") if isinstance(provider, dict) else None) or {}).items():
+            if not isinstance(model, dict):
+                continue
+            modalities = model.get("modalities") if isinstance(model.get("modalities"), dict) else {}
+            outputs, inputs = modalities.get("output"), modalities.get("input")
+            chat = model.get("type") in (None, "chat") and isinstance(outputs, list) and outputs == ["text"] and (
+                isinstance(inputs, list) and "text" in inputs)
+            tally = votes.setdefault(free_canonical(str(model_id), rules), [0, 0])
+            tally[0 if chat else 1] += 1
+    out[ANY_PROVIDER] = {key: {"chat": yes > no} for key, (yes, no) in votes.items()}
     return out
 
 
@@ -1715,6 +1885,38 @@ def stale_provider(old, route, key_env):
         "metadata": dict(old.get("metadata") or {}, route=route, key_env=key_env, stale=True),
         "models": [dict(model, metadata=dict(model.get("metadata") or {})) for model in old.get("models") or []],
     }
+
+
+# A negative answer a probe recorded (blocked, unknown, error, a spent budget) is kept this long; then the model
+# goes back to what the listing, models.dev and traffic say. Probes are manual now, so nothing else would
+# ever clear one.
+PROBE_ANSWER_TTL = datetime.timedelta(days=7)
+PROBE_NEGATIVE = ("blocked", "unknown", "error", "budget-exhausted")
+
+
+def key_fingerprint(entry, env):
+    """A short sha256 prefix of the route's key, to notice a new key; "anonymous" for a keyless route."""
+    key = env.get(entry["key_env"]) or ""
+    if not key:
+        return "anonymous" if entry.get("anonymous") else None
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def stale_answer(meta, key_changed, now):
+    """Whether a recorded probe answer no longer counts: made with another key, or a negative one past its TTL.
+
+    Only probe answers: what the listing or real traffic said (verified_by listing or traffic) is decided again
+    every run anyway. A positive answer is kept across a key change too: the listing still has to show the model.
+    """
+    if meta.get("verified_by") in ("listing", "traffic") or meta.get("status") not in PROBE_NEGATIVE:
+        return False
+    if key_changed:
+        return True
+    try:
+        probed = datetime.datetime.fromisoformat(str(meta.get("probed_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return False  # an unreadable stamp: keep the (negative, so conservative) answer
+    return now - probed > PROBE_ANSWER_TTL
 
 
 def build(env, http, previous, now, probe_ids=(), rules=None):
@@ -1771,7 +1973,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                 candidates[route] = []
                 stats["route_errors"].append(f"{route}: candidate scan: {error}"[:200])
         try:
-            listed = list_models(entry, env, http, rules, reference.get(route))
+            listed = list_models(entry, env, http, rules, reference.get(route), reference.get(ANY_PROVIDER))
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -1783,14 +1985,19 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             providers[route] = stale_provider(previous["providers"][route], route, entry["key_env"])
             continue
         models = []
+        # A recorded probe answer belongs to the key that got it: with another key it says nothing (NVIDIA's 18
+        # "blocked" answers came from an invalid key). The fingerprint is a hash prefix, never the key.
+        fingerprint = key_fingerprint(entry, env)
+        previous_fingerprint = ((previous.get("providers") or {}).get(route) or {}).get("metadata", {}).get("key_fingerprint")
+        key_changed = previous_fingerprint != fingerprint
         for item in sorted(listed, key=lambda m: m["id"]):
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            for field in ("canonical_id", "api", "api_base", "price"):
+            for field in ("canonical_id", "api", "api_base", "price", "chat_evidence"):
                 if item.get(field):
                     meta[field] = item[field]
-            if old:
+            if old and not stale_answer(old.get("metadata") or {}, key_changed, now):
                 for k in ("status", "reason", "probed_at", "failing_probes", "was_usable", "verified_by"):
                     if k in (old.get("metadata") or {}):
                         meta[k] = old["metadata"][k]
@@ -1802,6 +2009,10 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             if item["chat"] is False:
                 meta.update(status="not-chat", reason="")
                 meta.setdefault("probed_at", stamp)
+            elif route in FREE_ONLY and item.get("paid_only"):
+                meta.update(status="unprobed", reason=PAID_ONLY_REASON)
+                meta.pop("probed_at", None)
+                meta.pop("was_usable", None)
             elif route in FREE_ONLY and not item["free"]:
                 reason = APPROVAL_REASON if by_route[route]["kind"] in STATIC_KINDS else PAID_REASON.get(route, "paid models on a free-only route are not probed")
                 meta.update(status="unprobed", reason=reason)
@@ -1839,7 +2050,8 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                 continue
             models.append({"id": gone["id"], "description": gone.get("description", ""), "metadata": meta})
         models.sort(key=lambda model: model["id"])
-        providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": models}
+        providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"], "key_fingerprint": fingerprint},
+                            "models": models}
     for route, model in queue:
         status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
         meta = model["metadata"]

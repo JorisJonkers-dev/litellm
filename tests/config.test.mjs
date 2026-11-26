@@ -270,7 +270,7 @@ test('upstream keys and bases are environment names, never values', () => {
 test('telemetry is metadata only', () => {
   assert.match(CONFIG, /turn_off_message_logging: true/)
   assert.match(CONFIG, /store_prompts_in_spend_logs: false/)
-  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry", "account_budget\.account_budget"\]/)
+  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry", "account_budget\.account_budget", "free_limits\.free_limits"\]/)
   // The callback module is named relative to the config, so the image carries it beside it.
   assert.match(readFileSync(`${ROOT}/Dockerfile`, 'utf8'), /^COPY config\/tier_telemetry\.py \/app\/tier_telemetry\.py$/m)
   // No metric label can carry a person or an address.
@@ -310,7 +310,7 @@ test('budgets are exported for keys and for the route teams that hold them', () 
 
 test('the router falls through a cooled-down or spent deployment, per deployment', () => {
   assert.match(CONFIG, /^router_settings:$/m)
-  assert.match(ROUTER, /optional_pre_call_checks: \[router_budget_limiting\]/)
+  assert.match(ROUTER, /optional_pre_call_checks: \[router_budget_limiting, enforce_model_rate_limits\]/)
   assert.match(ROUTER, /^ {2}num_retries: 2$/m)
   // The cooldown and the allowed-fails policies are per deployment, in the generated file.
   assert.doesNotMatch(ROUTER, /allowed_fails|cooldown_time/)
@@ -387,9 +387,9 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     'vibe-study-api': { routes: ['vibe-study-api'], max_budget: 12.7, window: { calendar: 'month' } },
     anthropic: { routes: ['anthropic'], max_budget: 90, window: { days: 30 } },
     'opencode-go': { routes: ['opencode-go'], max_budget: 40, window: { days: 30, anchor: '2026-11-04T10:41:00Z' } },
-    // Inferbase's free share is $0.50 a day: the route can never bill past it.
-    inferbase: { routes: ['inferbase'], max_budget: 0.5, window: { days: 1 } },
   })
+  // Inferbase has no payment method (owner, 2026-11-26): a free route, rate limited, with no cap to keep.
+  assert.ok(!Object.values(rules.accounts).some((account) => account.routes.includes('inferbase')))
   // Google is a free tier: a budget would only take it out of the pick.
   assert.ok(!Object.values(rules.accounts).some((account) => account.routes.includes('google')))
   assert.deepEqual(rules.cooldowns, {

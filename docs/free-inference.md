@@ -519,11 +519,11 @@ Two planes: LiteLLM owns tiers 0–4; the model-gateway owns `tier-claude-code` 
 
 | Tier | LiteLLM model name | Concrete model / route | Ordered fallbacks | Parallelism cap |
 |---|---|---|---|---|
-| `tier-free` | `tier-free` (routing group) | `free/hy4-flash-free`, `free/longcat-2.5-free`, `free/beam-free` (Go free, no allowance draw) | `free/glm-4.7-flash` → `free/qwen3.8-27b` → `local/*` | 4/deployment, 6 harness |
+| `tier-free` | `tier-free` (routing group) | `free/hy4-flash`, `free/longcat-2.5`, `free/beam-1.0-501b-a23b` (Go free, no allowance draw) | `free/glm-4.7-flash` → `free/qwen3.8-27b` → `local/*` | 4/deployment, 6 harness |
 | `tier-go-cheap` | `tier-go-cheap` | `opencode-go/deepseek-v4.1-flash` ($100 pool, full tool-choice, 1M ctx) | `opencode-go/glm-5.3-flash` → `opencode-go/mimo-v2.6-flash` → `tier-vibe` | 2 |
 | `tier-vibe` | `tier-vibe` | `vibe/deepseek-v4.1-flash` (subsidised) | `vibe/zai-glm-5-3-flash` → `vibe/mistral-small-latest` → `tier-go-cheap`; `vibe/mistral-large-4-0-3` only as an explicit escalation | 2 |
 | `tier-strong-open` | `tier-strong-open` | `opencode-go/kimi-k3.1-pro` ($15 pool — escalation only) | `opencode-go/qwen4-max` → `opencode-go/glm-5.3` → `tier-vibe` | 3 |
-| `tier-review` | `tier-review` | free models from different labs first (`free/nemotron-3-ultra`, `free/gemma-4-31b`, `free/glm-4.7-flash`, `free/gpt-oss-120b`) | `opencode-go/qwen3.8-flash` → `opencode-go/minimax-m3.1-flash` → `opencode-go/mimo-v2.6-flash`; `opencode-go/gpt-6-luna` only when a review needs it | 3 |
+| `tier-review` | `tier-review` | free models from different labs first (`free/nemotron-3-ultra`, `free/gemma-4-31b-it`, `free/glm-4.7-flash`, `free/gpt-oss-120b`) | `opencode-go/qwen3.8-flash` → `opencode-go/minimax-m3.1-flash` → `opencode-go/mimo-v2.6-flash`; `opencode-go/gpt-6-luna` only when a review needs it | 3 |
 | `tier-claude-code` | *not in LiteLLM* | Claude Code CLI, Max x5 | none — never falls back | 2 (one per Max plan) |
 
 Notes that change behaviour: `glm-5.3`'s 500 pool is promotional through **2026-11-22** (four days out) — do not size the coordinator budget on it. `deepseek-v4.1-flash` carries a 2× multiplier Mon–Fri 01:00–04:00 and 06:00–10:00 UTC, so schedule Hermes batch outside those windows. `deepseek-v4.1-flash` needs Global region and its ZDR agreement expires 2026-11-30. `glm-5.3`/`glm-5.3-flash` accept tool `choice: ["auto"]` only. Mistral Large 4 is absent from Go entirely, so Vibe is the only zero-Go-cost coordinator fallback. The brief's ladder puts Go above Vibe; Vibe is subsidised, so within `tier-vibe` prefer Vibe deployments and treat Go as the fallback (flagged as an open question).

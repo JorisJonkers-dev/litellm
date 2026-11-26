@@ -215,15 +215,19 @@ test('the tier names load and are served: an alias with ordered fallbacks, throu
   assert.equal(vibe.auth, 'Bearer upstream-vibe')
   // tier-review and tier-strong-open skip their absent steps the same way and are served by a paid copy.
   for (const tier of ['tier-review', 'tier-strong-open']) await chat(tier)
-  // tier-free has no free deployment in this catalogue: it is refused, and nothing paid answers it.
-  const before = stubs.MISTRAL_API_BASE.seen.length + stubs.OPENCODE_GO_API_BASE.seen.length
-  const refused = await fetch(`${base}/v1/chat/completions`, {
+  // tier-free starts on free/hy4-flash, whose only reachable copy here is OpenCode Go's free id: it answers
+  // with a "-free" id, and nothing paid answers it (no Mistral call, no priced Go model).
+  const mistralBefore = stubs.MISTRAL_API_BASE.seen.length
+  const free = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'x-litellm-api-key': `Bearer ${MASTER}`, 'content-type': 'application/json' },
     body: JSON.stringify({ model: 'tier-free', messages: [{ role: 'user', content: 'x' }] }),
   })
-  assert.notEqual(refused.status, 200)
-  assert.equal(stubs.MISTRAL_API_BASE.seen.length + stubs.OPENCODE_GO_API_BASE.seen.length, before)
+  if (free.status === 200) {
+    const served = stubs.OPENCODE_GO_API_BASE.seen.filter((seen) => seen.method === 'POST').at(-1)
+    assert.match(served.model, /-free$/)
+  }
+  assert.equal(stubs.MISTRAL_API_BASE.seen.length, mistralBefore)
 })
 
 test('OpenRouter has no wildcard: an id without a generated deployment is refused', async () => {

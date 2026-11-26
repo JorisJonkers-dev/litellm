@@ -64,7 +64,7 @@ class Accounts(unittest.TestCase):
         budgets = sync.account_budgets(RULES)
         self.assertEqual({r: (b["max_budget"], b["budget_duration"]) for r, b in budgets.items()}, {
             "vibe": (255, "1mo"), "vibe-study": (127, "1mo"), "vibe-api": (25.5, "1mo"), "vibe-study-api": (12.7, "1mo"),
-            "anthropic": (90, "30d"), "opencode-go": (40, "30d"), "inferbase": (0.5, "1d")})
+            "anthropic": (90, "30d"), "opencode-go": (40, "30d")})
 
     def test_a_route_is_billed_by_one_account(self):
         rules = {"accounts": {"a": {"routes": ["x"], "max_budget": 1, "window": {"days": 1}},
@@ -80,9 +80,11 @@ class Accounts(unittest.TestCase):
         for entry in entries:
             params, info = entry["litellm_params"], entry["model_info"]
             if "account" not in info:
-                # Only a free id of a paid route, alone in its own free group, goes without an account.
+                # Only a free id of a paid route goes without an account: in its own "<route>-free/" group or a
+                # shared free/<model> group, at an explicit zero cost.
                 if info["route"] in budgets:
-                    self.assertIn("-free/", entry["model_name"], info["id"])
+                    self.assertRegex(entry["model_name"], r"^(free/|[a-z-]+-free/)", info["id"])
+                    self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0), info["id"])
                 continue
             budget = budgets[info["route"]]
             self.assertEqual(info["account"], budget["account"])

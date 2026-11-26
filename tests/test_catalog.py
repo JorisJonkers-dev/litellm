@@ -392,13 +392,14 @@ class Build(unittest.TestCase):
         found = sync.list_models(entry, {"KILO_API_BASE": "https://kilo/v1"}, Http(lists=lists), self.RULES_DEV, None)
         self.assertFalse(any(m["free"] for m in found))
 
-    def test_inferbase_takes_its_price_from_models_dev_and_zai_stays_gated(self):
+    def test_inferbase_is_a_plan_route_and_zai_stays_gated(self):
         ref = sync.reference_index(self.RULES_DEV, {"MODELS_DEV_URL": "https://dev/api.json"}, Http(lists={"https://dev/api.json": self.DEV}))
         entry = next(e for e in sync.ROUTES if e["route"] == "inferbase")
         found = {m["id"]: m for m in sync.list_models(entry, {"INFERBASE_API_BASE": "https://ib/v1"},
                  Http(lists={"https://ib/v1/models": {"data": [{"id": "m"}, {"id": "n"}]}}), self.RULES_DEV, ref["inferbase"])}
-        self.assertEqual((found["m"]["free"], found["m"]["price"]), (True, {"input": 5e-07, "output": 2e-06}))
-        self.assertEqual(found["n"]["free"], False)  # no price anywhere: not deployed
+        # No payment method on the account (owner, 2026-11-26): a free_all plan route, every listed id free, no price.
+        self.assertEqual((found["m"]["free"], found["n"]["free"]), (True, True))
+        self.assertNotIn("price", found["m"])
         # a zero cost in the catalogue does not free a hand-approved route's id
         entry = next(e for e in sync.ROUTES if e["route"] == "zai")
         found = {m["id"]: m["free"] for m in sync.list_models(entry, {"ZAI_API_BASE": "https://z/v1"},
@@ -517,11 +518,32 @@ class Build(unittest.TestCase):
         self.assertEqual(http.probed(), [])
 
     def test_a_recorded_answer_with_a_corrupt_stamp_is_kept_and_one_with_no_status_is_decided_from_the_listing(self):
-        old = {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {"status": "blocked", "probed_at": "garbage"}}]}}}
+        local = next(e for e in sync.ROUTES if e["route"] == "local")
+        old = {"providers": {"local": {"metadata": {"key_fingerprint": sync.key_fingerprint(local, ENV)},
+                                       "models": [{"id": "local/qwen3:32b", "metadata": {"status": "blocked", "probed_at": "garbage"}}]}}}
         cat, _ = self.run_build(Http(), old)
         self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["status"], "blocked")
         cat, _ = self.run_build(Http(), {"providers": {"local": {"models": [{"id": "local/qwen3:32b", "metadata": {}}]}}})
         self.assertEqual(cat["providers"]["local"]["models"][0]["metadata"]["verified_by"], "listing")
+
+    def test_a_probe_answer_from_another_key_or_older_than_its_ttl_is_decided_again(self):
+        local = next(e for e in sync.ROUTES if e["route"] == "local")
+        fingerprint = sync.key_fingerprint(local, ENV)
+        self.assertNotIn(ENV[local["key_env"]], fingerprint)  # a hash prefix, never the key
+        stamp = (NOW - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        def old(fp, probed_at=stamp, **meta):
+            return {"providers": {"local": {"metadata": {"key_fingerprint": fp},
+                                            "models": [{"id": "local/qwen3:32b", "metadata": dict({"status": "blocked", "probed_at": probed_at}, **meta)}]}}}
+        status = lambda prev: self.run_build(Http(), prev)[0]["providers"]["local"]["models"][0]["metadata"]["status"]
+        self.assertEqual(status(old(fingerprint)), "blocked")  # same key, recent: kept
+        self.assertEqual(status(old("another-key")), "usable")  # another key: the listing decides again
+        self.assertEqual(status(old(None)), "usable")  # recorded before fingerprints: decided again
+        week = (NOW - sync.PROBE_ANSWER_TTL - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.assertEqual(status(old(fingerprint, week)), "usable")  # past its TTL
+        # What traffic recorded is not a probe answer: the traffic window decides it.
+        self.assertEqual(status(old("another-key", verified_by="traffic")), "blocked")
+        cat, _ = self.run_build(Http())
+        self.assertEqual(cat["providers"]["local"]["metadata"]["key_fingerprint"], fingerprint)
 
     def test_a_route_that_cannot_be_listed_keeps_its_last_entries(self):
         first, _ = self.run_build(Http())
@@ -996,11 +1018,14 @@ class FreeSignals(unittest.TestCase):
         free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
         self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
         self.assertEqual(sync.load_rules()["free_all"],
-                         ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"])
+                         ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "gonka", "bazaarlink", "neosantara", "poe"])
 
     def test_no_card_routes_take_every_listed_chat_model_and_poe_and_zai_stay_gated(self):
         rules = sync.load_rules()
-        for route in ("cohere", "sealion", "typhoon", "plugsky", "gonka"):
+        # Plugsky's free plan serves plugsky-micro and plugsky-lite only (plugsky.com/pricing): it is on free_ids.
+        self.assertEqual(rules["free_ids"]["plugsky"], ["plugsky-micro", "plugsky-lite"])
+        self.assertNotIn("plugsky", rules["free_all"])
+        for route in ("cohere", "sealion", "typhoon", "gonka", "poe", "inferbase"):
             self.assertEqual(sync.free_by(rules, route), "plan", route)
             data = [{"id": "a", "pricing": {"prompt": "0.001", "completion": "0.002"}}, {"id": "b"}]
             entry = next(e for e in sync.ROUTES if e["route"] == route)
@@ -1008,7 +1033,7 @@ class FreeSignals(unittest.TestCase):
             lists = {f"{base}/models": {"data": data}, f"{base}/models?page_size=1000": {"models": [{"name": m["id"], "endpoints": ["chat"]} for m in data]}}
             found = sync.list_models(entry, {entry["base_env"]: base}, Http(lists=lists), rules)
             self.assertEqual({m["id"]: m["free"] for m in found if not m.get("unlisted")}, {"a": True, "b": True}, route)
-        for route in ("poe", "zai", "watsonx", "together", "longcat"):
+        for route in ("zai", "watsonx", "together", "longcat"):
             self.assertFalse(sync.approves_all(rules, route), route)
 
     def test_a_listed_route_is_free_only_on_an_explicit_zero_price(self):
@@ -1058,16 +1083,17 @@ class FreeSignals(unittest.TestCase):
         free, _ = self.listed("zai", data[:2], rules)
         self.assertEqual(free, {"a": False, "b": False})
 
-    def test_inferbase_carries_a_real_price_and_an_unpriced_id_is_not_free(self):
-        rules = {"free_ids": {"inferbase": ["a", "b"]}}
+    def test_inferbase_is_free_by_plan_without_a_price(self):
+        rules = {"free_ids": {"inferbase": ["a", "b"]}, "free_by": {"inferbase": "plan"}}
         found = {m["id"]: m for m in sync.list_models(
             next(e for e in sync.ROUTES if e["route"] == "inferbase"), {"INFERBASE_API_BASE": "https://inferbase/v1"},
             Http(lists={"https://inferbase/v1/models": {"data": [
                 {"id": "a", "pricing": {"prompt": "0.0000005", "completion": "0.000002"}}, {"id": "b"}, {"id": "c"}]}}), rules)}
+        # A plan route now (no payment method): an approved id is free whatever the listing prices, no price kept.
         self.assertTrue(found["a"]["free"])
-        self.assertEqual(found["a"]["price"], {"input": 5e-7, "output": 2e-6})
-        self.assertFalse(found["b"]["free"])  # in the list, not priced: fail closed
-        self.assertFalse(found["c"]["free"])  # priced or not, not in the list
+        self.assertNotIn("price", found["a"])
+        self.assertTrue(found["b"]["free"])
+        self.assertFalse(found["c"]["free"])  # not approved, and this test's rules have no free_all
 
     def test_an_anonymous_route_is_listed_and_probed_without_authorization(self):
         for route in ("kilo", "ovh"):

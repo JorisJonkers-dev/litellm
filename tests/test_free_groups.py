@@ -40,7 +40,7 @@ def plan(*models, rules=FREE_RULES):
 
 
 def free_models(model_ids=NEMOTRON):
-    return [(route, model_id, "usable", {"free": True}) for route, model_id in model_ids]
+    return [(route, model_id, "usable", {"free": True, "chat_evidence": "listing"}) for route, model_id in model_ids]
 
 
 class FreeGroup(unittest.TestCase):
@@ -52,8 +52,8 @@ class FreeGroup(unittest.TestCase):
         found = self.group(specs)
         self.assertEqual([spec["route"] for spec in found], ["openrouter", "requesty", "kilo", "nvidia", "ovh"])
         self.assertEqual({spec["model_info"]["canonical"] for spec in found}, {"nemotron-3-ultra-550b-a55b"})
-        # Each route keeps its own group beside the shared one, for a key that holds one route.
-        self.assertEqual(len(self.group(specs, "kilo/nemotron-3-ultra-550b-a55b")), 1)
+        # The shared group is the only way to a free copy: no per-route group (owner, 2026-11-26).
+        self.assertEqual({spec["name"] for spec in specs}, {"free/nemotron-3-ultra-550b-a55b"})
 
     def test_a_model_that_is_not_the_same_canonical_name_is_not_merged(self):
         specs = plan(*free_models(NEMOTRON[:2] + [("kilo", "nvidia/nemotron-3-ultra-550b")]))
@@ -65,10 +65,12 @@ class FreeGroup(unittest.TestCase):
         specs = plan(*free_models(NEMOTRON[:1] + [("kilo", "nemo-ultra")]), rules=rules)
         self.assertEqual([spec["route"] for spec in self.group(specs)], ["openrouter", "kilo"])
 
-    def test_deployments_are_ordered_by_allowance_with_their_own_cooldown_and_id(self):
+    def test_deployments_are_ordered_with_their_own_id_and_no_fixed_cooldown(self):
         found = self.group(plan(*free_models()))
         self.assertEqual([spec["order"] for spec in found], [1, 2, 3, 4, 4])
-        self.assertEqual([spec["litellm_params"]["cooldown_time"] for spec in found], [120, 3600, 120, 120, 120])
+        # No cooldown_time: LiteLLM cools a 429 for the provider's Retry-After (a fixed one would override it).
+        for spec in found:
+            self.assertNotIn("cooldown_time", spec["litellm_params"])
         ids = [spec["model_info"]["id"] for spec in found]
         self.assertEqual(len(set(ids)), 5)
         self.assertEqual(ids[0], "free/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free")
@@ -83,30 +85,30 @@ class FreeGroup(unittest.TestCase):
 
     def test_every_deployment_is_zero_cost_and_nothing_paid_is_in_the_group(self):
         specs = plan(*free_models(), ("vibe", "nemotron-3-ultra-550b-a55b", "usable", {}),
-                     ("vibe-api", "nemotron-3-ultra-550b-a55b", "usable", {}),
-                     ("inferbase", "nemotron-3-ultra-550b-a55b", "usable", {"free": True, "price": {"input": 1e-6, "output": 2e-6}}))
+                     ("vibe-api", "nemotron-3-ultra-550b-a55b", "usable", {}))
         for spec in self.group(specs):
             self.assertEqual((spec["litellm_params"]["input_cost_per_token"], spec["litellm_params"]["output_cost_per_token"]), (0, 0))
-            self.assertNotIn(spec["route"], ("vibe", "vibe-api", "inferbase"))
+            self.assertNotIn(spec["route"], ("vibe", "vibe-api"))
             self.assertNotIn("max_budget", spec["litellm_params"])
 
     def test_a_free_id_on_a_paid_route_joins_with_an_explicit_zero_cost(self):
         specs = plan(("opencode-go", "beam-free", "usable", {"free": True}), ("opencode-go", "deepseek-v4.1-flash", "usable", {}),
                      ("openrouter", "beam-free", "usable", {"free": True}))
-        found = self.group(specs, "free/beam-free")
+        # "-free" only marks the free variant: both copies meet in free/beam.
+        found = self.group(specs, "free/beam")
         self.assertEqual({spec["route"] for spec in found}, {"opencode-go", "openrouter"})
         self.assertTrue(all(spec["litellm_params"]["input_cost_per_token"] == 0 for spec in found))
         # The paid id of the same route is not in any free group.
         self.assertEqual(self.group(specs, "free/deepseek-v4.1-flash"), [])
 
-    def test_a_paid_deployment_joining_a_free_group_fails_the_plan(self):
-        # Inferbase bills against a dollar allowance. If a rule edit made it a free-group route, the copy
-        # would carry its real price and the sync must refuse the whole plan.
-        models = free_models(NEMOTRON[:1]) + [("inferbase", "nvidia/nemotron-3-ultra-550b-a55b", "usable",
-                                               {"free": True, "price": {"input": 1e-6, "output": 2e-6}})]
-        with mock.patch.object(sync, "FREE_GROUP_ROUTES", sync.FREE_GROUP_ROUTES | {"inferbase"}):
-            with self.assertRaisesRegex(RuntimeError, r"inferbase.*may not join free/nemotron.*explicit zero"):
-                plan(*models)
+    def test_a_route_outside_the_free_group_routes_never_joins_even_when_marked_free(self):
+        # A paid route marked free by mistake (a rule edit) still never joins: only FREE_GROUP_ROUTES do, and the
+        # assertion (test below) refuses any priced or budgeted copy that would.
+        rules = dict(FREE_RULES, accounts={"vibe": {"routes": ["vibe"], "max_budget": 5, "window": {"calendar": "month"}}})
+        models = free_models(NEMOTRON[:1]) + [("vibe", "nemotron-3-ultra-550b-a55b", "usable", {"free": True, "chat_evidence": "listing"})]
+        with mock.patch.object(sync, "FREE_ONLY", sync.FREE_ONLY | {"vibe"}):
+            specs = sync.plan_groups(catalogue(*models), rules)
+        self.assertEqual([s["route"] for s in self.group(specs)], ["openrouter"])
 
     def test_the_assertion_names_each_way_a_deployment_can_be_paid(self):
         good = self.group(plan(*free_models(NEMOTRON[:1])))[0]
