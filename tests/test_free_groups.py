@@ -40,7 +40,7 @@ def plan(*models, rules=FREE_RULES):
 
 
 def free_models(model_ids=NEMOTRON):
-    return [(route, model_id, "usable", {"free": True}) for route, model_id in model_ids]
+    return [(route, model_id, "usable", {"free": True, "chat_evidence": "listing"}) for route, model_id in model_ids]
 
 
 class FreeGroup(unittest.TestCase):

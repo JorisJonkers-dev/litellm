@@ -780,7 +780,8 @@ class FreeRoutesWave2(unittest.TestCase):
         self.assertEqual(free_ids["typhoon"], ["typhoon-v2.5-30b-a3b-instruct"])
         self.assertEqual(free_ids["neosantara"], ["gemini-3.1-flash-lite"])
         # No free id is named for these: the scan lists what each provider offers and the owner approves.
-        for route in ("bazaarlink", "cohere", "plugsky", "poe", "watsonx", "sealion", "gonka", "longcat"):
+        self.assertEqual(free_ids["plugsky"], ["plugsky-micro", "plugsky-lite"])  # its free plan's two models
+        for route in ("bazaarlink", "cohere", "poe", "watsonx", "sealion", "gonka", "longcat"):
             self.assertEqual(free_ids[route], [], route)
 
     def test_no_base_is_invented_and_a_setting_comes_from_its_vault_field(self):

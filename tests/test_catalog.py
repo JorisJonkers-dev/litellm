@@ -996,11 +996,14 @@ class FreeSignals(unittest.TestCase):
         free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
         self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
         self.assertEqual(sync.load_rules()["free_all"],
-                         ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"])
+                         ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "gonka", "bazaarlink", "neosantara"])
 
     def test_no_card_routes_take_every_listed_chat_model_and_poe_and_zai_stay_gated(self):
         rules = sync.load_rules()
-        for route in ("cohere", "sealion", "typhoon", "plugsky", "gonka"):
+        # Plugsky's free plan serves plugsky-micro and plugsky-lite only (plugsky.com/pricing): it is on free_ids.
+        self.assertEqual(rules["free_ids"]["plugsky"], ["plugsky-micro", "plugsky-lite"])
+        self.assertNotIn("plugsky", rules["free_all"])
+        for route in ("cohere", "sealion", "typhoon", "gonka"):
             self.assertEqual(sync.free_by(rules, route), "plan", route)
             data = [{"id": "a", "pricing": {"prompt": "0.001", "completion": "0.002"}}, {"id": "b"}]
             entry = next(e for e in sync.ROUTES if e["route"] == route)

@@ -49,7 +49,7 @@
     "inferbase": [],
     "bazaarlink": [],
     "cohere": [],
-    "plugsky": [],
+    "plugsky": ["plugsky-micro", "plugsky-lite"],
     "poe": [],
     "watsonx": [],
     "together": ["Prism-ML/Ternary-Bonsai-27B"],
@@ -65,9 +65,9 @@
     "nvidia": "nvidia", "google": "google", "opencode-go": "opencode-go", "anthropic": "anthropic",
     "vibe": "mistral", "vibe-study": "mistral", "vibe-api": "mistral", "vibe-study-api": "mistral",
     "cloudflare": "cloudflare-workers-ai", "watsonx": "watsonx", "poe": "poe", "longcat": "longcat", "vercel": "vercel",
-    "novita": "novita-ai", "together": "togetherai", "cohere": "cohere"
+    "novita": "novita-ai", "together": "togetherai", "cohere": "cohere", "gonka": "joingonka"
   },
-  "free_all": ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"],
+  "free_all": ["groq", "cloudflare", "inferbase", "cohere", "sealion", "typhoon", "gonka", "bazaarlink", "neosantara"],
   "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan", "cohere": "plan", "sealion": "plan", "typhoon": "plan", "plugsky": "plan", "gonka": "plan", "bazaarlink": "listed", "neosantara": "listed"},
   "free_order": {
     "_note": "Order inside a free/<model> group, lowest first: the per-minute providers before the scarce daily and monthly allowances, so a daily budget is spent only when the per-minute ones are limited. config/free_limits.py removes a limited copy before the pick, so order is preference, not a wait. A route not named comes last.",
@@ -101,7 +101,8 @@
     "bazaarlink": {"shared": [{"requests": 10, "per": "minute"}, {"requests": 60, "per": "day", "note": "weighted units; counted as requests"}], "concurrency": 2,
                    "reset": "00:00", "scope": "account", "status": "unconfirmed", "source": "provider registry: 10 RPM, 60 weighted units a day, 2 concurrent (no credit), reset 00:00 UTC."},
     "plugsky": {"shared": [{"requests": 30, "per": "minute"}, {"requests": 100, "per": "day"}, {"tokens": 50000, "per": "day"}], "concurrency": 1,
-                "scope": "account", "status": "unconfirmed", "source": "provider registry: 100 requests and 50K tokens a day, 30 RPM, 1 concurrent."},
+                "reset": "00:00", "scope": "account", "status": "partial",
+                "source": "https://plugsky.com/pricing and https://plugsky.com/models (read 2026-11-26): the Free plan serves plugsky-micro and plugsky-lite only; 30 RPM, 1 concurrent, 100 requests and 50K tokens a day for accounts from 2 Nov 2026 (the Free section also speaks of a rolling 5-hour window; which is enforced is not stated)."},
     "airforce": {"shared": [{"requests": 1, "per": "minute"}, {"requests": 1000, "per": "day"}], "scope": "account", "status": "unconfirmed",
                  "source": "provider registry: 1 RPM, 1,000 a day."},
     "sealion": {"shared": [{"requests": 10, "per": "minute"}], "scope": "account", "status": "unconfirmed", "source": "provider registry: 10 RPM per user."},

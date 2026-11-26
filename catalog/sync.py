@@ -680,7 +680,7 @@ def fetch_listing(entry, env, http, base, headers):
     return http("GET", f"{base}/models", headers, None)
 
 
-def list_models(entry, env, http, rules=None, reference=None):
+def list_models(entry, env, http, rules=None, reference=None, any_provider=None):
     """The models the provider lists for this route: id, name, context length, free, chat, modality.
 
     A free-only route's `free` is its kind's signal: Kilo `isFree`, a zero price (Requesty, OVH), a
@@ -816,6 +816,18 @@ def list_models(entry, env, http, rules=None, reference=None):
             out["unavailable"] = unavailable
         if out["modality"] != "chat":
             out["chat"] = False
+        # What shows this is a chat-completion model, for a route whose listing says nothing (free_chat()).
+        typed = verdict_chat is True or (kind == "cloudflare" and isinstance(item.get("task"), dict)) or (
+            kind == "cohere" and isinstance(item.get("endpoints"), list)) or (kind == "watsonx" and isinstance(item.get("functions"), list))
+        if out["modality"] == "chat":
+            if typed:
+                out["chat_evidence"] = "listing"
+            elif ref and ref["chat"] is True:
+                out["chat_evidence"] = "models.dev"
+            elif not ref and ((any_provider or {}).get(free_canonical(model_id, rules)) or {}).get("chat") is True:
+                out["chat_evidence"] = "models.dev (other providers)"
+            elif model_id in free_ids:
+                out["chat_evidence"] = "approved"
         if model_id in paid_only(rules, entry["route"]):
             # The provider says this model needs a paid plan: never free, whatever the plan or listing suggests.
             out["free"] = False
@@ -1049,6 +1061,32 @@ def canonical_name(route, upstream_id, rules, canonical_id=None, strip_version=T
 # `aliases` says otherwise.
 CATALOGUE_PREFIX = re.compile(r"^@(cf|hf)/")
 GLUED_FREE = re.compile(r"(?<=\d)free$")
+# Last-resort names of models that are not chat completions, for the free groups: image generators, embeddings and
+# rerankers, speech, transcription and translation-only models, OCR and document parsers, music, and guard or
+# classifier models. Used only when nothing better (a typed listing, models.dev) says what a model is.
+FREE_NON_CHAT = re.compile(
+    r"dreamshaper|juggernaut|(?:^|[-_])pony(?:[-_]|$)|ponyxl|rev-?animated|swampony|nova-anime|(?:^|[-/])wai-|icbinp|cyberrealistic|"
+    r"deliberate|quiet-goodnight|ntr-mix|animerge|fustercluck|stable-diffusion|sdxl|(?:^|[-/])flux|dall-?e|imagen|"
+    r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
+    r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
+    r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
+    r"guard|moderation|classifier", re.I)
+
+
+def free_chat(route, chosen, rules):
+    """Whether a free copy is a chat-completion model, so it may serve a free/<model> group (fail closed).
+
+    Never one whose mode is not chat or whose name says it is something else (FREE_NON_CHAT). On a route whose
+    listing names no model type (`free_all` routes: everything listed is a candidate), it needs positive
+    evidence too: a typed listing, models.dev saying text chat, or the owner's approval in `free_ids`.
+    """
+    if chosen.get("modality") != "chat" or FREE_NON_CHAT.search(chosen["upstream_id"]):
+        return False
+    if approves_all(rules, route):
+        return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
+    return True
+
+
 # Router endpoints that pick a different model per request: not one model, so never a free group.
 FREE_ROUTER_NAMES = frozenset({"free", "auto", "router"})
 
@@ -1340,7 +1378,7 @@ def plan_groups(catalogue, rules):
                 # The free groups keep a dated snapshot apart from its base model (no alias, no merge).
                 dated = canonical_name(route, upstream_id, rules, meta.get("canonical_id"), strip_version=False)
                 groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
-                                      "price": meta.get("price"), "free_name": dated}
+                                      "price": meta.get("price"), "free_name": dated, "chat_evidence": meta.get("chat_evidence")}
     specs = []
     # free/<model> -> route -> the free copies that route serves of it (one canonical name or several)
     free_members = {}
@@ -1391,7 +1429,7 @@ def plan_groups(catalogue, rules):
             specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
                                     limits=free_limit_params(route, rules)))
         for route in sorted((free | free_ids) & FREE_GROUP_ROUTES):
-            if name not in FREE_ROUTER_NAMES:
+            if name not in FREE_ROUTER_NAMES and free_chat(route, routes[route], rules):
                 key = free_canonical(routes[route].get("free_name") or name, rules)
                 free_members.setdefault(key, {}).setdefault(route, []).append(routes[route])
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
@@ -1766,6 +1804,9 @@ def reference_key(model_id):
     return base
 
 
+ANY_PROVIDER = "_any"
+
+
 def reference_index(rules, env, http, log=None):
     """{route: {id: {"chat": bool, "deprecated": bool, "cost": (input, output) per token or None}}} from models.dev.
 
@@ -1799,6 +1840,21 @@ def reference_index(rules, env, http, log=None):
                 prices = (cost["input"] / 1e6, cost["output"] / 1e6)
             index[reference_key(model_id)] = {"chat": chat, "deprecated": model.get("status") == "deprecated", "cost": prices}
         out[route] = index
+    # Across every provider: whether models.dev calls a model (by its free_canonical name) a text chat model. Only the
+    # chat evidence of a free copy whose own provider models.dev does not cover reads it (list_models): a majority of
+    # the providers listing that model must call it chat, so one provider's mislabel decides nothing.
+    votes = {}
+    for provider in body.values():
+        for model_id, model in ((provider.get("models") if isinstance(provider, dict) else None) or {}).items():
+            if not isinstance(model, dict):
+                continue
+            modalities = model.get("modalities") if isinstance(model.get("modalities"), dict) else {}
+            outputs, inputs = modalities.get("output"), modalities.get("input")
+            chat = model.get("type") in (None, "chat") and isinstance(outputs, list) and outputs == ["text"] and (
+                isinstance(inputs, list) and "text" in inputs)
+            tally = votes.setdefault(free_canonical(str(model_id), rules), [0, 0])
+            tally[0 if chat else 1] += 1
+    out[ANY_PROVIDER] = {key: {"chat": yes > no} for key, (yes, no) in votes.items()}
     return out
 
 
@@ -1902,7 +1958,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                 candidates[route] = []
                 stats["route_errors"].append(f"{route}: candidate scan: {error}"[:200])
         try:
-            listed = list_models(entry, env, http, rules, reference.get(route))
+            listed = list_models(entry, env, http, rules, reference.get(route), reference.get(ANY_PROVIDER))
         except Exception as error:  # a route that cannot be listed keeps its last entries
             stats["route_errors"].append(f"{route}: {error}"[:200])
             old = (previous.get("providers") or {}).get(route)
@@ -1918,7 +1974,7 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
             full = f"{route}/{item['id']}"
             old = cache.get(full)
             meta = {"name": item["name"], "context_length": item["context_length"], "free": item["free"], "modality": item["modality"]}
-            for field in ("canonical_id", "api", "api_base", "price"):
+            for field in ("canonical_id", "api", "api_base", "price", "chat_evidence"):
                 if item.get(field):
                     meta[field] = item[field]
             if old:

@@ -43,7 +43,7 @@ def plan(*models, rules=None):
 
 
 def free(route, model_id):
-    return (route, model_id, "usable", {"free": True})
+    return (route, model_id, "usable", {"free": True, "chat_evidence": "listing"})
 
 
 def group(specs, name):
@@ -74,11 +74,13 @@ class Clustering(unittest.TestCase):
                      free("cloudflare", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"), free("kilo", "meta/llama-3.3-70b-instruct:free"),
                      free("routeway", "gemma-4-26b-a4b-it-darksoul"), free("naga", "google/gemma-4-26b-a4b-it:free"))
         names = {spec["name"] for spec in specs if spec["name"].startswith("free/")}
-        for name in ("free/gpt-oss-20b", "free/gpt-oss-safeguard-20b", "free/deepseek-v4-flash-0731", "free/deepseek-v4-flash",
+        for name in ("free/gpt-oss-20b", "free/deepseek-v4-flash-0731", "free/deepseek-v4-flash",
                      "free/llama-3.3-70b-instruct-fp8-fast", "free/llama-3.3-70b-instruct", "free/gemma-4-26b-a4b-it-darksoul",
                      "free/gemma-4-26b-a4b-it"):
             self.assertIn(name, names)
-        self.assertEqual(group(specs, "free/gpt-oss-safeguard-20b"), ["groq", "unorouter"])
+        # A safety classifier is not a chat model: it joins no free group, and never gpt-oss-20b's.
+        self.assertNotIn("free/gpt-oss-safeguard-20b", names)
+        self.assertEqual(group(specs, "free/gpt-oss-20b"), ["groq"])
 
     def test_an_alias_merges_what_models_dev_names_one_model(self):
         specs = plan(free("unorouter", "gemma-4-31b:free"), free("openrouter", "google/gemma-4-31b-it:free"),
@@ -117,6 +119,38 @@ class Clustering(unittest.TestCase):
                      ("vibe-api", "gpt-oss-120b", "usable", {}), ("anthropic", "gpt-oss-120b", "usable", {}),
                      ("inferbase", "gpt-oss-120b", "usable", {"free": True, "price": {"input": 1e-6, "output": 1e-6}}))
         self.assertEqual(group(specs, "free/gpt-oss-120b"), ["groq"])
+
+
+class ChatOnly(unittest.TestCase):
+    """free/* groups hold chat-completion models only (fail closed)."""
+
+    def test_non_chat_models_never_join_a_free_group(self):
+        ids = ["dreamshaper:free", "juggernaut-xl:free", "wai-cute-pony:free", "voyage-4:free", "bge-m3:free", "rerank-v3.5",
+               "typhoon-asr-realtime", "cohere-transcribe-03-2026", "riva-translate-4b-instruct-v2", "typhoon-ocr-v2", "parse-v5.0",
+               "suno-v5:free", "google/lyria-3-pro-preview:free", "meta/llama-guard-3-8b", "qwen3guard-gen-8b", "sea-guard",
+               "gpt-oss-safeguard-20b:free", "llama-prompt-guard-2-86m"]
+        specs = plan(*[free("unorouter", i) for i in ids], free("unorouter", "glm-4.7-flash:free"))
+        self.assertEqual({s["name"] for s in specs if s["name"].startswith("free/")}, {"free/glm-4.7-flash"})
+
+    def test_a_free_all_route_needs_evidence_that_a_model_is_chat(self):
+        evidence = [("typhoon", "typhoon-v2.5-30b-a3b-instruct", "usable", {"free": True, "chat_evidence": "models.dev"}),
+                    ("typhoon", "mystery-model", "usable", {"free": True}),
+                    ("unorouter", "mystery-model:free", "usable", {"free": True})]
+        rules = dict(BASE_RULES, free_all=["typhoon"], free_order=REAL["free_order"])
+        names = {s["name"] for s in plan(*evidence, rules=rules) if s["name"].startswith("free/")}
+        self.assertIn("free/typhoon-v2.5-30b-a3b-instruct", names)
+        self.assertEqual(group(plan(*evidence, rules=rules), "free/mystery-model"), ["unorouter"])
+
+    def test_the_generated_free_groups_hold_no_non_chat_model(self):
+        for entry in GENERATED:
+            if entry["model_name"].startswith("free/"):
+                self.assertIsNone(sync.FREE_NON_CHAT.search(entry["litellm_params"]["model"]), entry["model_name"])
+                self.assertNotIn("mode", entry["model_info"], entry["model_name"])
+
+    def test_plugsky_serves_only_its_free_plan_models(self):
+        plugsky = {e["litellm_params"]["model"] for e in GENERATED if e["model_info"].get("route") == "plugsky"}
+        self.assertTrue(plugsky)
+        self.assertLessEqual(plugsky, {"openai/plugsky-micro", "openai/plugsky-lite"})
 
 
 class PaidOnly(unittest.TestCase):
