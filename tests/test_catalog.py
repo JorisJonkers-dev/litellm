@@ -995,7 +995,39 @@ class FreeSignals(unittest.TestCase):
         # Z.ai is not in free_all: a probe that is answered would not show the id is free
         free, _ = self.listed("zai", [{"id": "glm-4.7-flash"}, {"id": "glm-5"}], {"free_ids": {"zai": ["glm-4.7-flash"]}, "free_all": ["groq"]})
         self.assertEqual(free, {"glm-4.7-flash": True, "glm-5": False})
-        self.assertEqual(sync.load_rules()["free_all"], ["groq", "inferbase"])
+        self.assertEqual(sync.load_rules()["free_all"],
+                         ["groq", "inferbase", "cohere", "sealion", "typhoon", "plugsky", "gonka", "bazaarlink", "neosantara"])
+
+    def test_no_card_routes_take_every_listed_chat_model_and_poe_and_zai_stay_gated(self):
+        rules = sync.load_rules()
+        for route in ("cohere", "sealion", "typhoon", "plugsky", "gonka"):
+            self.assertEqual(sync.free_by(rules, route), "plan", route)
+            data = [{"id": "a", "pricing": {"prompt": "0.001", "completion": "0.002"}}, {"id": "b"}]
+            entry = next(e for e in sync.ROUTES if e["route"] == route)
+            base = f"https://{route}/v1"
+            lists = {f"{base}/models": {"data": data}, f"{base}/models?page_size=1000": {"models": [{"name": m["id"], "endpoints": ["chat"]} for m in data]}}
+            found = sync.list_models(entry, {entry["base_env"]: base}, Http(lists=lists), rules)
+            self.assertEqual({m["id"]: m["free"] for m in found if not m.get("unlisted")}, {"a": True, "b": True}, route)
+        for route in ("poe", "zai", "watsonx", "together", "longcat"):
+            self.assertFalse(sync.approves_all(rules, route), route)
+
+    def test_a_listed_route_is_free_only_on_an_explicit_zero_price(self):
+        rules = sync.load_rules()
+        items = [{"id": "zero", "pricing": {"prompt": "0", "completion": "0"}},
+                 {"id": "zero-num", "pricing": {"prompt": 0, "completion": 0, "currency": "IDR"}},
+                 {"id": "paid", "pricing": {"prompt": "2e-7", "completion": "4e-7"}},
+                 {"id": "half", "pricing": {"prompt": 0, "completion": 1}},
+                 {"id": "unpriced"}, {"id": "empty", "pricing": {"prompt": "", "completion": ""}}]
+        for route in ("bazaarlink", "neosantara"):
+            free, _ = self.listed(route, items, rules)
+            self.assertEqual(free, {"zero": True, "zero-num": True, "paid": False, "half": False, "unpriced": False, "empty": False}, route)
+
+    def test_a_transport_failure_names_its_cause(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "bazaarlink")
+        http = lambda method, url, headers, body: (599, "<urlopen error timed out>")
+        with self.assertRaises(RuntimeError) as caught:
+            sync.list_models(entry, {"BAZAARLINK_API_KEY": "k"}, http, {})
+        self.assertIn("answered 599 (<urlopen error timed out>)", str(caught.exception))
 
     def test_nvidia_lists_only_free_models(self):
         free, _ = self.listed("nvidia", [{"id": "nvidia/a"}, {"id": "nvidia/embed-x"}])
@@ -1247,7 +1279,7 @@ class PlanFreeRoutes(unittest.TestCase):
     def test_the_shipped_rules_name_how_each_static_route_is_free(self):
         rules = sync.load_rules()
         self.assertEqual({r: sync.free_by(rules, r) for r in ("groq", "cloudflare", "zai", "together", "typhoon", "neosantara")},
-                         {"groq": "plan", "cloudflare": "plan", "zai": "plan", "together": "price", "typhoon": "price", "neosantara": "price"})
+                         {"groq": "plan", "cloudflare": "plan", "zai": "plan", "together": "price", "typhoon": "plan", "neosantara": "listed"})
 
     def test_an_unknown_free_by_value_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:

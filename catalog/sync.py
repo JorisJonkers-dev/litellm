@@ -281,13 +281,13 @@ def load_rules(path=None):
     check_free_exclusions(rules, path)
     free_by_rules = rules.get("free_by") or {}
     if not isinstance(free_by_rules, dict):
-        raise RuntimeError(f"{path}: free_by must be an object of route -> \"plan\" or \"price\"")
+        raise RuntimeError(f"{path}: free_by must be an object of route -> \"plan\", \"price\" or \"listed\"")
     known = {entry["route"] for entry in ROUTES}
     for route, how in free_by_rules.items():
         if route not in known:
             raise RuntimeError(f"{path}: free_by names {route!r}, which is no route")
-        if how not in ("plan", "price"):
-            raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\" or \"price\"")
+        if how not in ("plan", "price", "listed"):
+            raise RuntimeError(f"{path}: free_by.{route} is {how!r}; it must be \"plan\", \"price\" or \"listed\"")
     free_all = rules.get("free_all") or []
     if not isinstance(free_all, list) or any(route not in known or route not in STATIC_ROUTES for route in free_all):
         raise RuntimeError(f"{path}: free_all must list static-list routes (those with `free_ids`) only")
@@ -516,7 +516,7 @@ def listing_verdict(kind, item):
 
 def approves_all(rules, route):
     """Whether routing.json's `free_all` lists the route: every listed chat model is a free candidate, the probe
-    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes only (Groq);
+    decides usable or not, and `free_ids` is then only the ids the plan names for sure. Plan-free routes (Groq, and the no-card accounts) and `listed` routes (zero price in the listing);
     a route whose plan frees some ids (Z.ai) or bills per token stays on `free_ids`, because a probe that is
     answered does not show the id is free, and a zero cost recorded on a paid id would hide the spend."""
     return route in ((rules or {}).get("free_all") or [])
@@ -608,7 +608,9 @@ def list_models(entry, env, http, rules=None, reference=None):
             status, body = user_status, user_body
     items = listing_items(body, kind)
     if status != 200 or items is None:
-        raise RuntimeError(f"{entry['route']}: the model list answered {status}")
+        # 599 is this client's own: no HTTP answer (DNS, connect, TLS, timeout); the body is the transport error.
+        detail = f" ({body})" if status == 599 and isinstance(body, str) and body else ""
+        raise RuntimeError(f"{entry['route']}: the model list answered {status}{detail}")
     found = {}
     for item in items:
         if not isinstance(item, dict) or not item.get("id") or item.get("archived"):
@@ -681,8 +683,15 @@ def list_models(entry, env, http, rules=None, reference=None):
                 # prices it anywhere above zero, on either side, refuses it.
                 # A plan-free route (Groq, Z.ai) prices its ids per token for paying accounts, so the guard
                 # does not apply there: the plan is the signal.
-                out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
-                    free_by(rules, entry["route"]) == "plan" or not priced_above_zero(item))
+                how = free_by(rules, entry["route"])
+                if how == "listed":
+                    # The listing's own price is the signal: free only on an explicit zero on both sides, and no
+                    # other price field above zero. A listing that prices nothing is not free (fail closed).
+                    out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                        price is not None and zero_price(*price) and not priced_above_zero(item))
+                else:
+                    out["free"] = (model_id in free_ids or approves_all(rules, entry["route"])) and (
+                        how == "plan" or not priced_above_zero(item))
         elif entry["route"] in FREE_ID_ROUTES:
             out["free"] = model_id.endswith("-free")
         elif entry["route"] == "local":
