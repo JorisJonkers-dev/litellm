@@ -10,7 +10,7 @@ and the route's own upstream key, and classifies the result:
   blocked           the account is refused (region, privacy setting, disabled); the reason text is kept
   unknown           the model is gone or never existed on this provider
   budget-exhausted  credit or quota is spent
-  error             anything else (rate limit, 5xx, timeout); tried again next run
+  error             anything else (rate limit, 5xx, timeout); tried again after a back-off (1 h, doubling, at most --max-age)
   not-chat          the provider lists it as no chat model (embeddings, OCR, transcription)
   unprobed          not probed on purpose (a paid OpenRouter model: the route is used for `:free` ids)
   pending           due for a probe but over this run's cap; probed in a later run
@@ -149,7 +149,8 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 #   nvidia      20 per run, about 40 a minute; probes are serial, so a run stays under a minute's allowance
 #   Second wave (same arithmetic, limit x 24 at most half the cap):
 #   bazaarlink   1 x 24 =  24    of 60 weighted units a day      airforce    1 x 24 = 24   of 1,000 a day (1 a minute: one serial probe)
-#   electronhub  2 x 24 =  48    (no cap published: at most 48 a day, and a healthy id is probed once a day) unorouter   2 x 24 = 48   (queue-throttled, about 1 a minute per model; per IP)
+#   electronhub  2 x 24 =  48    (no cap published: at most 48 a day, and a healthy id is probed once a day) unorouter   6 x 24 = 144  (queue-throttled, about 1 a minute per model; per IP; 6 serial probes of different models take
+#                about 6 minutes. It lists over 100 free ids, so 2 a run took two days to cover them once; a failing id backs off, see ERROR_RETRY)
 #   plugsky      4 x 24 =  96    of 500 a day                    sealion     2 x 24 = 48   (10 a minute)
 #   novita       2 x 24 =  48    (a few $0 ids)                  vercel      4 x 24 = 96   (zero-priced ids only; the free credit is not spent by a $0 id)
 #   poe          1 x 24 =  24    (500 RPM; daily points not known, but its free list is empty, so no id is probed) together, typhoon, neosantara, longcat, gonka: 1 x 24 = 24 (one id each, or a small allowance)
@@ -159,10 +160,18 @@ OPT_IN_HINTS = ("deepseek-v4", "longcat-2.5", "muse-spark", "beam-free")
 DEFAULT_ROUTE_LIMITS = {"openrouter": 30, "groq": 10, "cloudflare": 5, "nvidia": 20, "zai": 10, "kilo": 30,
                         "ovh": 2, "requesty": 4, "axforge": 0, "naga": 2, "routeway": 4, "inferbase": 2,
                         "bazaarlink": 1, "cohere": 0, "plugsky": 4, "poe": 1, "watsonx": 1, "together": 1, "typhoon": 1,
-                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 2, "unorouter": 2,
+                        "sealion": 2, "gonka": 1, "longcat": 1, "neosantara": 1, "electronhub": 2, "unorouter": 6,
                         "airforce": 1, "vercel": 4, "novita": 2}
 # Why a paid model on a free-only route has no probe.
 PAID_REASON = {"openrouter": "paid OpenRouter models are not probed"}
+# A route whose free ids are approved by hand says so: "paid" would hide that the owner can approve the id.
+APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is approved there); it is not probed"
+# An errored probe (a 429 on a model the free tier has no quota for, a 400 on a model that is not chat) is retried
+# after ERROR_RETRY, then twice as long after each further error, up to --max-age, so a model that keeps failing
+# stops spending a probe every run. The first retry stays at one run. A usable or other answer resets it.
+ERROR_RETRY = datetime.timedelta(hours=1)
+# The cron fires at the same minute each hour but a run's own time varies, so an hourly retry is due a little early.
+RETRY_SLACK = datetime.timedelta(minutes=5)
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
 STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
@@ -1493,14 +1502,20 @@ def previous_by_id(catalogue):
 
 
 def due(previous, now, max_age):
-    """Why a model needs a probe: new, errored, or probed longer ago than max_age. None if fresh."""
+    """Why a model needs a probe: new (0), errored or never probed (1), probed longer ago than max_age (2). None if fresh.
+
+    An errored model waits ERROR_RETRY * 2**(errors in a row - 1), at most max_age, since its last probe."""
     meta = (previous or {}).get("metadata") or {}
-    if not previous or meta.get("status") in (None, "error", "unprobed"):
+    if not previous or meta.get("status") in (None, "unprobed"):
         return 0 if not previous else 1
     try:
         probed = datetime.datetime.fromisoformat(meta["probed_at"])
     except (KeyError, ValueError):
         return 1
+    if meta.get("status") == "error":
+        errors = max(int(meta.get("error_probes") or 1), 1)
+        wait = min(ERROR_RETRY * 2 ** min(errors - 1, 10), max_age)
+        return 1 if now - probed >= wait - RETRY_SLACK else None
     return 2 if now - probed >= max_age else None
 
 
@@ -1583,7 +1598,7 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 if item.get(field):
                     meta[field] = item[field]
             if old:
-                for k in ("status", "reason", "probed_at", "failing_probes", "was_usable"):
+                for k in ("status", "reason", "probed_at", "failing_probes", "was_usable", "error_probes"):
                     if k in (old.get("metadata") or {}):
                         meta[k] = old["metadata"][k]
             if route == "opencode-go" and any(h in item["id"] for h in OPT_IN_HINTS):
@@ -1595,7 +1610,8 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
                 meta.update(status="not-chat", reason="")
                 meta.setdefault("probed_at", stamp)
             elif route in FREE_ONLY and not item["free"]:
-                meta.update(status="unprobed", reason=PAID_REASON.get(route, "paid models on a free-only route are not probed"))
+                reason = APPROVAL_REASON if by_route[route]["kind"] in STATIC_KINDS else PAID_REASON.get(route, "paid models on a free-only route are not probed")
+                meta.update(status="unprobed", reason=reason)
                 meta.pop("probed_at", None)
             else:
                 why = due(old, now, max_age)
@@ -1615,7 +1631,13 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
         models.sort(key=lambda model: model["id"])
         providers[route] = {"metadata": {"route": route, "key_env": entry["key_env"]}, "models": models}
     spent = {}
-    for _, route, model in sorted(queue, key=lambda q: (q[0], q[2]["metadata"].get("probed_at", ""))):
+    # Never-probed models first, then the longest unprobed, and a route's models take turns with the other routes'
+    # (rank within the route), so a global --max-probes that binds cuts every route a little, not the last routes whole.
+    ranked, seen = [], {}
+    for why, route, model in sorted(queue, key=lambda q: (q[0], q[2]["metadata"].get("probed_at", ""))):
+        ranked.append((why, seen.get((why, route), 0), route, model))
+        seen[(why, route)] = seen.get((why, route), 0) + 1
+    for _, _, route, model in sorted(ranked, key=lambda q: (q[0], q[1])):
         if stats["probed"] >= max_probes or spent.get(route, 0) >= limits.get(route, max_probes):
             continue
         status, reason = probe(by_route[route], model["id"].split("/", 1)[1], env, http, model["metadata"])
@@ -1623,6 +1645,11 @@ def build(env, http, previous, now, max_age=datetime.timedelta(hours=24), route_
         meta.update(status=status, reason=reason, probed_at=stamp)
         # Two consecutive blocked or unknown probes are what drops a model.
         meta["failing_probes"] = (meta.get("failing_probes", 0) + 1) if status in ("blocked", "unknown") else 0
+        # Consecutive plain errors, which stretch the wait before the next probe (due()).
+        if status == "error":
+            meta["error_probes"] = meta.get("error_probes", 0) + 1
+        else:
+            meta.pop("error_probes", None)
         spent[route] = spent.get(route, 0) + 1
         stats["probed"] += 1
     for provider in providers.values():

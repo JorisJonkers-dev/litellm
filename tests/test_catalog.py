@@ -308,6 +308,57 @@ class Build(unittest.TestCase):
         self.assertIn("deepseek-v4-pro", http.probed_ids())
         self.assertNotIn("qwen3:32b", http.probed_ids())
 
+    def test_a_failing_model_backs_off_instead_of_spending_a_probe_every_run(self):
+        url = "https://oc/v1/chat/completions"
+        always = {(url, "deepseek-v4-pro"): [(429, "")] * 10}
+        cat, _ = self.run_build(Http(answers=dict(always)))
+        meta = lambda c: {m["id"]: m["metadata"] for m in c["providers"]["opencode-go"]["models"]}["opencode-go/deepseek-v4-pro"]
+        self.assertEqual((meta(cat)["status"], meta(cat)["error_probes"]), ("error", 1))
+        probed_at, runs = [], 0
+        for hour in range(1, 25):
+            http = Http(answers=dict(always))
+            cat, _ = self.run_build(http, cat, now=NOW + datetime.timedelta(hours=hour))
+            if "deepseek-v4-pro" in http.probed_ids():
+                runs += 1
+                probed_at.append(hour)
+        # waits of 1h, 2h, 4h, 8h, then capped at the 24h max age: 1, 3, 7, 15, not 24 probes
+        self.assertEqual(probed_at, [1, 3, 7, 15])
+        self.assertEqual(meta(cat)["error_probes"], 5)
+        # the first answer that is not an error ends the back-off
+        cat, _ = self.run_build(Http(), cat, now=NOW + datetime.timedelta(hours=48))
+        self.assertEqual(meta(cat)["status"], "usable")
+        self.assertNotIn("error_probes", meta(cat))
+
+    def test_due_orders_by_error_wait(self):
+        iso = lambda t: t.strftime("%Y-%m-%dT%H:%M:%SZ")
+        prev = {"metadata": {"status": "error", "error_probes": 3, "probed_at": iso(NOW)}}
+        day = datetime.timedelta(hours=24)
+        self.assertIsNone(sync.due(prev, NOW + datetime.timedelta(hours=3), day))
+        self.assertEqual(sync.due(prev, NOW + datetime.timedelta(hours=3, minutes=56), day), 1)
+        # a model that was never probed (a pending one) is always due, a fresh usable one is not
+        self.assertEqual(sync.due({"metadata": {}}, NOW, day), 1)
+        self.assertIsNone(sync.due({"metadata": {"status": "usable", "probed_at": iso(NOW)}}, NOW, day))
+
+    def test_a_binding_global_budget_is_shared_between_routes(self):
+        lists = dict(LISTS, **{"https://or/v1/models": {"data": [{"id": f"v/m{i}:free"} for i in range(10)]}})
+        http = Http(lists=lists)
+        self.run_build(http, max_probes=4)
+        urls = [u for u, _ in http.probed()]
+        self.assertEqual(len(urls), 4)
+        # openrouter lists first and has 10 due; without turn-taking it would take all 4
+        self.assertLess(urls.count("https://or/v1/chat/completions"), 4)
+
+    def test_never_probed_unorouter_ids_are_probed_six_a_run_and_cover_the_backlog(self):
+        lists = {"https://uno/v1/models": {"data": [{"id": f"m{i}:free"} for i in range(20)]}}
+        env = {"UNOROUTER_API_BASE": "https://uno/v1"}
+        cat = {}
+        for hour in range(4):
+            http = Http(lists=lists)
+            cat, stats = sync.build(env, http, cat, NOW + datetime.timedelta(hours=hour))
+            self.assertEqual(stats["probed"], 6 if hour < 3 else 2)
+        counts = cat["providers"]["unorouter"]["metadata"]["by_status"]
+        self.assertEqual(counts, {"usable": 20})
+
     def test_a_vanished_model_is_kept_once_and_dropped_on_the_second_run(self):
         first, _ = self.run_build(Http())
         lists = dict(LISTS, **{"https://oc/v1/models": {"data": [{"id": "glm-5.3-flash"}]}})
@@ -1089,6 +1140,7 @@ class PlanFreeRoutes(unittest.TestCase):
         meta = {m["id"]: m["metadata"] for m in cat["providers"]["groq"]["models"]}
         self.assertEqual((meta["groq/approved"]["free"], meta["groq/approved"]["status"]), (True, "usable"))
         self.assertEqual(meta["groq/other"]["status"], "unprobed")
+        self.assertIn("free_ids", meta["groq/other"]["reason"])
         self.assertTrue(any("approved" in d["model_info"]["id"] for d in sync.plan_groups(cat, rules)))
 
 
