@@ -25,6 +25,7 @@
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
+  "paid_route_order": ["vibe-study", "vibe", "opencode-go", "vibe-study-api", "vibe-api"],
   "paid_only": {
     "_source": "Models a free route's provider says need a paid plan: never free, never probed, never deployed, whatever the listing shows. Cloudflare: https://developers.cloudflare.com/workers-ai/platform/pricing/ (read 2026-11-26): 'Some models require a paid billing method. This applies to' the ids below; 'You can access these models with either the Workers Paid plan or prepaid AI Gateway credits.' The /ai/models/search listing the sync reads has no documented field for this (the limits page says each model page states it), so the list is kept here and checked by hand when the pricing page changes.",
     "cloudflare": ["@cf/moonshotai/kimi-k2.6", "@cf/moonshotai/kimi-k2.7-code", "@cf/zai-org/glm-5.2", "@cf/zai-org/glm-5.3",

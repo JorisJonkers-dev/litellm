@@ -57,6 +57,15 @@ Call `free/<model>` (`free/glm-4.7-flash`, `free/gpt-oss-120b`, `free/gemma-4-31
 
 `tests/test_free_groups.py` and `tests/test_free_limits.py` cover the clustering, the plan, the limits, the generated file and the callback (fake headers and clock); the Router tests run where `litellm` is importable, so run them in the image: `docker run --rm -v "$PWD":/repo --entrypoint python <image> -W ignore -m unittest discover -s /repo/tests -p 'test_free*.py'`.
 
+## Paid groups
+
+Call `paid/<model>` (`paid/deepseek-v4.1-flash`, `paid/glm-5.3-flash`) to reach a paid model on the paid routes: one group per chat model, its deployments tried in `paid_route_order` of `catalog/routing.json` (`vibe-study`, `vibe`, `opencode-go`, `vibe-study-api`, `vibe-api`, lowest order first). A route that does not serve the model has no deployment and is skipped; a route that answers 402 or 429 falls through to the next. The route names are the account names in `accounts`, so each paid copy keeps its account, budget and cooldown: it is the route's own deployment (same `model_info.id`), so a `paid/` call and a direct call draw on one counter. The access group is `paid` alone, and it is granted to a key by name, never by a wildcard.
+
+- **Which routes.** Only the routes in `paid_route_order`. Never OpenRouter (`paid_route_order` refuses it), never a free route, never a free id: `assert_paid_groups()` fails the sync unless every `paid/*` deployment is on a paid route, carries a budget and holds the access group `paid` alone. Paid groups never fall back to a `free/*` group.
+- **Backups included.** The chain is built before `backup_only`, so a route the canonical group drops (OpenCode Go behind Vibe) still stands in its chain.
+- **Mistral.** A moving `-latest` id is never deployed as itself: it deploys the release its listing names (`resolves_to`, from the release's `aliases`), or nothing when the listing names none. Among dated releases of one model the newest (largest date stamp) is the one deployed, so each Mistral model has one versionless name.
+- **Claude.** A Claude deployment carries the `anthropic` access group alone (`assert_paid_groups()`, tested in `tests/test_paid_groups.py`).
+
 ## Approving a free id
 
 Routes whose free ids are a static list (`groq`, `cloudflare`, `zai`, `axforge`, `inferbase`, and the second wave's `bazaarlink`, `cohere`, `plugsky`, `poe`, `watsonx`, `together`, `typhoon`, `sealion`, `gonka`, `longcat`, `neosantara`) deploy only ids in `free_ids` of `catalog/routing.json`. The owner can choose only from what the providers list with the real keys, which only the in-cluster sync holds, so the sync scans these routes every run and records every listed id with the signals the listing gives (price fields, free flags, context, modality) as `free_candidates` in the catalogue, marked `approved` (in `free_ids`) or `candidate`. A candidate is never deployed.

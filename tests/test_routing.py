@@ -24,6 +24,7 @@ ENV = {
 LISTS = {
     "https://m/v1/models": {"data": [
         {"id": "mistral-large-latest", "capabilities": {"completion_chat": True}},
+        {"id": "mistral-large-2411", "capabilities": {"completion_chat": True}, "aliases": ["mistral-large-latest"]},
         {"id": "mistral-embed", "capabilities": {"completion_chat": False}},
         {"id": "mistral-ocr-latest", "capabilities": {"ocr": True}},
         {"id": "voxtral-mini-transcribe", "capabilities": {"audio_transcription": True}},
@@ -146,7 +147,7 @@ class Naming(unittest.TestCase):
 class Plan(unittest.TestCase):
     def test_mistral_uses_the_plan_tiers_and_never_a_free_route_first(self):
         cat = catalogue(
-            ("vibe", "mistral-large-latest", "usable", {}),
+            ("vibe", "mistral-large-latest", "usable", {"resolves_to": "mistral-large-2411"}),
             ("vibe-api", "mistral-large-2411", "usable", {}),
             ("opencode-go", "mistral-large", "usable", {}),
             ("openrouter", "mistralai/mistral-large:free", "usable", {"free": True}),
@@ -196,7 +197,7 @@ class Plan(unittest.TestCase):
         cat = catalogue(
             ("vibe", "mistral-embed", "not-chat", {"modality": "embedding"}),
             ("vibe-api", "mistral-embed", "not-chat", {"modality": "embedding"}),
-            ("vibe-api", "mistral-ocr-latest", "not-chat", {"modality": "ocr"}),
+            ("vibe-api", "mistral-ocr-latest", "not-chat", {"modality": "ocr", "resolves_to": "mistral-ocr-2512"}),
             ("vibe-api", "mistral-moderation-latest", "not-chat", {"modality": "moderation"}),
         )
         specs = per_route_plan(cat, RULES)
@@ -806,7 +807,8 @@ class FreeExclusions(unittest.TestCase):
                                          self.rules)
                 self.assertEqual({s["route"] for s in specs}, {"vibe"})
                 self.assertFalse([s for s in specs if s["name"].startswith(("public/", "google-free/", "free/"))])
-                self.assertEqual(len(specs), 1)
+                # The vibe copy also sits in its paid/<model> chain (by design); the canonical group is the one copy.
+                self.assertEqual(len([s for s in specs if not s["name"].startswith("paid/")]), 1)
 
     def test_every_flash_lite_variant_stays_on_the_free_tier(self):
         for name in self.ALLOWED:
