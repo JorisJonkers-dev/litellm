@@ -23,9 +23,9 @@
 #                                 catalogue, so the UI shows the spend under OpenCode Go
 #   local/*                       the OpenAI-compatible model server on the GPU workstation, free
 #
-# The free-tier openrouter route has no wildcard: only the generated deployments reach it, free ids
-# only, each in its own "openrouter/<canonical>" group with the openrouter-free-public access group
-# and never in `canonical`: a free-tier provider may train on the prompts, so it is public work only.
+# The free-tier routes have no wildcard: only the generated deployments reach them, free ids only, and
+# every free copy is reachable only as "free/<model>" with the access group free alone (owner,
+# 2026-11-26): a free-tier provider may train on the prompts, so it is public work only.
 #
 # No Zen (opencode.ai/zen/v1) route: only the Go base is configured. OpenCode's free models answer
 # 403 to every client but OpenCode itself, so a free Zen route would serve nothing.

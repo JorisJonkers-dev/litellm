@@ -71,7 +71,7 @@
   "free_by": {"groq": "plan", "cloudflare": "plan", "zai": "plan", "cohere": "plan", "sealion": "plan", "typhoon": "plan", "plugsky": "plan", "gonka": "plan", "bazaarlink": "listed", "neosantara": "listed"},
   "free_order": {
     "_note": "Order inside a free/<model> group, lowest first: the per-minute providers before the scarce daily and monthly allowances, so a daily budget is spent only when the per-minute ones are limited. config/free_limits.py removes a limited copy before the pick, so order is preference, not a wait. A route not named comes last.",
-    "groq": 1, "cloudflare": 2, "zai": 2, "kilo": 3, "ovh": 3, "nvidia": 3, "sealion": 3,
+    "groq": 1, "cloudflare": 2, "zai": 2, "google": 3, "kilo": 3, "ovh": 3, "nvidia": 3, "sealion": 3,
     "electronhub": 4, "unorouter": 5, "openrouter": 5, "poe": 5,
     "requesty": 6, "routeway": 6, "naga": 6, "bazaarlink": 6, "plugsky": 6, "airforce": 6,
     "vercel": 7, "opencode-go": 7, "neosantara": 7, "typhoon": 7, "longcat": 7, "together": 7,
@@ -109,6 +109,8 @@
     "cohere": {"deployment": {"rpm": 20}, "shared": [{"requests": 1000, "per": "month"}], "scope": "deployment", "account_match": "trial|month",
                "status": "unconfirmed", "source": "provider registry: trial key, 1,000 calls a month, 20 RPM per chat model."},
     "unorouter": {"deployment": {"rpm": 1}, "scope": "deployment", "status": "unconfirmed", "source": "route notes: anonymous, queue-throttled about one a minute per model per IP."},
+    "google": {"reset": "08:00", "scope": "deployment", "status": "partial",
+               "source": "https://aistudio.google.com/docs/rate-limits: limits per project, RPD resets at midnight Pacific (08:00 UTC in winter; 07:00 in summer, so 08:00 is the later, safe one). Per-model RPM/RPD are in AI Studio only, so they are learned from the 429s."},
     "vercel": {"scope": "account", "status": "unconfirmed", "source": "provider registry: monthly free credits; 429 over the limit, 402 with no balance (learned, not counted)."}
   },
   "cooldowns": {

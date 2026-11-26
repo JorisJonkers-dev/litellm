@@ -191,6 +191,21 @@ class Generated(unittest.TestCase):
     def free_entries(self):
         return [e for e in GENERATED if e["model_name"].startswith("free/")]
 
+    def test_a_free_deployment_is_reachable_only_as_free_model(self):
+        """Owner, 2026-11-26: the free/ prefix is the only path to, and the only marker of, a free deployment."""
+        for entry in GENERATED:
+            name, info, params = entry["model_name"], entry["model_info"], entry["litellm_params"]
+            free = params.get("input_cost_per_token") == 0 and params.get("output_cost_per_token") == 0 and "account" not in info
+            if info.get("route") in sync.FREE_GROUP_ROUTES and free or "free" in info.get("access_groups", []):
+                self.assertTrue(name.startswith("free/"), name)
+                self.assertEqual(info["access_groups"], ["free"], name)
+            if name.startswith("free/"):
+                self.assertNotIn("free", name[len("free/"):], name)
+        prefixes = {e["model_name"].split("/")[0] for e in GENERATED if "/" in e["model_name"]}
+        self.assertFalse(prefixes & {"public", "google-free", "opencode-go-free", "openrouter", "kilo", "groq", "unorouter"})
+        groups = {g for e in GENERATED for g in e["model_info"].get("access_groups", [])}
+        self.assertFalse(groups & {"openrouter-free-public", "google-free-public", "opencode-go-free-public"})
+
     def test_every_free_group_deployment_is_free_public_only_and_without_a_fixed_cooldown(self):
         entries = self.free_entries()
         self.assertGreater(len(entries), 100)
@@ -217,6 +232,8 @@ class Generated(unittest.TestCase):
         frozenset({"codestral", "codestral-2508"}): "codestral is a moving alias (models.dev: 2024-05 or 25.08 by provider)",
         frozenset({"qwen2.5-coder-32b", "qwen2.5-coder-32b-instruct"}): "Qwen2.5-Coder-32B is the base model, -instruct the chat tune",
         frozenset({"typhoon-ocr", "typhoon-ocr-preview"}): "one provider lists both as separate models",
+        frozenset({"gemini-3-flash", "gemini-3-flash-preview"}): "Google lists both as separate models",
+        frozenset({"gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview"}): "a preview and its GA release are separate releases",
     }
 
     def test_no_free_group_is_a_near_miss_of_another(self):

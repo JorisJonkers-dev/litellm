@@ -212,7 +212,8 @@ GATED_ACCESS_GROUPS = {"anthropic": "anthropic"}
 # own free access group, alone, with no budget. The "<route>-free" prefix keeps the name clear of
 # the route's own wildcard ("opencode-go/*") and lets a reader tell the route from the group.
 FREE_ID_ROUTES = {"opencode-go": "opencode-go-free-public"}
-FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES)
+# The Google free tier joins too (owner, 2026-11-26): like every free route it is public work only.
+FREE_GROUP_ROUTES = (FREE_ONLY - FREE_PRICED) | frozenset(FREE_ID_ROUTES) | frozenset({"google"})
 # A non-chat modality and the LiteLLM model_info.mode that marks it. Moderation is never deployed.
 MODES = {"embedding": "embedding", "ocr": "ocr", "transcription": "audio_transcription"}
 # A public route's deployment is a free tier whose prompts may be used for training: it cools down
@@ -336,7 +337,7 @@ def check_free_limits(rules, source="the routing rules"):
         where = f"{source}: free_limits.{route}"
         if route not in known:
             raise RuntimeError(f"{where} names no route")
-        if route not in FREE_ONLY and route not in FREE_ID_ROUTES:
+        if route not in FREE_GROUP_ROUTES:
             raise RuntimeError(f"{where}: only a free route has free limits")
         if not isinstance(entry, dict):
             raise RuntimeError(f"{where} is not an object")
@@ -1070,19 +1071,20 @@ FREE_NON_CHAT = re.compile(
     r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
     r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
     r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
-    r"guard|moderation|classifier", re.I)
+    r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie", re.I)
 
 
 def free_chat(route, chosen, rules):
     """Whether a free copy is a chat-completion model, so it may serve a free/<model> group (fail closed).
 
     Never one whose mode is not chat or whose name says it is something else (FREE_NON_CHAT). On a route whose
-    listing names no model type (`free_all` routes: everything listed is a candidate), it needs positive
+    listing names no model type (`free_all` routes: everything listed is a candidate; the Google free tier), it needs positive
     evidence too: a typed listing, models.dev saying text chat, or the owner's approval in `free_ids`.
     """
     if chosen.get("modality") != "chat" or FREE_NON_CHAT.search(chosen["upstream_id"]):
         return False
-    if approves_all(rules, route):
+    if approves_all(rules, route) or route in ((rules or {}).get("public_routes") or []):
+        # Google's OpenAI-compatible list names no model type either (image, live and agent models are listed too).
         return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
     return True
 
@@ -1267,7 +1269,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         # (owner, 2026-11-15): most free endpoints exist only with training on. A paid provider
         # is never a fallback.
         params["extra_body"] = {"provider": {"data_collection": "allow", "allow_fallbacks": False}}
-    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")):
+    if (route in FREE_ONLY and route not in FREE_PRICED) or (route in FREE_ID_ROUTES and chosen.get("free")) or (
+            free_only and route in FREE_GROUP_ROUTES and route not in FREE_PRICED):
         params.update({"input_cost_per_token": 0, "output_cost_per_token": 0})
     elif route in FREE_PRICED and chosen.get("price"):
         params.update({"input_cost_per_token": chosen["price"]["input"], "output_cost_per_token": chosen["price"]["output"]})
@@ -1279,6 +1282,9 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params.update(limits)
     if free_only:
         groups = [FREE_ACCESS_GROUP]
+    elif route in FREE_PRICED:
+        # Priced (a dollar allowance), so never in the access group free: only a key holding its own group reaches it.
+        groups = [FREE_ACCESS_GROUPS[route]]
     elif route in FREE_ACCESS_GROUPS:
         groups = [FREE_ACCESS_GROUPS[route], FREE_ACCESS_GROUP]
     elif route in FREE_ID_ROUTES and chosen.get("free"):
@@ -1414,21 +1420,15 @@ def plan_groups(catalogue, rules):
         free_ids = serving & own_group
         normal = serving - public_routes - FREE_ONLY - free_ids
         public = serving & public_routes
-        for route in sorted(free):
-            # Its own group, alone: public work only, and nothing paid behind it.
-            # No cooldown_time: LiteLLM then cools a 429 for the provider's own Retry-After (router default
-            # otherwise), and config/free_limits.py keeps it out of the pick until its limit resets.
+        for route in sorted(free & FREE_PRICED):
+            # A dollar-allowance route (Inferbase) is budgeted and priced, not free: its own group, its budget and
+            # cooldown, never a free/ group.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], budget=budgets.get(route),
-                                    # A dollar-allowance route (Inferbase) is budgeted, not free: it keeps its cooldown.
-                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN) if route in FREE_PRICED else None,
-                                    limits=free_limit_params(route, rules)))
-        for route in sorted(free_ids):
-            # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
-            group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
-            specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
-                                    limits=free_limit_params(route, rules)))
-        for route in sorted((free | free_ids) & FREE_GROUP_ROUTES):
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+        # Every free copy (a free-only route, a paid route's free id, the Google free tier) is reachable only as
+        # free/<model> (owner, 2026-11-26): no per-route group, no "<route>-free/", "google-free/" or "public/" copy.
+        for route in sorted((free | free_ids | public) & FREE_GROUP_ROUTES):
             if name not in FREE_ROUTER_NAMES and free_chat(route, routes[route], rules):
                 key = free_canonical(routes[route].get("free_name") or name, rules)
                 free_members.setdefault(key, {}).setdefault(route, []).append(routes[route])
@@ -1442,22 +1442,6 @@ def plan_groups(catalogue, rules):
         for route, order, weight in planned:
             specs.append(deployment(group_name(name, routes[route]["modality"], primary), name, route, routes[route],
                                     order, weight, by_route[route], budget=budgets.get(route), cooldown=cooldowns.get(route)))
-        for route in sorted(public):
-            # The free tier alone, in the free access group: public work only, and no paid
-            # deployment behind it, so a refusal fails instead of billing. Chat models only.
-            if routes[route]["modality"] == "chat":
-                specs.append(deployment(group_name(name, "chat", "chat", free_route=GOOGLE_FREE_ROUTE), name, route,
-                                        routes[route], 1, 1, by_route[route], cooldown=PUBLIC_COOLDOWN, free_only=True))
-        if public:
-            # The free tier is public work only: its own group, first, with the normal deployments
-            # behind it, and no budget of its own.
-            for route in sorted(public):
-                specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
-                                        routes[route], 1, 1, by_route[route], public=True, cooldown=PUBLIC_COOLDOWN))
-            for route, order, weight in planned:
-                specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
-                                        routes[route], order + 1, weight, by_route[route], public=True,
-                                        budget=budgets.get(route), cooldown=cooldowns.get(route)))
     for key, members in sorted(free_members.items()):
         specs.extend(free_group(key, members, by_route, rules))
     if rules.get("tier_groups"):

@@ -52,8 +52,8 @@ class FreeGroup(unittest.TestCase):
         found = self.group(specs)
         self.assertEqual([spec["route"] for spec in found], ["openrouter", "requesty", "kilo", "nvidia", "ovh"])
         self.assertEqual({spec["model_info"]["canonical"] for spec in found}, {"nemotron-3-ultra-550b-a55b"})
-        # Each route keeps its own group beside the shared one, for a key that holds one route.
-        self.assertEqual(len(self.group(specs, "kilo/nemotron-3-ultra-550b-a55b")), 1)
+        # The shared group is the only way to a free copy: no per-route group (owner, 2026-11-26).
+        self.assertEqual({spec["name"] for spec in specs}, {"free/nemotron-3-ultra-550b-a55b"})
 
     def test_a_model_that_is_not_the_same_canonical_name_is_not_merged(self):
         specs = plan(*free_models(NEMOTRON[:2] + [("kilo", "nvidia/nemotron-3-ultra-550b")]))
