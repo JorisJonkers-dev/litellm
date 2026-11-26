@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.10.3...v1.11.0) (2026-11-26)
+
+
+### Features
+
+* **catalog:** free/&lt;model&gt; groups across every free provider, with limits before the call ([#106](https://github.com/JorisJonkers-dev/litellm/issues/106)) ([fbd5d40](https://github.com/JorisJonkers-dev/litellm/commit/fbd5d40256571ab6b0125975bc58782faddc9bd2))
+
 ## [1.10.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.10.2...v1.10.3) (2026-11-26)
 
 
