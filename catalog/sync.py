@@ -110,8 +110,10 @@ ROUTES = [
     # and it deploys nothing until the owner writes the field.
     # No free signal in the listing: the free ids are the static list in routing.json (empty until approved,
     # so the candidate scan shows what the provider lists). Cohere and watsonx are not OpenAI-style lists.
-    {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink"},
-    {"route": "cohere", "base_env": "COHERE_LIST_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere"},
+    {"route": "bazaarlink", "base_env": "BAZAARLINK_API_BASE", "key_env": "BAZAARLINK_API_KEY", "kind": "bazaarlink",
+     "default_base": "https://api.bazaarlink.ai/v1"},
+    {"route": "cohere", "base_env": "COHERE_LIST_BASE", "key_env": "COHERE_API_KEY", "kind": "cohere",
+     "default_base": "https://api.cohere.com/v1"},
     {"route": "plugsky", "base_env": "PLUGSKY_API_BASE", "key_env": "PLUGSKY_API_KEY", "kind": "plugsky"},
     {"route": "poe", "base_env": "POE_API_BASE", "key_env": "POE_API_KEY", "kind": "poe"},
     {"route": "watsonx", "base_env": "WATSONX_API_BASE", "key_env": "WATSONX_API_KEY", "kind": "watsonx",
@@ -413,8 +415,9 @@ def route_base(entry, env):
         parts = {name: "" if value.startswith("REPLACE_WITH") else value for name, value in parts.items()}
         return template.format(**parts) if all(parts.values()) else ""
     value = (env.get(entry["base_env"]) or "").rstrip("/")
-    # A REPLACE_WITH_... value is a placeholder the owner has not filled (BazaarLink's base): no base.
-    return "" if value.startswith("REPLACE_WITH") else value
+    # A REPLACE_WITH_... value is a placeholder the owner has not filled (BazaarLink's base): no value, so the default.
+    value = "" if value.startswith("REPLACE_WITH") else value
+    return (value or entry.get("default_base") or "").rstrip("/")
 
 
 # The Vault API path (the UI shows it as secret/platform/litellm); the env files name it the same way.
@@ -436,7 +439,10 @@ def missing_setting(entry, env):
     env names by the env files; an unset optional field arrives empty.
     """
     template = entry.get("base_template")
-    names = re.findall(r"{(\w+)}", template) if template and not env.get(entry["base_env"]) else [entry["base_env"]]
+    if template and not env.get(entry["base_env"]):
+        names = re.findall(r"{(\w+)}", template)
+    else:
+        names = [] if entry.get("default_base") else [entry["base_env"]]  # a route with a default base needs no field
     for name in names + list(entry.get("needs") or []):
         value = env.get(name) or ""
         if not value or value.startswith("REPLACE_WITH"):
@@ -531,12 +537,19 @@ def modality(kind, item):
         if caps.get("moderation"):
             return "moderation"
         return "chat"
+    if kind == "cohere" and isinstance(item.get("endpoints"), list):
+        return "chat" if "chat" in item["endpoints"] else "other"
+    if kind == "watsonx" and isinstance(item.get("functions"), list):
+        ids = {f.get("id") for f in item["functions"] if isinstance(f, dict)}
+        return "chat" if ids & {"text_chat", "text_generation"} else "other"
     if any(word in model_id for word in ("whisper", "orpheus", "-tts", "tts-")):
         return "speech"
     return "embedding" if "embed" in model_id else "chat"
 
 
-BARE_LIST_KINDS = ("together",)
+BARE_LIST_KINDS = ("together", "typhoon")
+IAM_URL = "https://iam.cloud.ibm.com/identity/token"
+WATSONX_SPECS = "/ml/v1/foundation_model_specs?version=2024-05-01&limit=200"
 
 
 def listing_items(body, kind=None):
@@ -544,7 +557,29 @@ def listing_items(body, kind=None):
     (Together only); anything else is None, which the caller reports as a route error, never as zero models."""
     if isinstance(body, dict) and isinstance(body.get("data"), list):
         return body["data"]
+    # Cohere's own list ({"models": [{"name", "endpoints"}]}) and watsonx's specs ({"resources": [{"model_id", "functions"}]}).
+    if kind == "cohere" and isinstance(body, dict) and isinstance(body.get("models"), list):
+        return [dict(m, id=m["name"]) for m in body["models"] if isinstance(m, dict) and m.get("name")]
+    if kind == "watsonx" and isinstance(body, dict) and isinstance(body.get("resources"), list):
+        return [dict(m, id=m["model_id"]) for m in body["resources"] if isinstance(m, dict) and m.get("model_id")]
     return body if kind in BARE_LIST_KINDS and isinstance(body, list) else None
+
+
+def fetch_listing(entry, env, http, base, headers):
+    """(status, body) of one route's model list. Most routes answer GET <base>/models. Cohere's is its own
+    /v1/models (Bearer key). watsonx needs an IAM token first (the API key is exchanged at IBM Cloud IAM) and then
+    lists its foundation model specs."""
+    kind = entry["kind"]
+    if kind == "watsonx":
+        key = env.get(entry["key_env"]) or ""
+        form = "grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey&apikey=" + urllib.parse.quote(key, safe="")
+        status, token = http("POST", IAM_URL, {"Content-Type": "application/x-www-form-urlencoded"}, form)
+        if status != 200 or not isinstance(token, dict) or not token.get("access_token"):
+            return status if status != 200 else 502, "the IAM token exchange failed"
+        return http("GET", f"{base}{WATSONX_SPECS}", {"Authorization": f"Bearer {token['access_token']}"}, None)
+    if kind == "cohere":
+        return http("GET", f"{base}/models?page_size=1000", headers, None)
+    return http("GET", f"{base}/models", headers, None)
 
 
 def list_models(entry, env, http, rules=None, reference=None):
@@ -565,7 +600,7 @@ def list_models(entry, env, http, rules=None, reference=None):
         headers = {"anthropic-version": ANTHROPIC_VERSION, **({"x-api-key": key} if key else {})}
     else:
         headers = {"Authorization": f"Bearer {key}"} if key else {}
-    status, body = http("GET", f"{base}/models", headers, None)
+    status, body = fetch_listing(entry, env, http, base, headers)
     if kind == "openrouter" and key:
         # The account-aware list (models this key may use), when OpenRouter serves it.
         user_status, user_body = http("GET", f"{base}/models/user", headers, None)
@@ -800,7 +835,7 @@ def scan_candidates(entry, env, http, rules):
             if not body["result"] or page >= int(info.get("total_pages") or 1):
                 break
     else:
-        status, body = http("GET", f"{base}/models", headers, None)
+        status, body = fetch_listing(entry, env, http, base, headers)
         items = listing_items(body, kind)
         if status != 200 or items is None:
             raise RuntimeError(f"{route}: the model list answered {status}")
@@ -1823,7 +1858,7 @@ def comparable(catalogue):
 
 def make_http(timeout=60):
     def http(method, url, headers, body):
-        data = None if body is None else json.dumps(body).encode()
+        data = None if body is None else body.encode() if isinstance(body, str) else json.dumps(body).encode()
         req = urllib.request.Request(url, data=data, method=method, headers={"Accept": "application/json", "User-Agent": "JorisJonkers-dev/litellm-catalog", **headers})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:

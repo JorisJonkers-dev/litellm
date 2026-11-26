@@ -405,6 +405,45 @@ class Build(unittest.TestCase):
                  Http(lists={"https://z/v1/models": {"data": [{"id": "glm-5"}]}}), dict(self.RULES_DEV, free_ids={"zai": []}), ref["zai"])}
         self.assertEqual(found, {"glm-5": False})
 
+    def test_typhoon_and_together_answer_a_bare_list(self):
+        for route in ("typhoon", "together"):
+            entry = next(e for e in sync.ROUTES if e["route"] == route)
+            http = Http(lists={f"https://{route}/v1/models": [{"id": "m"}]})
+            found = sync.list_models(entry, {entry["base_env"]: f"https://{route}/v1"}, http, {})
+            self.assertEqual([m["id"] for m in found], ["m"], route)
+
+    def test_cohere_lists_at_its_own_models_endpoint_with_the_bearer_key(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "cohere")
+        lists = {"https://api.cohere.com/v1/models?page_size=1000": {"models": [
+            {"name": "command-a", "endpoints": ["chat"], "context_length": 256000}, {"name": "embed-v4", "endpoints": ["embed"]}]}}
+        http = Http(lists=lists)
+        found = {m["id"]: m for m in sync.list_models(entry, {"COHERE_API_KEY": "ck"}, http, {})}
+        self.assertEqual((found["command-a"]["chat"], found["embed-v4"]["chat"]), (None, False))
+        self.assertEqual(http.calls[-1][2], {"Authorization": "Bearer ck"})
+
+    def test_watsonx_exchanges_the_key_for_an_iam_token_then_lists_its_specs(self):
+        entry = next(e for e in sync.ROUTES if e["route"] == "watsonx")
+        env = {"WATSONX_API_BASE": "https://w.ml", "WATSONX_API_KEY": "the key/&", "WATSONX_PROJECT_ID": "p"}
+        calls = []
+
+        def http(method, url, headers, body):
+            calls.append((method, url, headers, body))
+            if url == sync.IAM_URL:
+                return 200, {"access_token": "tok"}
+            return 200, {"resources": [{"model_id": "ibm/granite", "functions": [{"id": "text_chat"}]},
+                                       {"model_id": "ibm/slate", "functions": [{"id": "embedding"}]}]}
+        found = {m["id"]: m for m in sync.list_models(entry, env, http, {})}
+        self.assertEqual((found["ibm/granite"]["chat"], found["ibm/slate"]["chat"]), (None, False))
+        method, url, headers, body = calls[0]
+        self.assertEqual((method, url, headers["Content-Type"]), ("POST", sync.IAM_URL, "application/x-www-form-urlencoded"))
+        self.assertIn("grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey", body)
+        self.assertIn("apikey=the%20key%2F%26", body)
+        self.assertEqual(calls[1][1], "https://w.ml" + sync.WATSONX_SPECS)
+        self.assertEqual(calls[1][2], {"Authorization": "Bearer tok"})
+        # a failed exchange is a route error, never an empty list
+        with self.assertRaisesRegex(RuntimeError, "answered 401"):
+            sync.list_models(entry, env, lambda *a: (401, "no"), {})
+
     def test_listing_verdicts_per_provider(self):
         v = sync.listing_verdict
         self.assertEqual(v("routeway", {"available": False, "endpoints": ["/v1/chat/completions"]}), (True, "the listing says it is not available"))
@@ -1344,4 +1383,7 @@ class SettingsEverywhere(unittest.TestCase):
     def test_cohere_has_its_own_list_base_name(self):
         entry = next(e for e in sync.ROUTES if e["route"] == "cohere")
         self.assertEqual(entry["base_env"], "COHERE_LIST_BASE")
-        self.assertEqual(sync.missing_setting(entry, {}), "COHERE_LIST_BASE is not set; write the Vault field cohere_api_base at secret/data/platform/litellm")
+        # Cohere lists at its own API by default: no Vault field is needed
+        self.assertEqual(sync.missing_setting(entry, {}), "")
+        self.assertEqual(sync.route_base(entry, {}), "https://api.cohere.com/v1")
+        self.assertEqual(sync.route_base(entry, {"COHERE_LIST_BASE": "https://x/v1"}), "https://x/v1")

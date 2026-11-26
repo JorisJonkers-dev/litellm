@@ -791,16 +791,16 @@ class FreeRoutesWave2(unittest.TestCase):
                     self.assertFalse([l for l in text.splitlines() if l.startswith(("COHERE_API_BASE", "COHERE_LIST_BASE"))])  # LiteLLM would read COHERE_API_BASE
                     continue
                 self.assertIn(f"{env_name}=${{secret:secret/data/platform/litellm#{field}}}\n", text)
+        # BazaarLink's base defaults to its documented one; a placeholder is no value
         route = entry("bazaarlink")
-        self.assertEqual(sync.route_base(route, {}), "")
-        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "")
-        with self.assertRaisesRegex(RuntimeError, "Vault field bazaarlink_api_base"):
-            sync.list_models(route, {"BAZAARLINK_API_KEY": "k"}, Http({}), {})
+        self.assertEqual(sync.route_base(route, {}), "https://api.bazaarlink.ai/v1")
+        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "REPLACE_WITH_BAZAARLINK_API_BASE"}), "https://api.bazaarlink.ai/v1")
+        self.assertEqual(sync.route_base(route, {"BAZAARLINK_API_BASE": "https://b/v1/"}), "https://b/v1")
+        with self.assertRaisesRegex(RuntimeError, "Vault field watsonx_project_id"):
+            sync.list_models(entry("watsonx"), {"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, Http({}), {})
 
     def test_a_route_with_a_key_and_no_setting_is_skipped_with_one_error_naming_the_field(self):
-        cases = {"bazaarlink": ({"BAZAARLINK_API_KEY": "k"}, "bazaarlink_api_base"),
-                 "cohere": ({"COHERE_API_KEY": "k"}, "cohere_api_base"),
-                 "watsonx": ({"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, "watsonx_project_id")}
+        cases = {"watsonx": ({"WATSONX_API_KEY": "k", "WATSONX_API_BASE": "https://w"}, "watsonx_project_id")}
         for route, (env, field) in cases.items():
             cat, stats = sync.build(env, Http({}), {}, NOW, rules={})
             errors = [e for e in stats["route_errors"] if e.startswith(route)]
