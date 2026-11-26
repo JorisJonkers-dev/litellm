@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.10.1...v1.10.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **catalog:** treat no-card free routes and zero-priced listings as free ([#99](https://github.com/JorisJonkers-dev/litellm/issues/99)) ([d9bb85b](https://github.com/JorisJonkers-dev/litellm/commit/d9bb85ba429bbf0dfb39690be70551ff62015b62))
+
 ## [1.10.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.10.0...v1.10.1) (2026-11-26)
 
 
