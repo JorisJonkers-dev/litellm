@@ -65,10 +65,12 @@ class FreeGroup(unittest.TestCase):
         specs = plan(*free_models(NEMOTRON[:1] + [("kilo", "nemo-ultra")]), rules=rules)
         self.assertEqual([spec["route"] for spec in self.group(specs)], ["openrouter", "kilo"])
 
-    def test_deployments_are_ordered_by_allowance_with_their_own_cooldown_and_id(self):
+    def test_deployments_are_ordered_with_their_own_id_and_no_fixed_cooldown(self):
         found = self.group(plan(*free_models()))
         self.assertEqual([spec["order"] for spec in found], [1, 2, 3, 4, 4])
-        self.assertEqual([spec["litellm_params"]["cooldown_time"] for spec in found], [120, 3600, 120, 120, 120])
+        # No cooldown_time: LiteLLM cools a 429 for the provider's Retry-After (a fixed one would override it).
+        for spec in found:
+            self.assertNotIn("cooldown_time", spec["litellm_params"])
         ids = [spec["model_info"]["id"] for spec in found]
         self.assertEqual(len(set(ids)), 5)
         self.assertEqual(ids[0], "free/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free")
@@ -93,7 +95,8 @@ class FreeGroup(unittest.TestCase):
     def test_a_free_id_on_a_paid_route_joins_with_an_explicit_zero_cost(self):
         specs = plan(("opencode-go", "beam-free", "usable", {"free": True}), ("opencode-go", "deepseek-v4.1-flash", "usable", {}),
                      ("openrouter", "beam-free", "usable", {"free": True}))
-        found = self.group(specs, "free/beam-free")
+        # "-free" only marks the free variant: both copies meet in free/beam.
+        found = self.group(specs, "free/beam")
         self.assertEqual({spec["route"] for spec in found}, {"opencode-go", "openrouter"})
         self.assertTrue(all(spec["litellm_params"]["input_cost_per_token"] == 0 for spec in found))
         # The paid id of the same route is not in any free group.

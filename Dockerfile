@@ -17,6 +17,8 @@ COPY config/models.generated.yaml /app/models.generated.yaml
 COPY config/tier_telemetry.py /app/tier_telemetry.py
 # The account spending caps config.yaml's `callbacks` names (read from catalog/routing.json, copied below).
 COPY config/account_budget.py /app/account_budget.py
+# The free-route limits config.yaml's `callbacks` names (read from catalog/routing.json `free_limits`).
+COPY config/free_limits.py /app/free_limits.py
 COPY catalog/sync.py catalog/overview.py catalog/routing.json /app/catalog/
 
 # Numeric, so the images lock can record the uid and gid (nobody). The process's writablePaths

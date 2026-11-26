@@ -80,9 +80,11 @@ class Accounts(unittest.TestCase):
         for entry in entries:
             params, info = entry["litellm_params"], entry["model_info"]
             if "account" not in info:
-                # Only a free id of a paid route, alone in its own free group, goes without an account.
+                # Only a free id of a paid route goes without an account: in its own "<route>-free/" group or a
+                # shared free/<model> group, at an explicit zero cost.
                 if info["route"] in budgets:
-                    self.assertIn("-free/", entry["model_name"], info["id"])
+                    self.assertRegex(entry["model_name"], r"^(free/|[a-z-]+-free/)", info["id"])
+                    self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0), info["id"])
                 continue
             budget = budgets[info["route"]]
             self.assertEqual(info["account"], budget["account"])

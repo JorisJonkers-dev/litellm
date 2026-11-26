@@ -273,7 +273,8 @@ class Plan(unittest.TestCase):
         ])
         free = specs[1]
         self.assertNotIn("max_budget", free["litellm_params"])
-        self.assertIn("cooldown_time", free["litellm_params"])
+        # No fixed cooldown: the provider's Retry-After decides, and config/free_limits.py keeps it out meanwhile.
+        self.assertNotIn("cooldown_time", free["litellm_params"])
         self.assertEqual(free["litellm_params"]["extra_headers"], {"x-opencode-session": "litellm-proxy"})
 
     def test_an_opencode_go_free_id_never_joins_a_paid_group_of_the_same_model(self):
@@ -317,8 +318,8 @@ class Plan(unittest.TestCase):
         ])
         free = {s["route"]: s for s in specs if s["route"] in sync.FREE_ONLY}
         for spec in free.values():
-            # Alone in its group: it cools down itself, and carries no budget.
-            self.assertIn("cooldown_time", spec["litellm_params"])
+            # Alone in its group: it cools down itself (for the provider's Retry-After), and carries no budget.
+            self.assertNotIn("cooldown_time", spec["litellm_params"])
             self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
             self.assertNotIn("max_budget", spec["litellm_params"])
         self.assertEqual(free["openrouter"]["model_info"]["id"], "openrouter/z-ai/glm-4.6:free")
@@ -627,7 +628,7 @@ class FreeRoutesWave1(unittest.TestCase):
         for spec in specs:
             if spec["route"] in self.ROUTES:
                 self.assertEqual(names.count(spec["name"]), 1)
-                self.assertIn("cooldown_time", spec["litellm_params"])
+                self.assertEqual("cooldown_time" in spec["litellm_params"], spec["route"] in sync.FREE_PRICED)
                 self.assertEqual(spec["model_info"]["allowed_fails_policy"], {"RateLimitErrorAllowedFails": 0})
 
     def test_free_deployments_cost_zero_per_token_except_inferbase_which_has_a_budget(self):
@@ -640,8 +641,10 @@ class FreeRoutesWave1(unittest.TestCase):
             else:
                 self.assertEqual((params["input_cost_per_token"], params["output_cost_per_token"]), (0, 0))
                 self.assertNotIn("max_budget", params)
-        self.assertEqual(specs["naga"]["litellm_params"]["cooldown_time"], 3600)
-        self.assertEqual(specs["groq"]["litellm_params"]["cooldown_time"], sync.PUBLIC_COOLDOWN)
+        # A free route carries its limits instead of a fixed cooldown; the budgeted Inferbase keeps its cooldown.
+        self.assertNotIn("cooldown_time", specs["naga"]["litellm_params"])
+        self.assertNotIn("cooldown_time", specs["groq"]["litellm_params"])
+        self.assertIn("cooldown_time", specs["inferbase"]["litellm_params"])
 
     def test_prefixes_and_credentials(self):
         specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
@@ -758,7 +761,7 @@ class FreeRoutesWave2(unittest.TestCase):
             else:
                 self.assertEqual(spec["model_info"]["access_groups"], ["canonical"])
         self.assertEqual({s["route"] for s in specs if not s["name"].startswith("free/")} - {"vibe"}, set(self.ROUTES))
-        self.assertEqual(next(s for s in specs if s["name"] == "airforce/m")["litellm_params"]["cooldown_time"], 3600)
+        self.assertNotIn("cooldown_time", next(s for s in specs if s["name"] == "airforce/m")["litellm_params"])
 
     def test_every_route_has_a_limit_a_cooldown_a_candidate_list_where_static_and_stays_out_of_the_tiers(self):
         rules = sync.load_rules()

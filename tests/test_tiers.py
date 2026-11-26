@@ -186,7 +186,7 @@ class Rendering(unittest.TestCase):
         missing = sync.missing_tier_steps(specs, RULES)
         # This plan holds Nemotron 3 Ultra, which tier-review starts on, and none of the other free steps.
         self.assertNotIn("free/nemotron-3-ultra-550b-a55b", missing)
-        self.assertIn("free/hy4-flash-free", missing)
+        self.assertIn("free/hy4-flash", missing)
         self.assertIn("vibe-tier/zai-glm-5-3-flash", missing)
 
     def test_render_tiers_rewrites_only_the_block(self):

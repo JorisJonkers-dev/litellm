@@ -295,7 +295,66 @@ def load_rules(path=None):
     if not isinstance(reference, dict) or any(not isinstance(v, str) or (k != "_sources" and k not in known) for k, v in reference.items()):
         raise RuntimeError(f"{path}: reference must map route names to a models.dev provider id")
     reference.pop("_sources", None)
+    check_free_limits(rules, path)
     return rules
+
+
+# The per-deployment limits LiteLLM 1.109.1 reads from litellm_params (GenericLiteLLMParams: rpm, tpm, rpd, tpd,
+# daily_reset_time, max_parallel_requests) and enforces with router_settings.optional_pre_call_checks
+# [enforce_model_rate_limits] (router_utils/pre_call_checks/model_rate_limit_check.py). rpd/tpd count per UTC day
+# shifted by daily_reset_time ("HH:MM", UTC).
+DEPLOYMENT_LIMITS = ("rpm", "tpm", "rpd", "tpd", "max_parallel_requests")
+# The windows of a provider-wide (shared) budget that config/free_limits.py counts across every deployment of a route.
+SHARED_WINDOWS = ("minute", "hour", "day", "month")
+LIMIT_SCOPES = ("deployment", "account")
+DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def check_free_limits(rules, source="the routing rules"):
+    """Refuse a free_limits entry that LiteLLM or config/free_limits.py could not apply as written.
+
+    `free_limits.<route>` holds `deployment` (per-deployment limits copied into litellm_params), `shared`
+    (budgets one provider account or IP shares across all its deployments: a list of {requests|tokens, per}),
+    `concurrency` (requests in flight across the whole route), `reset` (the daily reset, "HH:MM" UTC),
+    `scope` (what a learned limit blocks: the one deployment or the whole account) and `source`/`status`.
+    """
+    limits = (rules or {}).get("free_limits")
+    if limits is None:
+        return
+    if not isinstance(limits, dict):
+        raise RuntimeError(f"{source}: free_limits must be an object of route -> limits")
+    known = {entry["route"] for entry in ROUTES}
+    for route, entry in limits.items():
+        if route.startswith("_"):
+            continue
+        where = f"{source}: free_limits.{route}"
+        if route not in known:
+            raise RuntimeError(f"{where} names no route")
+        if route not in FREE_ONLY and route not in FREE_ID_ROUTES:
+            raise RuntimeError(f"{where}: only a free route has free limits")
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"{where} is not an object")
+        for key, value in (entry.get("deployment") or {}).items():
+            if key not in DEPLOYMENT_LIMITS or not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise RuntimeError(f"{where}.deployment.{key} must be one of {DEPLOYMENT_LIMITS} with a positive integer")
+        for index, window in enumerate(entry.get("shared") or []):
+            amounts = [k for k in ("requests", "tokens") if k in window]
+            if (len(amounts) != 1 or window.get("per") not in SHARED_WINDOWS or not isinstance(window[amounts[0]], int)
+                    or window[amounts[0]] <= 0 or set(window) - {"requests", "tokens", "per", "note"}):
+                raise RuntimeError(f"{where}.shared[{index}] must be {{requests|tokens: N, per: {'|'.join(SHARED_WINDOWS)}}}")
+        if "concurrency" in entry and (not isinstance(entry["concurrency"], int) or entry["concurrency"] <= 0):
+            raise RuntimeError(f"{where}.concurrency must be a positive integer")
+        if "reset" in entry and not (isinstance(entry["reset"], str) and DAILY_RESET.match(entry["reset"])):
+            raise RuntimeError(f"{where}.reset must be HH:MM in UTC")
+        if entry.get("scope", "deployment") not in LIMIT_SCOPES:
+            raise RuntimeError(f"{where}.scope must be one of {LIMIT_SCOPES}")
+        if "account_match" in entry:
+            try:
+                re.compile(entry["account_match"])
+            except (re.error, TypeError) as error:
+                raise RuntimeError(f"{where}.account_match is not a valid regex: {error}")
+        if entry.get("status") not in ("confirmed", "partial", "unconfirmed"):
+            raise RuntimeError(f"{where}.status must be confirmed, partial or unconfirmed")
 
 
 def check_free_exclusions(rules, source="the routing rules"):
@@ -948,7 +1007,7 @@ VENDOR = re.compile(r"^[a-z0-9][a-z0-9._-]*/")
 VERSION = re.compile(r"-\d{4,8}$")
 
 
-def canonical_name(route, upstream_id, rules, canonical_id=None):
+def canonical_name(route, upstream_id, rules, canonical_id=None, strip_version=True):
     """The canonical model an upstream id serves: one name per model, whichever route serves it.
 
     Deterministic and conservative: only a vendor prefix, a `:free` suffix, `-latest` and a version
@@ -962,8 +1021,40 @@ def canonical_name(route, upstream_id, rules, canonical_id=None):
     if source in aliases:
         return aliases[source]
     name = source.lower().removeprefix("models/")
-    name = VERSION.sub("", VENDOR.sub("", name, count=1).removesuffix(":free").removesuffix("-latest"))
+    name = VENDOR.sub("", name, count=1).removesuffix(":free").removesuffix("-latest")
+    if strip_version:
+        name = VERSION.sub("", name)
     return aliases.get(name, name)
+
+
+# A free group joins every free copy of one model however its provider spells the id: Cloudflare's "@cf/"
+# and "@hf/" catalogue prefixes, any vendor path (the last segment is the model), a ":free" or "-free"
+# suffix that only marks the free variant. Nothing else is stripped: a quantisation (-fp8, -awq), a
+# distillation, a size, a fine-tune or a dated snapshot stays its own model unless routing.json's
+# `aliases` says otherwise.
+CATALOGUE_PREFIX = re.compile(r"^@(cf|hf)/")
+# Router endpoints that pick a different model per request: not one model, so never a free group.
+FREE_ROUTER_NAMES = frozenset({"free", "auto", "router"})
+
+
+def free_canonical(name, rules):
+    """The model a free deployment serves, for the shared free/<model> group (see CATALOGUE_PREFIX)."""
+    # `free_aliases` merges spellings for the free groups only (the paid groups keep their names).
+    aliases = {**((rules or {}).get("aliases") or {}), **((rules or {}).get("free_aliases") or {})}
+    key = CATALOGUE_PREFIX.sub("", name.lower()).rsplit("/", 1)[-1]
+    key = key.removesuffix(":free")
+    if key.endswith("-free") and key != "-free":
+        key = key[: -len("-free")]
+    return aliases.get(key, key)
+
+
+def free_limit_params(route, rules):
+    """The per-deployment limits of one free route, as LiteLLM 1.109.1 reads them from litellm_params."""
+    entry = ((rules or {}).get("free_limits") or {}).get(route) or {}
+    params = dict(entry.get("deployment") or {})
+    if params.get("rpd") or params.get("tpd"):
+        params["daily_reset_time"] = entry.get("reset", "00:00")
+    return params
 
 
 def loose_key(name):
@@ -1108,7 +1199,7 @@ def account_budgets(rules):
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
-               free_only=False):
+               free_only=False, limits=None):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -1128,6 +1219,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params.update({key: budget[key] for key in ("max_budget", "budget_duration")})
     if cooldown:
         params["cooldown_time"] = cooldown
+    if limits:
+        params.update(limits)
     if free_only:
         groups = [FREE_ACCESS_GROUP]
     elif route in FREE_ACCESS_GROUPS:
@@ -1224,9 +1317,13 @@ def plan_groups(catalogue, rules):
             name = canonical_name(route, upstream_id, rules, meta.get("canonical_id"))
             chosen = groups.setdefault(name, {}).get(route)
             if chosen is None or len(upstream_id) < len(chosen["upstream_id"]):
+                # The free groups keep a dated snapshot apart from its base model (no alias, no merge).
+                dated = canonical_name(route, upstream_id, rules, meta.get("canonical_id"), strip_version=False)
                 groups[name][route] = {"upstream_id": upstream_id, "modality": kind, "free": bool(meta.get("free")),
-                                      "price": meta.get("price")}
+                                      "price": meta.get("price"), "free_name": dated}
     specs = []
+    # free/<model> -> route -> the free copies that route serves of it (one canonical name or several)
+    free_members = {}
     for name, routes in sorted(groups.items()):
         serving = set(routes)
         # A free id is in a public group of its own, so no paid route makes it a backup.
@@ -1261,15 +1358,22 @@ def plan_groups(catalogue, rules):
         public = serving & public_routes
         for route in sorted(free):
             # Its own group, alone: public work only, and nothing paid behind it.
+            # No cooldown_time: LiteLLM then cools a 429 for the provider's own Retry-After (router default
+            # otherwise), and config/free_limits.py keeps it out of the pick until its limit resets.
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], budget=budgets.get(route),
-                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
+                                    # A dollar-allowance route (Inferbase) is budgeted, not free: it keeps its cooldown.
+                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN) if route in FREE_PRICED else None,
+                                    limits=free_limit_params(route, rules)))
         for route in sorted(free_ids):
             # A free id on a paid route: public work only, alone in its own group, nothing paid behind it.
             group = group_name(name, routes[route]["modality"], primary, free_route=f"{route}-free")
             specs.append(deployment(group, name, route, routes[route], 1, 1, by_route[route],
-                                    cooldown=cooldowns.get(route, PUBLIC_COOLDOWN)))
-        specs.extend(free_group(name, routes, primary, (free | free_ids) & FREE_GROUP_ROUTES, by_route, rules))
+                                    limits=free_limit_params(route, rules)))
+        for route in sorted((free | free_ids) & FREE_GROUP_ROUTES):
+            if name not in FREE_ROUTER_NAMES:
+                key = free_canonical(routes[route].get("free_name") or name, rules)
+                free_members.setdefault(key, {}).setdefault(route, []).append(routes[route])
         # The tiers that apply to this model, renumbered from 1: a model only tier 4 serves gets 1.
         levels = sorted({rank.get(route, unranked)[0] for route in normal})
         order_of = {level: index + 1 for index, level in enumerate(levels)}
@@ -1296,6 +1400,8 @@ def plan_groups(catalogue, rules):
                 specs.append(deployment(group_name(name, routes[route]["modality"], primary, public=True), name, route,
                                         routes[route], order + 1, weight, by_route[route], public=True,
                                         budget=budgets.get(route), cooldown=cooldowns.get(route)))
+    for key, members in sorted(free_members.items()):
+        specs.extend(free_group(key, members, by_route, rules))
     if rules.get("tier_groups"):
         specs.extend(tier_copies(specs, rules))
     # A group of one deployment has nothing to fall back to: it must cool down on a 402 or 429
@@ -1304,7 +1410,8 @@ def plan_groups(catalogue, rules):
     for spec in specs:
         counts[spec["name"]] = counts.get(spec["name"], 0) + 1
     for spec in specs:
-        if counts[spec["name"]] == 1 and "cooldown_time" in spec["litellm_params"]:
+        cools = "cooldown_time" in spec["litellm_params"] or spec["route"] in FREE_ONLY or spec["name"].startswith(FREE_GROUP + "/")
+        if counts[spec["name"]] == 1 and cools:
             spec["model_info"]["allowed_fails_policy"] = {"RateLimitErrorAllowedFails": 0}
     # Rules may add a per-route policy: Anthropic answers an exhausted spend limit with a 400, which
     # LiteLLM only cools down on with an explicit entry (a malformed request counts too, hence the
@@ -1319,27 +1426,31 @@ def plan_groups(catalogue, rules):
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
 
 
-def free_group(name, routes, primary, serving, by_route, rules):
-    """The shared "free/<canonical>" group: every zero-cost copy of one canonical model.
+def free_group(name, members, by_route, rules):
+    """The shared "free/<model>" group: every zero-cost copy of one model, on every free route.
 
-    The per-route groups ("<route>/<canonical>") stay, for a key that holds one route's access
-    group; this group is the one a 429 falls through. Its deployments are ordered by allowance
-    (rules["free_order"]: the route with the biggest allowance first; a route the rules do not
-    name comes last) and cool down on their own (litellm_params.cooldown_time), so a rate-limited
-    copy is skipped for its cooldown and the next free copy serves. The copy has its own
-    model_info.id, because LiteLLM keeps cooldown state per deployment id. Which models are "the
-    same" is decided by canonical_name() alone: the ids differ per provider, and an id the
-    stripping does not unify is named in rules["aliases"] (sync reports near duplicates).
+    `members` is route -> the free copies (chosen entries) that route serves of the model; the model is
+    free_canonical() of their canonical names, so "@cf/openai/gpt-oss-120b", "openai/gpt-oss-120b" and
+    "gpt-oss-120b:free" meet, and an id the stripping does not unify is named in rules["aliases"]. A route
+    serving the model under two ids keeps the shortest. The per-route groups ("<route>/<canonical>") stay.
+
+    Order: rules["free_order"] (lowest first; a route it does not name comes last), so the per-minute
+    providers are tried before the scarce daily and monthly ones. Each copy has its own model_info.id and no
+    cooldown_time: a 429 cools it for the provider's Retry-After, and config/free_limits.py takes it out of
+    the pick while its known or learned limit lasts. litellm_params carries the route's per-deployment
+    limits (free_limits in routing.json) for LiteLLM's enforce_model_rate_limits.
     """
-    order = (rules or {}).get("free_order") or {}
-    cooldowns = (rules or {}).get("cooldowns") or {}
+    order = {route: rank for route, rank in ((rules or {}).get("free_order") or {}).items() if isinstance(rank, int)}
     last = max(order.values(), default=0) + 1
+    chosen_by_route = {route: min(copies, key=lambda c: (len(c["upstream_id"]), c["upstream_id"]))
+                       for route, copies in members.items()}
+    primary = primary_mode(chosen_by_route)
     specs = []
-    for route in sorted(serving):
-        spec = deployment(group_name(name, routes[route]["modality"], primary, free_route=FREE_GROUP), name, route,
-                          routes[route], order.get(route, last), 1, by_route[route], free_only=True,
-                          cooldown=cooldowns.get(route, PUBLIC_COOLDOWN))
-        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{routes[route]['upstream_id']}"
+    for route, chosen in sorted(chosen_by_route.items()):
+        spec = deployment(group_name(name, chosen["modality"], primary, free_route=FREE_GROUP), name, route,
+                          chosen, order.get(route, last), 1, by_route[route], free_only=True,
+                          limits=free_limit_params(route, rules))
+        spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{chosen['upstream_id']}"
         specs.append(spec)
     return specs
 

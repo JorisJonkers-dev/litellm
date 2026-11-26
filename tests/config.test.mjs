@@ -270,7 +270,7 @@ test('upstream keys and bases are environment names, never values', () => {
 test('telemetry is metadata only', () => {
   assert.match(CONFIG, /turn_off_message_logging: true/)
   assert.match(CONFIG, /store_prompts_in_spend_logs: false/)
-  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry", "account_budget\.account_budget"\]/)
+  assert.match(CONFIG, /callbacks: \["prometheus", "otel", "tier_telemetry\.tier_telemetry", "account_budget\.account_budget", "free_limits\.free_limits"\]/)
   // The callback module is named relative to the config, so the image carries it beside it.
   assert.match(readFileSync(`${ROOT}/Dockerfile`, 'utf8'), /^COPY config\/tier_telemetry\.py \/app\/tier_telemetry\.py$/m)
   // No metric label can carry a person or an address.
@@ -310,7 +310,7 @@ test('budgets are exported for keys and for the route teams that hold them', () 
 
 test('the router falls through a cooled-down or spent deployment, per deployment', () => {
   assert.match(CONFIG, /^router_settings:$/m)
-  assert.match(ROUTER, /optional_pre_call_checks: \[router_budget_limiting\]/)
+  assert.match(ROUTER, /optional_pre_call_checks: \[router_budget_limiting, enforce_model_rate_limits\]/)
   assert.match(ROUTER, /^ {2}num_retries: 2$/m)
   // The cooldown and the allowed-fails policies are per deployment, in the generated file.
   assert.doesNotMatch(ROUTER, /allowed_fails|cooldown_time/)

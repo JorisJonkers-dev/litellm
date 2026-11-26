@@ -184,7 +184,10 @@ litellm_settings:
   # against the serving deployment, priced or not, fallback or not; and the same record in the spend log.
   # account_budget.py (shipped beside this file) caps each paid account once across its deployments, from
   # catalog/routing.json `accounts`: see AGENTS.md, Budgets.
-  callbacks: ["prometheus", "otel", "tier_telemetry.tier_telemetry", "account_budget.account_budget"]
+  # free_limits.py (shipped beside this file) keeps a free deployment out of the pick while its provider limit
+  # lasts (counted windows from catalog/routing.json `free_limits`, and limits learned from 429s, 402s and
+  # x-ratelimit-* headers), and lets it back in at reset: see AGENTS.md, Free groups.
+  callbacks: ["prometheus", "otel", "tier_telemetry.tier_telemetry", "account_budget.account_budget", "free_limits.free_limits"]
   # Only these series are emitted, with these labels: no user, e-mail, client address or agent.
   # model_id and api_provider name the deployment that served a request, so a canonical model's
   # fallback is visible per request (the spend log already stores both).
@@ -219,8 +222,12 @@ router_settings:
   # level serves, so a spent plan falls through instead of failing the request. That cooldown and
   # the allowed-fails policies live in the generated file, per deployment: a 402 or 429 cools a
   # deployment in a group of two or more, and a group of exactly one carries an explicit
-  # RateLimitErrorAllowedFails policy so it cools too. No rate limits are set.
-  optional_pre_call_checks: [router_budget_limiting]
+  # RateLimitErrorAllowedFails policy so it cools too. A free deployment carries no fixed cooldown (it would
+  # override the provider's Retry-After): it cools for Retry-After, or the router default without one, and
+  # free_limits.py keeps it out until its limit resets. Its rpm, tpm, rpd, tpd, daily_reset_time and
+  # max_parallel_requests come from routing.json `free_limits`, and enforce_model_rate_limits (LiteLLM
+  # 1.109.1, router_utils/pre_call_checks/model_rate_limit_check.py) holds each deployment to them strictly.
+  optional_pre_call_checks: [router_budget_limiting, enforce_model_rate_limits]
   # num_retries stays above 0: inside a free/<canonical> group a 429 cools the copy that answered it
   # (its own cooldown_time), and the retry is what lands on the next free copy.
   num_retries: 2
@@ -232,17 +239,17 @@ router_settings:
   # calling key does not hold, which is how a key's models list stops a chain.
   # BEGIN tiers (rendered from catalog/routing.json by `python3 catalog/sync.py --render-tiers`; do not edit by hand)
   model_group_alias:
-    "tier-free": "free/hy4-flash-free"
+    "tier-free": "free/hy4-flash"
     "tier-vibe": "vibe-tier/deepseek-v4-1-flash-1017"
     "tier-go-cheap": "opencode-go-tier/deepseek-v4.1-flash"
     "tier-strong-open": "opencode-go-tier/qwen4-max"
     "tier-review": "free/nemotron-3-ultra-550b-a55b"
   fallbacks:
-    - {"tier-free": ["free/longcat-2.5-free", "free/beam-free", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
+    - {"tier-free": ["free/longcat-2.5", "free/beam-1.0-501b-a23b", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
     - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-strong-open": ["vibe-tier/zai-glm-5-3", "opencode-go-tier/kimi-k3.1-pro", "opencode-go-tier/gpt-6-luna", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
-    - {"tier-review": ["free/gemma-4-31b", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"tier-review": ["free/gemma-4-31b-it", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
   # END tiers
 
 general_settings:
