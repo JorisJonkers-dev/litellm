@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.11...v1.14.0) (2026-11-27)
+
+
+### Features
+
+* **catalog:** add OpenRouter's free router as the last tier-free step and label free deployments with their limit ([#164](https://github.com/JorisJonkers-dev/litellm/issues/164)) ([8b07594](https://github.com/JorisJonkers-dev/litellm/commit/8b075947eb80e88de3ae4cc4d02177f01e1f6a20))
+
+
+### Bug Fixes
+
+* **models:** refresh the generated model deployments ([#165](https://github.com/JorisJonkers-dev/litellm/issues/165)) ([7c33b13](https://github.com/JorisJonkers-dev/litellm/commit/7c33b13187901ef2dc1813d6d92e7d5d64120113))
+
 ## [1.13.11](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.10...v1.13.11) (2026-11-27)
 
 
