@@ -170,7 +170,7 @@
     },
     "tier-vibe": {
       "ceiling": "go",
-      "key_models": ["tier-vibe", "vibe-tier", "opencode-go-tier"],
+      "key_models": ["tier-vibe", "vibe-tier", "opencode-go-tier", "paid"],
       "steps": [
         {"model": "vibe-tier/deepseek-v4-1-flash-1017", "cost": "vibe"},
         {"model": "vibe-tier/zai-glm-5-3-flash", "cost": "vibe"},
@@ -180,7 +180,7 @@
     },
     "tier-go-cheap": {
       "ceiling": "go",
-      "key_models": ["tier-go-cheap", "opencode-go-tier"],
+      "key_models": ["tier-go-cheap", "opencode-go-tier", "paid"],
       "steps": [
         {"model": "opencode-go-tier/deepseek-v4.1-flash", "cost": "go"},
         {"model": "opencode-go-tier/glm-5.3-flash", "cost": "go"},

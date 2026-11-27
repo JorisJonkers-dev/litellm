@@ -214,6 +214,14 @@ class Access(unittest.TestCase):
         keys = RULES["tier_groups"]["tier-free"]["key_models"]
         self.assertEqual(keys, ["free", "tier-free"])
 
+    def test_the_go_cheap_and_vibe_keys_hold_paid_and_review_and_free_do_not(self):
+        groups = RULES["tier_groups"]
+        self.assertIn("paid", groups["tier-vibe"]["key_models"])
+        self.assertIn("paid", groups["tier-go-cheap"]["key_models"])
+        self.assertNotIn("paid", groups["tier-review"]["key_models"])
+        self.assertNotIn("paid", groups["tier-free"]["key_models"])
+        self.assertNotIn("paid", groups["tier-strong-open"]["key_models"])
+
     def test_every_key_models_list_reaches_its_chain_and_no_route_wildcard(self):
         rank = RULES["tier_cost_classes"].index
         for name, tier in RULES["tier_groups"].items():
