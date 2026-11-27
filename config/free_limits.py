@@ -15,12 +15,12 @@ answers. This callback adds both, before routing:
 - Learning. A success whose x-ratelimit-remaining-requests or -tokens is 0 blocks until the matching
   x-ratelimit-reset-*. A 429, a 402, or a quota error blocks until Retry-After, else x-ratelimit-reset*,
   else the end of the window the route declares (`window` in its free_limits, e.g. "hour"), else the next
-  daily reset when the text clearly means a day (per day, daily, today, 24h; a bare "quota" or "credit" does
+  daily reset (or the time of day the text names, "resets at 00:00 UTC") when the text clearly means a day (per day, per UTC day, a day, daily, today, 24h; a bare "quota" or "credit" does
   not), else the route's `cooldowns` value. A dead copy (a 401, a 404, or a 400 whose text says the model is
   deprecated, gone or missing) blocks its deployment for DEAD_BLOCK (six hours) unless the answer gives a
   reset. A 403 that speaks of no limit blocks its deployment for FORBIDDEN_BLOCK (15 minutes); one that
   speaks of a quota or limit is handled like a 429. A 402 saying the account needs a subscription (Poe) blocks
-  the account for DEAD_BLOCK. A learned block covers the one deployment or the whole account, as the route's
+  the account for DEAD_BLOCK, as does a 402 or 403 saying the account needs verification (logged as an owner action); a Retry-After of 0 never shortens such a block. A learned block covers the one deployment or the whole account, as the route's
   `scope` says (`account_match` escalates a matching error to the account; a 402 is always the account).
   Every block logs its key, its length and the first 120 characters of the error text (secrets masked).
 - Filtering. async_filter_deployments drops every deployment that is blocked or whose window is spent,
@@ -84,7 +84,12 @@ SEED_SQL = ('SELECT model_id, date_trunc(\'hour\', "startTime") AS hour, COUNT(*
             'COALESCE(SUM(total_tokens), 0) AS tokens FROM "LiteLLM_SpendLogs" '
             'WHERE "startTime" >= $1::timestamp GROUP BY model_id, hour')
 # Only a text that clearly means a daily limit ends at the daily reset; a bare "quota" or "credit" does not.
-DAILY_ERROR = re.compile(r"per[ -]day|daily|today|24 ?h", re.I)
+DAILY_ERROR = re.compile(r"per[ -](utc )?day|\ba day\b|daily|today|24 ?h|resets? at \d{1,2}:\d{2}", re.I)
+# A text that names the moment it resets ("It resets at 00:00 UTC"): the next such time of day, in UTC.
+RESET_AT = re.compile(r"resets? (?:at )?(\d{1,2}):(\d{2})(?:\s*UTC)?", re.I)
+# An account that needs the owner to verify it (Electron Hub: "phone verification is required"): a wait fixes nothing.
+VERIFY_ERROR = re.compile(r"verif(y|ication|ied)", re.I)
+VERIFY_NEEDED = re.compile(r"requir|must|need|please|before", re.I)
 # Poe answers 402 on every call of an account with no subscription: nothing a wait will fix.
 SUBSCRIPTION_ERROR = re.compile(r"(requires?|needs?) an? (active )?\w* ?subscription|subscription (is )?required", re.I)
 LOG_TEXT = 120
@@ -551,7 +556,9 @@ class FreeLimits(CustomLogger):
         if status == 402 and REQUEST_TOO_LARGE.search(text):
             return  # refused for its size, not the account: a smaller request works, so record nothing
         subscription = status == 402 and SUBSCRIPTION_ERROR.search(text) is not None
-        dead = status in DEAD_STATUS or subscription or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
+        verification = (status in (402, 403) and VERIFY_ERROR.search(text) is not None
+                        and VERIFY_NEEDED.search(text) is not None)
+        dead = status in DEAD_STATUS or subscription or verification or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
         forbidden = status == 403 and QUOTA_ERROR.search(text) is None
         if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead and not forbidden:
             return
@@ -565,15 +572,21 @@ class FreeLimits(CustomLogger):
                 except Exception:  # noqa: BLE001
                     pass
         until = parse_reset(header(headers, "retry-after"), now)
-        if until is None:
+        if until is None or until <= now or subscription or verification:
+            until = None  # a Retry-After of 0 (or one beside a permanent refusal) must not shorten the block
+        if until is None and not (subscription or verification):
             for name in ("x-ratelimit-reset-requests", "x-ratelimit-reset", "x-ratelimit-reset-tokens"):
                 until = parse_reset(header(headers, name), now)
-                if until is not None:
+                if until is not None and until > now:
                     break
+                until = None
         if until is None and dead:
             until = now + DEAD_BLOCK
         if until is None and forbidden:
             until = now + FORBIDDEN_BLOCK
+        named = RESET_AT.search(text)
+        if until is None and named and int(named.group(1)) < 24 and int(named.group(2)) < 60:
+            until = self._next_time_of_day(now, int(named.group(1)) * 3600 + int(named.group(2)) * 60)
         window = self._entry(route).get("window")
         if until is None and window in SHARED_WINDOWS:
             _, until = window_key(window, now, self._offset(route, params))  # the route declares when its limit turns
@@ -582,18 +595,27 @@ class FreeLimits(CustomLogger):
         if until is None:
             until = now + float(self.cooldowns.get(route, DEFAULT_BLOCK))
         entry = self._entry(route)
-        account = (status == 402 or subscription or entry.get("scope") == "account"
+        account = (status == 402 or subscription or verification or entry.get("scope") == "account"
                    or bool(entry.get("account_match") and re.search(entry["account_match"], text, re.I)))
-        self._block(route, params, until, account=account, status=status, text=text)
+        self._block(route, params, until, account=account, status=status, text=text,
+                    note="owner action: needs account verification" if verification else "")
 
-    def _block(self, route: str, params: dict, until: float, account: bool, status: Any = None, text: str = "") -> None:
+    @staticmethod
+    def _next_time_of_day(now: float, seconds: int) -> float:
+        """The next moment after now at the given second of the UTC day."""
+        start = now - now % 86400
+        return start + seconds if start + seconds > now else start + 86400 + seconds
+
+    def _block(self, route: str, params: dict, until: float, account: bool, status: Any = None, text: str = "",
+               note: str = "") -> None:
         scope = self._entry(route).get("scope", "deployment")
         key = f"a:{route}" if account or scope == "account" else f"d:{self.deployment_key(route, params)}"
         self.store.block(key, until)
         if status is None and not text:
             LOG.warning("free_limits: %s unavailable for %ss", key, int(until - self.clock()))
             return
-        LOG.warning("free_limits: %s unavailable for %ss (status %s: %s)", key, int(until - self.clock()), status, describe(text))
+        LOG.warning("free_limits: %s unavailable for %ss (status %s: %s)%s", key, int(until - self.clock()), status,
+                    describe(text), f" [{note}]" if note else "")
 
 
 free_limits = FreeLimits()
