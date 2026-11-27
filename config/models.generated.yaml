@@ -4989,10 +4989,27 @@
         "canonical": "grok-4.7",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/grok-4.7",
+      "litellm_params": {
+        "model": "openai/grok-4.7:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/grok-4.7:free",
+        "route": "unorouter",
+        "canonical": "grok-4.7",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -5282,6 +5299,26 @@
       }
     },
     {
+      "model_name": "free/kimi-k3.1-pro",
+      "litellm_params": {
+        "model": "openai/kimi-k3.1-pro:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/kimi-k3.1-pro:free",
+        "route": "unorouter",
+        "canonical": "kimi-k3.1-pro",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/l3-70b-euryale-v2.1",
       "litellm_params": {
         "model": "openai/l3-70b-euryale-v2.1:free",
@@ -5515,25 +5552,6 @@
     {
       "model_name": "free/ling-3.2-flash",
       "litellm_params": {
-        "model": "openai/inclusionai/ling-3.2-flash:free",
-        "litellm_credential_name": "kilo",
-        "order": 3,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/kilo/inclusionai/ling-3.2-flash:free",
-        "route": "kilo",
-        "canonical": "ling-3.2-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/ling-3.2-flash",
-      "litellm_params": {
         "model": "openai/ling-3.2-flash:free",
         "litellm_credential_name": "electronhub",
         "order": 4,
@@ -5544,32 +5562,6 @@
       "model_info": {
         "id": "free/electronhub/ling-3.2-flash:free",
         "route": "electronhub",
-        "canonical": "ling-3.2-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/ling-3.2-flash",
-      "litellm_params": {
-        "model": "openrouter/inclusionai/ling-3.2-flash:free",
-        "litellm_credential_name": "openrouter",
-        "order": 5,
-        "weight": 1,
-        "extra_body": {
-          "provider": {
-            "data_collection": "allow",
-            "allow_fallbacks": false
-          }
-        },
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 20
-      },
-      "model_info": {
-        "id": "free/openrouter/inclusionai/ling-3.2-flash:free",
-        "route": "openrouter",
         "canonical": "ling-3.2-flash",
         "access_groups": [
           "free"
@@ -8017,29 +8009,6 @@
           "free"
         ],
         "max_input_tokens": 8192,
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/orca-router",
-      "litellm_params": {
-        "model": "openai/orca-router:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/orca-router:free",
-        "route": "unorouter",
-        "canonical": "orca-router",
-        "access_groups": [
-          "free"
-        ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
