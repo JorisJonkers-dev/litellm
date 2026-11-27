@@ -757,7 +757,7 @@ class Gh(Http):
 class Main(unittest.TestCase):
     def catalogue_of(self, env, now=NOW):
         """The catalogue main() publishes: the build, plus the groups it planned."""
-        cat, _ = sync.build(env, Http(), {}, now)
+        cat, _ = sync.build(env, Http(), {}, now, rules=sync.load_rules())
         cat["groups"] = sync.record_groups(sync.plan_groups(cat, sync.load_rules()))
         return cat
 

@@ -1117,6 +1117,52 @@ def free_chat(route, chosen, rules):
 
 # Router endpoints that pick a different model per request: not one model, so never a free group.
 FREE_ROUTER_NAMES = frozenset({"free", "auto", "router"})
+# A free router endpoint (OpenRouter's `openrouter/free`) is not a model and has no free/<model> group. A tier may still
+# list it as a last free step under its own name, "free-router/<route>" (routing.json `free_routers`): the one other
+# name that holds a free copy. It is the access group `free` alone, a zero cost and its route's free limits.
+FREE_ROUTER_PREFIX = "free-router/"
+
+
+def free_routers(rules):
+    """The free router endpoints of routing.json (`free_routers`): name -> {"route", "upstream_id", "source"}.
+
+    Each name is "free-router/<route>", its route is a free route, and it names the upstream id the route lists; a
+    name that breaks that fails the load, so a router step can never be a paid or an unknown deployment.
+    """
+    found = (rules or {}).get("free_routers") or {}
+    if not isinstance(found, dict):
+        raise RuntimeError("free_routers must be an object of name -> {route, upstream_id}")
+    for name, entry in found.items():
+        route = entry.get("route") if isinstance(entry, dict) else None
+        if not (isinstance(entry, dict) and name == f"{FREE_ROUTER_PREFIX}{route}" and entry.get("upstream_id")):
+            raise RuntimeError(f"free_routers.{name} must be named {FREE_ROUTER_PREFIX}<route> and give a route and an upstream_id")
+        if route not in FREE_GROUP_ROUTES or route not in FREE_ONLY:
+            raise RuntimeError(f"free_routers.{name}: {route} is not a free-only route")
+    return found
+
+
+WINDOW_WORDS = {"minute": "a minute", "hour": "an hour", "day": "a day", "month": "a month"}
+
+
+def free_limit_note(route, rules):
+    """The free limits of a route as one sentence a listing can show, from free_limits.<route> in routing.json.
+
+    "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model", or
+    "free tier, limits not published (learned from the provider's answers)" when the route records none.
+    """
+    entry = ((rules or {}).get("free_limits") or {}).get(route) or {}
+    parts = []
+    for window in entry.get("shared") or []:
+        amount, unit = (window["requests"], "requests") if "requests" in window else (window["tokens"], "tokens")
+        note = f" ({window['note']})" if window.get("note") else ""
+        parts.append(f"{amount:,} {unit} {WINDOW_WORDS[window['per']]} per account{note}")
+    for key, (unit, per) in {"rpm": ("requests", "minute"), "rpd": ("requests", "day"), "tpm": ("tokens", "minute"),
+                             "tpd": ("tokens", "day")}.items():
+        if (entry.get("deployment") or {}).get(key):
+            parts.append(f"{entry['deployment'][key]:,} {unit} {WINDOW_WORDS[per]} per model")
+    if entry.get("concurrency"):
+        parts.append(f"{entry['concurrency']} in flight")
+    return "; ".join(parts) or "free tier, limits not published (learned from the provider's answers)"
 
 
 def free_canonical(name, rules):
@@ -1308,7 +1354,7 @@ def account_budgets(rules):
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
-               free_only=False, limits=None, request_cap=None, timeout=None, stream_timeout=None):
+               free_only=False, limits=None, request_cap=None, timeout=None, stream_timeout=None, free_note=None):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -1365,6 +1411,9 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
     if request_cap:
         # LiteLLM's own field: the largest input a request may carry to this copy (config/free_limits.py reads it).
         info["max_input_tokens"] = request_cap
+    if free_note is not None:
+        # What a listing shows for a free copy: the cost class, and the limit the provider puts on it.
+        info.update({"free": True, "cost_class": "free", "free_limit": free_note})
     if chosen["modality"] in MODES:
         info["mode"] = MODES[chosen["modality"]]
     return {
@@ -1450,6 +1499,9 @@ def plan_groups(catalogue, rules):
     specs = []
     # free/<model> -> route -> the free copies that route serves of it (one canonical name or several)
     free_members = {}
+    # free router name -> the route's router endpoint, when the catalogue lists it usable (routing.json free_routers)
+    routers = free_routers(rules)
+    router_members = {}
     # paid/<model> -> route -> the chat copy that paid route serves of it, before backup_only drops any route
     paid_members = {}
     paid_order = paid_route_order(rules)
@@ -1500,6 +1552,10 @@ def plan_groups(catalogue, rules):
             specs.append(deployment(group_name(name, routes[route]["modality"], primary, free_route=route), name, route,
                                     routes[route], 1, 1, by_route[route], budget=budgets.get(route),
                                     cooldown=cooldowns.get(route, PUBLIC_COOLDOWN), request_cap=free_request_cap(route, rules)))
+        for router_name, router in routers.items():
+            chosen = routes.get(router["route"])
+            if chosen and router["route"] in serving and chosen["upstream_id"] == router["upstream_id"] and chosen["modality"] == "chat":
+                router_members[router_name] = (router, chosen)
         # Every free copy (a free-only route, a paid route's free id, the Google free tier) is reachable only as
         # free/<model> (owner, 2026-11-26): no per-route group, no "<route>-free/", "google-free/" or "public/" copy.
         for route in sorted((free | free_ids | public) & FREE_GROUP_ROUTES):
@@ -1518,6 +1574,8 @@ def plan_groups(catalogue, rules):
                                     order, weight, by_route[route], budget=budgets.get(route), cooldown=cooldowns.get(route)))
     for key, members in sorted(free_members.items()):
         specs.extend(free_group(key, members, by_route, rules))
+    for router_name, (router, chosen) in sorted(router_members.items()):
+        specs.append(free_router_deployment(router_name, router, chosen, by_route, rules))
     if rules.get("tier_groups"):
         specs.extend(tier_copies(specs, rules))
     specs.extend(paid_groups(paid_members, by_route, rules))
@@ -1663,10 +1721,23 @@ def free_group(name, members, by_route, rules):
         spec = deployment(group_name(name, chosen["modality"], primary, free_route=FREE_GROUP), name, route,
                           chosen, order.get(route, last), 1, by_route[route], free_only=True,
                           limits=free_limit_params(route, rules), request_cap=free_request_cap(route, rules),
-                          timeout=free_timeout(route, rules), stream_timeout=free_stream_timeout(route, rules))
+                          timeout=free_timeout(route, rules), stream_timeout=free_stream_timeout(route, rules),
+                          free_note=free_limit_note(route, rules))
         spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{chosen['upstream_id']}"
         specs.append(spec)
     return specs
+
+
+def free_router_deployment(name, entry, chosen, by_route, rules):
+    """The one deployment of a free router step: zero cost, access group `free` alone, its route's free limits."""
+    route = entry["route"]
+    spec = deployment(name, name, route, chosen, 1, 1, by_route[route], free_only=True,
+                      limits=free_limit_params(route, rules), request_cap=free_request_cap(route, rules),
+                      timeout=free_timeout(route, rules), stream_timeout=free_stream_timeout(route, rules),
+                      free_note=free_limit_note(route, rules))
+    spec["model_info"]["id"] = f"{name}/{chosen['upstream_id']}"
+    spec["model_info"]["router"] = True
+    return spec
 
 
 def assert_free_groups(specs):
@@ -1677,7 +1748,7 @@ def assert_free_groups(specs):
     output price on the deployment, not an unknown one, and no budget (a budget is a price).
     """
     for spec in specs:
-        if not spec["name"].startswith(FREE_GROUP + "/"):
+        if not spec["name"].startswith((FREE_GROUP + "/", FREE_ROUTER_PREFIX)):
             continue
         params, info = spec["litellm_params"], spec["model_info"]
         problems = []
@@ -1707,7 +1778,7 @@ def render_models(deployments):
 # The cost class of a callable model name, by its prefix. A tier step declares its class and
 # validate_tiers() checks the declaration against this table, so a paid step cannot be written down
 # as free: "free/" names only ever resolve to zero-cost deployments (assert_free_groups).
-STEP_CLASS_PREFIXES = {"free/": "free", "vibe-tier/": "vibe", "opencode-go-tier/": "go"}
+STEP_CLASS_PREFIXES = {"free/": "free", FREE_ROUTER_PREFIX: "free", "vibe-tier/": "vibe", "opencode-go-tier/": "go"}
 # A paid tier step is never a route wildcard (vibe/*, opencode-go/*; those carry the account's cap too, but a
 # tier step names a copy so the key's access group decides what it reaches). It is "<route>-tier/<upstream id>", a
 # deployment that is a copy of the route's own budgeted deployment with the SAME model_info.id, because
@@ -2176,7 +2247,13 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                         meta[k] = old["metadata"][k]
             if route == "opencode-go" and any(h in item["id"] for h in OPT_IN_HINTS):
                 meta["needs_org_setting_hint"] = True
-            model = {"id": full, "description": "free" if item["free"] else "", "metadata": meta}
+            description = "free" if item["free"] else ""
+            if item["free"] and route in FREE_GROUP_ROUTES and not item.get("paid_only"):
+                # A free copy says so in the catalogue itself, with the limit its provider puts on it (the same
+                # sentence the deployment's model_info carries), so a listing never has to infer it from the route.
+                meta.update(cost_class="free", free_limit=free_limit_note(route, rules))
+                description = f"free ({meta['free_limit']})"
+            model = {"id": full, "description": description, "metadata": meta}
             models.append(model)
             stats["listed"] += 1
             if item["chat"] is False:

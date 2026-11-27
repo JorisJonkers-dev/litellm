@@ -155,6 +155,13 @@
     "neosantara": 300
   },
   "opt_in_only": ["glm-5.3", "kimi-k3.1-pro", "gpt-6-luna"],
+  "free_routers": {
+    "free-router/openrouter": {
+      "route": "openrouter",
+      "upstream_id": "openrouter/free",
+      "source": "https://openrouter.ai/docs/guides/routing/routers/free-models-router: the router only picks free variants and 'There is no charge for using the router itself, or requests routed to free models'; the :free limits apply."
+    }
+  },
   "tier_cost_classes": ["free", "vibe", "go"],
   "tier_groups": {
     "tier-free": {
@@ -165,7 +172,8 @@
         {"model": "free/longcat-2.5", "cost": "free"},
         {"model": "free/beam-1.0-501b-a23b", "cost": "free"},
         {"model": "free/glm-4.7-flash", "cost": "free"},
-        {"model": "free/qwen3.8-27b", "cost": "free"}
+        {"model": "free/qwen3.8-27b", "cost": "free"},
+        {"model": "free-router/openrouter", "cost": "free"}
       ]
     },
     "tier-vibe": {
