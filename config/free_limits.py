@@ -14,11 +14,15 @@ answers. This callback adds both, before routing:
   `reset` (HH:MM UTC), the calendar month (UTC).
 - Learning. A success whose x-ratelimit-remaining-requests or -tokens is 0 blocks until the matching
   x-ratelimit-reset-*. A 429, a 402, or a quota error blocks until Retry-After, else x-ratelimit-reset*,
-  else the next daily reset when the error speaks of a day or a quota, else the route's `cooldowns`
-  value. A dead copy (a 401, 403 or 404, or a 400 whose text says the model is deprecated, gone or missing)
-  blocks its deployment for DEAD_BLOCK (six hours) unless the answer gives a reset. A learned block covers
-  the one deployment or the whole account, as the route's `scope` says (`account_match` escalates a matching
-  error to the account; a 402 is always the account).
+  else the end of the window the route declares (`window` in its free_limits, e.g. "hour"), else the next
+  daily reset when the text clearly means a day (per day, daily, today, 24h; a bare "quota" or "credit" does
+  not), else the route's `cooldowns` value. A dead copy (a 401, a 404, or a 400 whose text says the model is
+  deprecated, gone or missing) blocks its deployment for DEAD_BLOCK (six hours) unless the answer gives a
+  reset. A 403 that speaks of no limit blocks its deployment for FORBIDDEN_BLOCK (15 minutes); one that
+  speaks of a quota or limit is handled like a 429. A 402 saying the account needs a subscription (Poe) blocks
+  the account for DEAD_BLOCK. A learned block covers the one deployment or the whole account, as the route's
+  `scope` says (`account_match` escalates a matching error to the account; a 402 is always the account).
+  Every block logs its key, its length and the first 120 characters of the error text (secrets masked).
 - Filtering. async_filter_deployments drops every deployment that is blocked or whose window is spent,
   so the router picks the next free copy at once, and none is sent to a limited provider. A deployment
   comes back the moment its block ends or its window turns. When nothing is left the call fails with the
@@ -60,13 +64,18 @@ try:
 except ImportError:  # pragma: no cover  # the image always carries catalog/sync.py beside the rules
     FREE_ROUTES, FREE_ID_ROUTES = frozenset(), frozenset()
 LOG = logging.getLogger("free_limits")
-LIMIT_ERROR = "No deployments available for selected model, Try again in a moment: free limits"
+# Our own refusal. The prefix is what clients and the model gateway match (and it carries "back in Ns"); the marker
+# that follows tells a person it was this limiter, not a provider, that refused.
+LIMIT_ERROR = "No deployments available for selected model, Try again in a moment: free limits [limiter refusal, no provider was called]"
 # Seconds a slot counts as in flight when its end was never logged (a lost callback must not wedge a route).
 SLOT_TTL = 600.0
 DEFAULT_BLOCK = 60.0
 # A dead copy (a key the provider paused, a model it retired) stays out this long unless its answer gives a reset.
 DEAD_BLOCK = 6 * 3600.0
-DEAD_STATUS = (401, 403, 404)
+# A 403 that speaks of no limit (a region, a plan, a model the key may not use) keeps one deployment out for a short
+# while only: it is often transient or tied to one model, and six hours on a guess starved whole groups.
+FORBIDDEN_BLOCK = 900.0
+DEAD_STATUS = (401, 404)
 DEAD_MODEL_ERROR = re.compile(r"deprecated|model_deprecated|model not found|does not exist|no longer available|decommissioned", re.I)
 SEED_TIMEOUT = 5.0  # seconds a request may wait for the spend log, once
 SEED_RETRY = 60.0  # seconds before a failed seed is tried again
@@ -74,13 +83,24 @@ SEED_RETRY = 60.0  # seconds before a failed seed is tried again
 SEED_SQL = ('SELECT model_id, date_trunc(\'hour\', "startTime") AS hour, COUNT(*) AS n, '
             'COALESCE(SUM(total_tokens), 0) AS tokens FROM "LiteLLM_SpendLogs" '
             'WHERE "startTime" >= $1::timestamp GROUP BY model_id, hour')
-DAILY_ERROR = re.compile(r"per[ -]day|daily|quota|exhausted|insufficient|credit|allowance|neuron", re.I)
+# Only a text that clearly means a daily limit ends at the daily reset; a bare "quota" or "credit" does not.
+DAILY_ERROR = re.compile(r"per[ -]day|daily|today|24 ?h", re.I)
+# Poe answers 402 on every call of an account with no subscription: nothing a wait will fix.
+SUBSCRIPTION_ERROR = re.compile(r"(requires?|needs?) an? (active )?\w* ?subscription|subscription (is )?required", re.I)
+LOG_TEXT = 120
+SECRET = re.compile(r"(bearer\s+\S+|\b(?:sk|key|tok|pk|gsk|nvapi|glsa)[-_][A-Za-z0-9_\-*.]{6,}|\b[A-Za-z0-9_\-]{32,}\b)", re.I)
 QUOTA_ERROR = re.compile(r"rate.?limit|too many requests|quota|exhausted|insufficient[_ ](credit|quota|funds)|payment required|"
                          r"out of credit|limit exceeded", re.I)
 # A 402 that refuses one request for its size (Inferbase's free plan: "allows 8,192 per request"): the next smaller
 # request works, so it blocks nothing.
 REQUEST_TOO_LARGE = re.compile(r"per request|input tokens|too many tokens|context length|maximum context", re.I)
+SHARED_WINDOWS = ("minute", "hour", "day", "month")
 DURATION = re.compile(r"(\d+(?:\.\d+)?)(ms|s|m|h|d)")
+
+
+def describe(text: str) -> str:
+    """An error text for a log line: one line, secrets masked, the first LOG_TEXT characters."""
+    return SECRET.sub("***", " ".join(str(text).split()))[:LOG_TEXT]
 
 
 def load_rules(path: str | None = None) -> dict:
@@ -518,7 +538,7 @@ class FreeLimits(CustomLogger):
     def learn_failure(self, route: str, params: dict, exception: Any) -> None:
         """Block after a 429, a 402, a quota error or a dead copy, until the provider says, or the best guess.
 
-        A dead copy (401, 403, 404, or a 400 whose text says the model is deprecated, gone or missing) blocks
+        A dead copy (401, 404, or a 400 whose text says the model is deprecated, gone or missing) blocks
         its own deployment for DEAD_BLOCK, so the router takes the next copy of the group. A plain 400 never
         blocks. Our own LIMIT_ERROR refusal never blocks.
         """
@@ -530,8 +550,10 @@ class FreeLimits(CustomLogger):
             return  # our own refusal: nothing new was learned
         if status == 402 and REQUEST_TOO_LARGE.search(text):
             return  # refused for its size, not the account: a smaller request works, so record nothing
-        dead = status in DEAD_STATUS or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
-        if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead:
+        subscription = status == 402 and SUBSCRIPTION_ERROR.search(text) is not None
+        dead = status in DEAD_STATUS or subscription or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
+        forbidden = status == 403 and QUOTA_ERROR.search(text) is None
+        if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead and not forbidden:
             return
         now = self.clock()
         headers = {}
@@ -550,20 +572,28 @@ class FreeLimits(CustomLogger):
                     break
         if until is None and dead:
             until = now + DEAD_BLOCK
+        if until is None and forbidden:
+            until = now + FORBIDDEN_BLOCK
+        window = self._entry(route).get("window")
+        if until is None and window in SHARED_WINDOWS:
+            _, until = window_key(window, now, self._offset(route, params))  # the route declares when its limit turns
         if until is None and DAILY_ERROR.search(text):
             _, until = window_key("day", now, self._offset(route, params))
         if until is None:
             until = now + float(self.cooldowns.get(route, DEFAULT_BLOCK))
         entry = self._entry(route)
-        account = (status == 402 or entry.get("scope") == "account"
+        account = (status == 402 or subscription or entry.get("scope") == "account"
                    or bool(entry.get("account_match") and re.search(entry["account_match"], text, re.I)))
-        self._block(route, params, until, account=account)
+        self._block(route, params, until, account=account, status=status, text=text)
 
-    def _block(self, route: str, params: dict, until: float, account: bool) -> None:
+    def _block(self, route: str, params: dict, until: float, account: bool, status: Any = None, text: str = "") -> None:
         scope = self._entry(route).get("scope", "deployment")
         key = f"a:{route}" if account or scope == "account" else f"d:{self.deployment_key(route, params)}"
         self.store.block(key, until)
-        LOG.warning("free_limits: %s unavailable for %ss", key, int(until - self.clock()))
+        if status is None and not text:
+            LOG.warning("free_limits: %s unavailable for %ss", key, int(until - self.clock()))
+            return
+        LOG.warning("free_limits: %s unavailable for %ss (status %s: %s)", key, int(until - self.clock()), status, describe(text))
 
 
 free_limits = FreeLimits()

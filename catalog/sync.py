@@ -318,6 +318,7 @@ DEPLOYMENT_LIMITS = ("rpm", "tpm", "rpd", "tpd", "max_parallel_requests")
 # The windows of a provider-wide (shared) budget that config/free_limits.py counts across every deployment of a route.
 SHARED_WINDOWS = ("minute", "hour", "day", "month")
 LIMIT_SCOPES = ("deployment", "account")
+FREE_TIMEOUT = 30  # seconds a free deployment may take to answer, or to start streaming (litellm_params.timeout, stream_timeout)
 DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -360,6 +361,10 @@ def check_free_limits(rules, source="the routing rules"):
         if "max_input_tokens" in entry and (not isinstance(entry["max_input_tokens"], int)
                                              or isinstance(entry["max_input_tokens"], bool) or entry["max_input_tokens"] <= 0):
             raise RuntimeError(f"{where}.max_input_tokens must be a positive integer")
+        if "window" in entry and entry["window"] not in SHARED_WINDOWS:
+            raise RuntimeError(f"{where}.window must be one of {SHARED_WINDOWS}")
+        if "timeout" in entry and (not isinstance(entry["timeout"], int) or isinstance(entry["timeout"], bool) or entry["timeout"] <= 0):
+            raise RuntimeError(f"{where}.timeout must be a positive number of seconds")
         if "reset" in entry and not (isinstance(entry["reset"], str) and DAILY_RESET.match(entry["reset"])):
             raise RuntimeError(f"{where}.reset must be HH:MM in UTC")
         if entry.get("scope", "deployment") not in LIMIT_SCOPES:
@@ -1138,6 +1143,15 @@ def free_limit_params(route, rules):
     return params
 
 
+def free_timeout(route, rules):
+    """Seconds a free deployment may take to answer or to start streaming (litellm_params.timeout and stream_timeout).
+
+    A hung free copy must not hold a request for LiteLLM's 600 s default: it fails fast and the retry takes the next
+    copy. It is set per free deployment, not in router_settings, so a paid long completion keeps its longer timeout.
+    """
+    return (((rules or {}).get("free_limits") or {}).get(route) or {}).get("timeout", FREE_TIMEOUT)
+
+
 def loose_key(name):
     """A canonical name with everything that usually differs between two spellings removed."""
     key = re.sub(r"[^a-z0-9]", "", name.lower())
@@ -1280,7 +1294,7 @@ def account_budgets(rules):
 
 
 def deployment(group, canonical, route, chosen, order, weight, entry, public=False, budget=None, cooldown=None,
-               free_only=False, limits=None, request_cap=None):
+               free_only=False, limits=None, request_cap=None, timeout=None):
     """One deployment of a canonical model: its group name, params, order, weight and info."""
     upstream_id = chosen["upstream_id"]
     params = litellm_params(entry, upstream_id)
@@ -1303,6 +1317,8 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params["cooldown_time"] = cooldown
     if limits:
         params.update(limits)
+    if timeout:
+        params["timeout"] = params["stream_timeout"] = timeout
     if free_only:
         groups = [FREE_ACCESS_GROUP]
     elif route in FREE_PRICED:
@@ -1630,7 +1646,8 @@ def free_group(name, members, by_route, rules):
     for route, chosen in sorted(chosen_by_route.items()):
         spec = deployment(group_name(name, chosen["modality"], primary, free_route=FREE_GROUP), name, route,
                           chosen, order.get(route, last), 1, by_route[route], free_only=True,
-                          limits=free_limit_params(route, rules), request_cap=free_request_cap(route, rules))
+                          limits=free_limit_params(route, rules), request_cap=free_request_cap(route, rules),
+                          timeout=free_timeout(route, rules))
         spec["model_info"]["id"] = f"{FREE_GROUP}/{route}/{chosen['upstream_id']}"
         specs.append(spec)
     return specs

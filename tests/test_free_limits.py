@@ -543,6 +543,108 @@ class Hook(unittest.TestCase):
         self.now[0] += 90
         self.assertEqual(len(self.pick([a, b])), 2)
 
+    def test_a_plain_403_blocks_that_deployment_for_fifteen_minutes_only(self):
+        a, b = dep("gonka", "a"), dep("gonka", "b")
+        self.refuse(a, Error(403, "Forbidden: this model is not available in your region"))
+        self.assertEqual(self.pick([a, b]), ["free/gonka/b"])
+        self.now[0] += free_limits.FORBIDDEN_BLOCK - 1
+        self.assertEqual(self.pick([a, b]), ["free/gonka/b"])
+        self.now[0] += 1
+        self.assertEqual(len(self.pick([a, b])), 2)
+        self.assertLess(free_limits.FORBIDDEN_BLOCK, free_limits.DEAD_BLOCK)
+
+    def test_a_403_that_speaks_of_a_quota_is_handled_like_a_429(self):
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        self.refuse(a, Error(403, "Quota exceeded for this key"))
+        self.assertEqual(self.pick([a, b]), ["free/electronhub/b"])
+        self.now[0] += 120  # the route's cooldown, not fifteen minutes and not six hours
+        self.assertEqual(len(self.pick([a, b])), 2)
+
+    def test_a_404_still_blocks_for_the_dead_block(self):
+        a, b = dep("typhoon", "a"), dep("typhoon", "b")
+        self.refuse(a, Error(404, "Not Found"))
+        self.now[0] += free_limits.DEAD_BLOCK - 1
+        self.assertEqual(self.pick([a, b]), ["free/typhoon/b"])
+        self.now[0] += 1
+        self.assertEqual(len(self.pick([a, b])), 2)
+
+    def test_a_bare_quota_or_credit_text_no_longer_waits_for_the_daily_reset(self):
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        self.refuse(a, Error(429, "You have exceeded your quota; check your credit"))
+        self.now[0] += 120
+        self.assertEqual(len(self.pick([a, b])), 2)
+
+    def test_a_text_that_clearly_means_a_day_waits_for_the_daily_reset(self):
+        for text in ("limit of 50 requests per day", "daily allowance spent", "no more requests today", "24h limit reached"):
+            self.at(2026, 11, 26, 22, 30)
+            a, b = dep("electronhub", text[:6]), dep("electronhub", "b")
+            self.refuse(a, Error(429, text))
+            self.now[0] += 120
+            self.assertEqual(self.pick([a, b]), ["free/electronhub/b"], text)
+            self.at(2026, 11, 27, 0, 0)
+            self.assertEqual(len(self.pick([a, b])), 2, text)
+
+    def test_a_route_that_declares_an_hourly_window_is_blocked_to_the_next_clock_hour(self):
+        rules = dict(TEST_RULES, free_limits=dict(TEST_RULES["free_limits"], kilo=dict(TEST_RULES["free_limits"]["kilo"], window="hour")))
+        hook = free_limits.FreeLimits(rules, clock=lambda: self.now[0], prisma=None, deployments=[])
+        a = dep("kilo", "a")
+        asyncio.run(hook.async_log_failure_event(self.kwargs(a, exception=Error(429, "Rate limit exceeded for free models. Daily quota")), None, None, None))
+        self.at(2026, 11, 26, 22, 59)
+        self.assertEqual(hook.store.blocked_until("a:kilo", self.now[0]), datetime.datetime(2026, 11, 26, 23, 0, tzinfo=UTC).timestamp())
+        self.at(2026, 11, 26, 23, 0)
+        self.assertEqual(hook.store.blocked_until("a:kilo", self.now[0]), 0)
+
+    def test_the_real_kilo_route_declares_an_hourly_window_and_the_slow_routes_a_longer_cooldown(self):
+        self.assertEqual(REAL["free_limits"]["kilo"]["window"], "hour")
+        for route in ("electronhub", "unorouter", "neosantara"):
+            self.assertEqual(REAL["cooldowns"][route], 300)
+
+    def test_poe_saying_it_needs_a_subscription_blocks_the_account_for_the_dead_block(self):
+        a, b = dep("poe", "a"), dep("poe", "b")
+        self.refuse(a, Error(402, "This model requires an active Poe subscription"))
+        self.assertEqual(self.pick([a, b, dep("groq", "x")]), ["free/groq/x"])
+        self.now[0] += free_limits.DEAD_BLOCK - 1
+        self.assertEqual(self.pick([a, b, dep("groq", "x")]), ["free/groq/x"])
+        self.now[0] += 1
+        self.assertEqual(len(self.pick([a, b])), 2)
+
+    def test_every_block_logs_its_key_length_status_and_the_first_120_characters_of_the_text(self):
+        a = dep("gonka", "a")
+        text = "Forbidden\n" + "x " * 100
+        with self.assertLogs("free_limits", "WARNING") as logs:
+            self.refuse(a, Error(403, text))
+        line = logs.records[0].getMessage()
+        self.assertTrue(line.startswith("free_limits: d:gonka|openai/a unavailable for 900s (status 403: Forbidden x x "), line)
+        self.assertNotIn("\n", line)
+        self.assertEqual(line.split("(status 403: ", 1)[1].rstrip(")"), " ".join(text.split())[:120])
+
+    def test_a_log_line_never_carries_a_key_or_a_header_value(self):
+        a = dep("gonka", "a")
+        error = Error(401, "Incorrect API key provided: sk-abcdef1234567890XYZ and Bearer eyJhbGciOiJIUzI1NiJ9abcdef", {"authorization": "Bearer topsecretheader", "retry-after": "60"})
+        with self.assertLogs("free_limits", "WARNING") as logs:
+            self.refuse(a, error)
+        line = logs.records[0].getMessage()
+        for secret in ("sk-abcdef1234567890XYZ", "eyJhbGciOiJIUzI1NiJ9abcdef", "topsecretheader"):
+            self.assertNotIn(secret, line)
+        self.assertIn("(status 401: Incorrect API key provided: ***", line)
+
+    def test_our_own_refusal_carries_a_marker_and_keeps_the_prefix_and_the_back_in_format(self):
+        self.assertTrue(free_limits.LIMIT_ERROR.startswith("No deployments available for selected model, Try again in a moment: free limits"))
+        self.assertIn("limiter refusal", free_limits.LIMIT_ERROR)
+        a = dep("electronhub", "a")
+        self.refuse(a, Error(429, headers={"retry-after": "30"}))
+        with self.assertRaisesRegex(ValueError, r"limiter refusal.*back in 30s"):
+            self.pick([a])
+
+    def test_a_free_deployment_is_planned_with_a_request_timeout_a_route_may_override(self):
+        specs = plan(free("groq", "gpt-oss-120b"), free("poe", "gpt-oss-120b"))
+        free_specs = [spec for spec in specs if spec["name"].startswith("free/")]
+        self.assertTrue(free_specs)
+        for spec in free_specs:
+            self.assertEqual(spec["litellm_params"]["timeout"], sync.FREE_TIMEOUT, spec["route"])
+            self.assertEqual(spec["litellm_params"]["stream_timeout"], sync.FREE_TIMEOUT, spec["route"])
+        self.assertEqual(sync.free_timeout("poe", dict(REAL, free_limits={"poe": {"timeout": 90}})), 90)
+
     def test_when_every_copy_is_limited_the_call_fails_at_once(self):
         a = dep("electronhub", "a")
         self.refuse(a, Error(429, headers={"retry-after": "30"}))

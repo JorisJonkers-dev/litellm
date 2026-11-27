@@ -414,9 +414,9 @@ test('every routed account has a safety-net budget and a cooldown', () => {
     naga: 3600,
     routeway: 3600,
     inferbase: 120,
-    // Second wave: 3600 for a daily cap (BazaarLink, Cohere, Api.Airforce, Plugsky), 120 otherwise.
-    bazaarlink: 3600, electronhub: 120, unorouter: 120, cohere: 3600, airforce: 3600, plugsky: 3600, poe: 120, vercel: 120,
-    watsonx: 120, novita: 120, together: 120, typhoon: 120, sealion: 120, gonka: 120, longcat: 120, neosantara: 120,
+    // Second wave: 3600 for a daily cap (BazaarLink, Cohere, Api.Airforce, Plugsky), 120 otherwise, 300 for the three routes whose errors were mostly transient (Electron Hub, UnoRouter, Neosantara).
+    bazaarlink: 3600, electronhub: 300, unorouter: 300, cohere: 3600, airforce: 3600, plugsky: 3600, poe: 120, vercel: 120,
+    watsonx: 120, novita: 120, together: 120, typhoon: 120, sealion: 120, gonka: 120, longcat: 120, neosantara: 300,
   })
   for (const [route, seconds] of Object.entries(rules.cooldowns)) {
     assert.ok(Number.isInteger(seconds) && seconds > 0, route)
