@@ -4192,31 +4192,6 @@
       }
     },
     {
-      "model_name": "free/glm-5.4",
-      "litellm_params": {
-        "model": "openai/glm-5.4:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 30,
-        "stream_timeout": 30
-      },
-      "model_info": {
-        "id": "free/unorouter/glm-5.4:free",
-        "route": "unorouter",
-        "canonical": "glm-5.4",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/glyph-cluster",
       "litellm_params": {
         "model": "openai/stealth/glyph-cluster",
@@ -6608,28 +6583,6 @@
       "model_info": {
         "id": "free/electronhub/minimax-m2.7:free",
         "route": "electronhub",
-        "canonical": "minimax-m2.7",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/minimax-m2.7",
-      "litellm_params": {
-        "model": "openai/minimax-m2.7",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 30,
-        "stream_timeout": 30
-      },
-      "model_info": {
-        "id": "free/unorouter/minimax-m2.7",
-        "route": "unorouter",
         "canonical": "minimax-m2.7",
         "access_groups": [
           "free"
