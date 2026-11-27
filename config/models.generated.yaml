@@ -3173,34 +3173,6 @@
       }
     },
     {
-      "model_name": "free/gemini-flash-lite",
-      "litellm_params": {
-        "model": "openai/gemini-flash-lite-latest:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-flash-lite-latest:free",
-        "route": "unorouter",
-        "canonical": "gemini-flash-lite",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gemini-robotics-er-2-preview",
       "litellm_params": {
         "model": "gemini/gemini-robotics-er-2-preview",
@@ -6399,34 +6371,6 @@
       }
     },
     {
-      "model_name": "free/l3-70b-euryale-v2.1",
-      "litellm_params": {
-        "model": "openai/l3-70b-euryale-v2.1:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/l3-70b-euryale-v2.1:free",
-        "route": "unorouter",
-        "canonical": "l3-70b-euryale-v2.1",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/l3.3-ms-nevoria-70b",
       "litellm_params": {
         "model": "openai/l3.3-ms-nevoria-70b:free",
@@ -6728,6 +6672,34 @@
         "id": "free/unorouter/llama-3.1-8b:free",
         "route": "unorouter",
         "canonical": "llama-3.1-8b",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/llama-3.2-11b-vision",
+      "litellm_params": {
+        "model": "openai/llama-3.2-11b-vision:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 60
+      },
+      "model_info": {
+        "id": "free/unorouter/llama-3.2-11b-vision:free",
+        "route": "unorouter",
+        "canonical": "llama-3.2-11b-vision",
         "access_groups": [
           "free"
         ],
