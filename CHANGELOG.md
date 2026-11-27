@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.1...v1.14.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **models:** refresh the generated model deployments ([#170](https://github.com/JorisJonkers-dev/litellm/issues/170)) ([3896823](https://github.com/JorisJonkers-dev/litellm/commit/3896823b5e05685422b17b24ec66c9dd25c32d73))
+
 ## [1.14.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.0...v1.14.1) (2026-11-27)
 
 
