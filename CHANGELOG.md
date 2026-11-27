@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.12.1...v1.13.0) (2026-11-27)
+
+
+### Features
+
+* **tiers:** the go-cheap and vibe tier keys reach paid/&lt;model&gt; ([#137](https://github.com/JorisJonkers-dev/litellm/issues/137)) ([79a4a99](https://github.com/JorisJonkers-dev/litellm/commit/79a4a99752b120b249356bba3793938f0caadfe8))
+
+
+### Bug Fixes
+
+* **catalog:** keep free ids out of paid groups and merge dot/hyphen version spellings of one release ([dba0baa](https://github.com/JorisJonkers-dev/litellm/commit/dba0baa7248955506d02cb6d584ad4ab9494b726))
+
 ## [1.12.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.12.0...v1.12.1) (2026-11-26)
 
 
