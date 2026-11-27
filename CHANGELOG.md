@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.0...v1.14.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **config:** accept the free router step in the access-group test ([#168](https://github.com/JorisJonkers-dev/litellm/issues/168)) ([edde1fe](https://github.com/JorisJonkers-dev/litellm/commit/edde1fe795a6e063f94697d728444ea8a91b8fd4))
+* **models:** refresh the generated model deployments ([#167](https://github.com/JorisJonkers-dev/litellm/issues/167)) ([330d893](https://github.com/JorisJonkers-dev/litellm/commit/330d8933f49935c96a1cb61e55f0f21371656d31))
+
 ## [1.14.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.11...v1.14.0) (2026-11-27)
 
 
