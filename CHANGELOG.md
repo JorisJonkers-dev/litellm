@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.7](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.6...v1.13.7) (2026-11-27)
+
+
+### Bug Fixes
+
+* **free-limits:** block a forbidden or dead free copy for a fitting time and fail hung free calls fast ([#154](https://github.com/JorisJonkers-dev/litellm/issues/154)) ([66c0ab1](https://github.com/JorisJonkers-dev/litellm/commit/66c0ab1af1bb81cfc270786608be10c9e8cadcdf))
+
 ## [1.13.6](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.5...v1.13.6) (2026-11-27)
 
 
