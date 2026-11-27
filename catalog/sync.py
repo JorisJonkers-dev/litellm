@@ -1072,6 +1072,10 @@ def canonical_name(route, upstream_id, rules, canonical_id=None, strip_version=T
 # `aliases` says otherwise.
 CATALOGUE_PREFIX = re.compile(r"^@(cf|hf)/")
 GLUED_FREE = re.compile(r"(?<=\d)free$")
+# A version written with a hyphen where the release is dotted ("qwen3-6-27b", "minimax-m3-1-flash", "deepseek-v4-1-flash"):
+# the dot and the hyphen spell one release. Only a one- or two-digit number right after a letter and before a hyphen or the
+# end is read, so "gemma-2-9b" and a dated stamp ("...-2025-08") keep their hyphens.
+VERSION_HYPHEN = re.compile(r"(?<=[a-z])(\d+)-(\d{1,2})(?=-|$)")
 # Last-resort names of models that are not chat completions, for the free groups: image generators, embeddings and
 # rerankers, speech, transcription and translation-only models, OCR and document parsers, music, and guard or
 # classifier models. Used only when nothing better (a typed listing, models.dev) says what a model is.
@@ -1116,7 +1120,8 @@ def free_canonical(name, rules):
         key = key[: -len("-free")]
     # "free" glued to a date or version ("deepseek-v4-flash-0731free"): the same marker without its hyphen.
     key = GLUED_FREE.sub("", key)
-    return aliases.get(key, key)
+    dotted = VERSION_HYPHEN.sub(r"\1.\2", key)
+    return aliases.get(key, aliases.get(dotted, dotted))
 
 
 def free_request_cap(route, rules):
@@ -1444,7 +1449,8 @@ def plan_groups(catalogue, rules):
         serving -= {route for route in serving & public_routes if free_excluded(name, route, rules)}
         # A paid chain tries every paid route that serves the model in rules' order, backups included (the
         # canonical group's backup_only rule does not apply to it); an exclusive model stays on its own routes.
-        paid_serving = {route for route in all_routes & set(paid_order) if routes[route]["modality"] == "chat"}
+        # A free id is never in a paid group of its model (it is public work only, see FREE_ID_ROUTES).
+        paid_serving = {route for route in all_routes & set(paid_order) if routes[route]["modality"] == "chat"} - own_group
         if only:
             paid_serving &= only
         if paid_serving:

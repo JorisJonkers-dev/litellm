@@ -116,6 +116,12 @@ class PaidGuards(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not budgeted"):
             sync.assert_paid_groups(specs + [bad], PAID_RULES)
 
+    def test_an_opencode_go_free_id_is_in_no_paid_group_only_its_free_group(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE], ("opencode-go", "beam-free", "usable", {"free": True}))
+        free_go = [spec for spec in specs if spec["route"] == "opencode-go" and spec["name"].startswith("free/")]
+        self.assertEqual([spec["model_info"]["access_groups"] for spec in free_go], [["free"]])
+        self.assertFalse([spec for spec in specs if spec["name"].startswith("paid/") and spec["model_info"]["id"].endswith("-free")])
+
     def test_a_paid_group_never_reaches_a_free_group(self):
         specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE],
                      ("openrouter", "deepseek/deepseek-v4.1-flash:free", "usable", {"free": True}))
