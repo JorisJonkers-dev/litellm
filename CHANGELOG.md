@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.9](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.8...v1.13.9) (2026-11-27)
+
+
+### Bug Fixes
+
+* **free-limits:** hold poe and verification blocks, match UTC-day and named resets ([#158](https://github.com/JorisJonkers-dev/litellm/issues/158)) ([8486983](https://github.com/JorisJonkers-dev/litellm/commit/84869832ec44c88d8b2d77a1c53385449b7b4ec2))
+
 ## [1.13.8](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.7...v1.13.8) (2026-11-27)
 
 
