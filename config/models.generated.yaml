@@ -2088,6 +2088,26 @@
     {
       "model_name": "free/gemini-2.5-flash",
       "litellm_params": {
+        "model": "openai/gemini-2.5-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-2.5-flash:free",
+        "route": "unorouter",
+        "canonical": "gemini-2.5-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-2.5-flash",
+      "litellm_params": {
         "model": "openai/google/gemini-2.5-flash:free",
         "litellm_credential_name": "naga",
         "order": 6,
@@ -2101,10 +2121,7 @@
         "canonical": "gemini-2.5-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -2619,6 +2636,26 @@
       }
     },
     {
+      "model_name": "free/gemini-4-hydrogen",
+      "litellm_params": {
+        "model": "openai/gemini-4-hydrogen:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-4-hydrogen:free",
+        "route": "unorouter",
+        "canonical": "gemini-4-hydrogen",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
       "model_name": "free/gemini-4-neon",
       "litellm_params": {
         "model": "gemini/gemini-4-neon",
@@ -2634,10 +2671,27 @@
         "canonical": "gemini-4-neon",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
+      }
+    },
+    {
+      "model_name": "free/gemini-4-neon",
+      "litellm_params": {
+        "model": "openai/gemini-4-neon:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-4-neon:free",
+        "route": "unorouter",
+        "canonical": "gemini-4-neon",
+        "access_groups": [
+          "free"
+        ]
       }
     },
     {
@@ -5525,26 +5579,6 @@
     {
       "model_name": "free/ling-3.2-flash",
       "litellm_params": {
-        "model": "openai/ling-3.2-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/ling-3.2-flash:free",
-        "route": "unorouter",
-        "canonical": "ling-3.2-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/ling-3.2-flash",
-      "litellm_params": {
         "model": "openai/inclusionai/ling-3.2-flash:free",
         "litellm_credential_name": "naga",
         "order": 6,
@@ -6163,6 +6197,26 @@
       "model_info": {
         "id": "free/poe/minimax-m3",
         "route": "poe",
+        "canonical": "minimax-m3",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m3",
+      "litellm_params": {
+        "model": "openai/minimax-m3:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/minimax-m3:free",
+        "route": "unorouter",
         "canonical": "minimax-m3",
         "access_groups": [
           "free"
@@ -9018,6 +9072,26 @@
     {
       "model_name": "free/qwen3.8-max",
       "litellm_params": {
+        "model": "openai/qwen3.8-max:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/qwen3.8-max:free",
+        "route": "unorouter",
+        "canonical": "qwen3.8-max",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-max",
+      "litellm_params": {
         "model": "openai/qwen3-8-max",
         "litellm_credential_name": "inferbase",
         "order": 10,
@@ -9032,10 +9106,7 @@
         "access_groups": [
           "free"
         ],
-        "max_input_tokens": 8192,
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
