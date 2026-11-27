@@ -8,6 +8,6 @@
     "test:image": "node --test --test-concurrency=1 tests/image.test.mjs"
   },
   "engines": {
-    "node": ">=24"
+    "node": "v26.13.1"
   }
 }
