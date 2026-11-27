@@ -608,6 +608,48 @@ class Hook(unittest.TestCase):
         self.now[0] += 1
         self.assertEqual(len(self.pick([a, b])), 2)
 
+    def test_a_retry_after_of_zero_never_shortens_a_subscription_block(self):
+        a, b = dep("poe", "a"), dep("poe", "b")
+        text = "litellm.PaymentRequiredError: PoeException - The model X requires an active Poe subscription for API access."
+        with self.assertLogs("free_limits", "WARNING") as logs:
+            self.refuse(a, Error(402, text, {"retry-after": "0", "x-ratelimit-reset": "0"}))
+        self.assertIn("a:poe unavailable for 21600s", logs.records[0].getMessage())
+        self.assertEqual(self.hook.unavailable_until(a), self.now[0] + free_limits.DEAD_BLOCK)
+
+    def test_a_zero_retry_after_on_a_429_falls_back_to_the_cooldown(self):
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        self.refuse(a, Error(429, "Rate limit exceeded", {"retry-after": "0"}))
+        self.assertEqual(self.pick([a, b]), ["free/electronhub/b"])
+
+    INFERBASE = ("litellm.PaymentRequiredError: Free plan limit: 100 requests per UTC day on Inferbase's own models for this "
+                 "organization, all used. It resets at 00:00 UTC.")
+
+    def test_inferbases_daily_402_blocks_the_account_until_the_named_reset(self):
+        a = dep("inferbase", "a")
+        self.refuse(a, Error(402, self.INFERBASE))
+        self.assertEqual(self.hook.unavailable_until(a), datetime.datetime(2026, 11, 27, 0, 0, tzinfo=UTC).timestamp())
+        self.at(2026, 11, 27, 0, 0)
+        self.assertEqual(len(self.pick([a])), 1)
+
+    def test_a_named_reset_time_and_other_day_phrases_set_the_block(self):
+        cases = (("Quota used. Resets at 06:30 UTC.", (2026, 11, 27, 6, 30)), ("100 requests a day", (2026, 11, 27, 0, 0)),
+                 ("limit is 5 per day", (2026, 11, 27, 0, 0)))
+        for text, end in cases:
+            self.at(2026, 11, 26, 22, 30)
+            a = dep("electronhub", text[:5])
+            self.refuse(a, Error(429, text))
+            self.assertEqual(self.hook.unavailable_until(a), datetime.datetime(*end, tzinfo=UTC).timestamp(), text)
+
+    def test_electronhub_needing_phone_verification_blocks_the_whole_account_and_logs_an_owner_action(self):
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        text = "To prevent abuse and high traffic on free models, phone verification is required. Verify at electronhub.ai"
+        with self.assertLogs("free_limits", "WARNING") as logs:
+            self.refuse(a, Error(403, text))
+        line = logs.records[0].getMessage()
+        self.assertIn("a:electronhub unavailable for 21600s", line)
+        self.assertIn("needs account verification", line)
+        self.assertEqual(self.hook.unavailable_until(b), self.now[0] + free_limits.DEAD_BLOCK)
+
     def test_every_block_logs_its_key_length_status_and_the_first_120_characters_of_the_text(self):
         a = dep("gonka", "a")
         text = "Forbidden\n" + "x " * 100
