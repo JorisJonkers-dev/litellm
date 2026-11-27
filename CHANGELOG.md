@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.11](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.10...v1.13.11) (2026-11-27)
+
+
+### Bug Fixes
+
+* **catalog:** give a free copy 300 s to finish and drop it after 60 s of silence ([#162](https://github.com/JorisJonkers-dev/litellm/issues/162)) ([f726698](https://github.com/JorisJonkers-dev/litellm/commit/f72669834035f23f976a49d944dc5afde55e3830))
+
 ## [1.13.10](https://github.com/JorisJonkers-dev/litellm/compare/v1.13.9...v1.13.10) (2026-11-27)
 
 
