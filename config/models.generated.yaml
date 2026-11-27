@@ -2877,25 +2877,6 @@
       }
     },
     {
-      "model_name": "free/gemma-4-26b-a4b-it",
-      "litellm_params": {
-        "model": "openai/google/gemma-4-26b-a4b-it:free",
-        "litellm_credential_name": "naga",
-        "order": 6,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/naga/google/gemma-4-26b-a4b-it:free",
-        "route": "naga",
-        "canonical": "gemma-4-26b-a4b-it",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
       "model_name": "free/gemma-4-26b-a4b-it-chimerax",
       "litellm_params": {
         "model": "openai/gemma-4-26b-a4b-it-chimerax:free",
