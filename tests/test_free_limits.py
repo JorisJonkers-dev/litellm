@@ -62,6 +62,19 @@ class Clustering(unittest.TestCase):
         for raw, want in cases.items():
             self.assertEqual(sync.free_canonical(raw, REAL), want, raw)
 
+    def test_a_dotted_or_hyphenated_version_is_one_free_group(self):
+        cases = {
+            "qwen3-6-27b": "qwen3.6-27b", "qwen3.6-27b": "qwen3.6-27b", "qwen3-8-max": "qwen3.8-max",
+            "qwen3-8-max-0902": "qwen3.8-max-0902", "deepseek-v3-1": "deepseek-v3.1", "deepseek-v3.1": "deepseek-v3.1",
+            "minimax-m3-1-flash": "minimax-m3.1-flash", "deepseek-v4-1-flash": "deepseek-v4.1-flash",
+            "deepseek-v4-1-flash-1017": "deepseek-v4.1-flash", "qwen2-5-coder-32b": "qwen2.5-coder-32b",
+        }
+        for raw, want in cases.items():
+            self.assertEqual(sync.free_canonical(raw, REAL), want, raw)
+        # Only a version after a letter is read: a model size after a hyphen, and a dated stamp, keep their spelling.
+        for raw in ("gemma-2-9b-it", "llama-3-70b", "deepseek-v4-flash-0731", "model-v2-2025-01"):
+            self.assertEqual(sync.free_canonical(raw, REAL), raw, raw)
+
     def test_one_model_on_every_free_route_is_one_group(self):
         specs = plan(free("cloudflare", "@cf/openai/gpt-oss-120b"), free("groq", "openai/gpt-oss-120b"),
                      free("unorouter", "gpt-oss-120b:free"), free("electronhub", "gpt-oss-120b:free"))
@@ -247,6 +260,10 @@ class Generated(unittest.TestCase):
         frozenset({"typhoon-ocr", "typhoon-ocr-preview"}): "one provider lists both as separate models",
         frozenset({"gemini-3-flash", "gemini-3-flash-preview"}): "Google lists both as separate models",
         frozenset({"gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview"}): "a preview and its GA release are separate releases",
+        frozenset({"gemini-3.1-pro", "gemini-3.1-pro-preview"}): "a preview and its release are separate releases (as gemini-3.1-flash-lite)",
+        frozenset({"deepseek-v4-flash", "deepseek-v4-flash-0731"}): "models.dev lists the April and the 0731 release as two models",
+        frozenset({"qwen3.8-max", "qwen3.8-max-0902"}): "models.dev lists Qwen3.8 Max (2026-08-03) and Qwen3.8 Max 0902 (2026-09-02) as two releases",
+        frozenset({"gemma-4-26b-a4b", "gemma-4-26b-a4b-it"}): "a bare id may be the base model: models.dev lists only the -it chat tune (as qwen2.5-coder)",
     }
 
     def test_no_free_group_is_a_near_miss_of_another(self):

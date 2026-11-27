@@ -373,7 +373,10 @@ class TierCopies(unittest.TestCase):
             self.assertEqual((entry["litellm_params"]["max_budget"], entry["litellm_params"]["budget_duration"]),
                              (budget["max_budget"], budget["budget_duration"]), entry["model_name"])
             self.assertEqual(origin["litellm_params"]["max_budget"], entry["litellm_params"]["max_budget"])
-            self.assertEqual(entry["model_info"]["access_groups"], [entry["model_name"].split("/")[0]])
+            # An opt_in_only model's copy is in the opt-in group alone (sync.py), every other copy in its tier's group.
+            opt_in = sync.canonical_name(None, entry["model_name"].split("/", 1)[1], RULES) in RULES["opt_in_only"]
+            expected = sync.OPT_IN_ACCESS_GROUP if opt_in else entry["model_name"].split("/")[0]
+            self.assertEqual(entry["model_info"]["access_groups"], [expected], entry["model_name"])
 
 
 SCENARIOS = {
