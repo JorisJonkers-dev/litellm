@@ -255,7 +255,7 @@ router_settings:
     "tier-strong-open": "opencode-go-tier/qwen4-max"
     "tier-review": "free/nemotron-3-ultra-550b-a55b"
   fallbacks:
-    - {"tier-free": ["free/longcat-2.5", "free/beam-1.0-501b-a23b", "free/glm-4.7-flash", "free/qwen3.8-27b"]}
+    - {"tier-free": ["free/longcat-2.5", "free/beam-1.0-501b-a23b", "free/glm-4.7-flash", "free/qwen3.8-27b", "free-router/openrouter"]}
     - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-strong-open": ["vibe-tier/zai-glm-5-3", "opencode-go-tier/kimi-k3.1-pro", "opencode-go-tier/gpt-6-luna", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}

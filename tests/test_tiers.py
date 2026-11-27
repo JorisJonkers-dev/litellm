@@ -155,7 +155,7 @@ class Rendering(unittest.TestCase):
 
     def test_tier_free_and_tier_review_reach_a_paid_deployment_only_through_declared_paid_steps(self):
         chains = sync.tier_chains(RULES)
-        self.assertTrue(all(step["model"].startswith("free/") for step in chains["tier-free"]))
+        self.assertTrue(all(step["model"].startswith(("free/", sync.FREE_ROUTER_PREFIX)) for step in chains["tier-free"]))
         for step in chains["tier-review"]:
             self.assertEqual(step["cost"] != "free", not step["model"].startswith("free/"))
         # The tiers' own names are in no catalogue group: nothing the sync plans can shadow one.

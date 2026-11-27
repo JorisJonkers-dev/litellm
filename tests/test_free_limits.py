@@ -1,5 +1,6 @@
 """Free groups across providers, their limits, and config/free_limits.py keeping a limited copy out of the pick."""
 import asyncio
+import copy
 import datetime
 import json
 import sys
@@ -179,6 +180,107 @@ class Nvidia(unittest.TestCase):
         self.assertEqual(REAL["free_limits"]["nvidia"]["shared"], [{"requests": 40, "per": "minute"}])
 
 
+class OpenRouterFree(unittest.TestCase):
+    """OpenRouter's free models: every free chat model plans, the router endpoint is a last tier step, all say free."""
+    ROUTER = "free-router/openrouter"
+
+    def specs(self, *extra):
+        return plan(free("openrouter", "particle-ai/particle-1:free"), free("openrouter", "nvidia/nemotron-3.5-super-vl:free"),
+                    free("openrouter", "google/gemma-4-31b-it:free"), free("openrouter", "openrouter/free"), *extra,
+                    rules=dict(BASE_RULES, free_aliases=REAL["free_aliases"], free_order=REAL["free_order"],
+                               free_limits=REAL["free_limits"], free_routers=REAL["free_routers"]))
+
+    def test_vision_language_chat_models_are_planned_like_any_other(self):
+        specs = self.specs()
+        self.assertEqual(group(specs, "free/particle-1"), ["openrouter"])
+        self.assertEqual(group(specs, "free/nemotron-3.5-super-vl"), ["openrouter"])
+        self.assertIsNone(sync.FREE_NON_CHAT.search("nvidia/nemotron-3.5-super-vl:free"))
+        self.assertIsNone(sync.FREE_NON_CHAT.search("particle-ai/particle-1:free"))
+        # The music models are not chat.
+        self.assertIsNotNone(sync.FREE_NON_CHAT.search("google/lyria-3-pro-preview"))
+
+    def test_the_generated_file_holds_all_ten_free_chat_models(self):
+        ids = {e["litellm_params"]["model"].removeprefix("openrouter/") for e in GENERATED if e["model_info"].get("route") == "openrouter"}
+        self.assertEqual(len(ids), 10)
+        self.assertLessEqual({"particle-ai/particle-1:free", "nvidia/nemotron-3.5-super-vl:free"}, ids)
+
+    def test_the_router_endpoint_is_no_model_group_but_one_free_router_step(self):
+        specs = self.specs()
+        self.assertFalse([s for s in specs if s["name"] in ("free/free", "openrouter/free")])
+        router = [s for s in specs if s["name"] == self.ROUTER]
+        self.assertEqual(len(router), 1)
+        spec = router[0]
+        self.assertEqual(spec["litellm_params"]["model"], "openrouter/openrouter/free")
+        self.assertEqual((spec["litellm_params"]["input_cost_per_token"], spec["litellm_params"]["output_cost_per_token"]), (0, 0))
+        self.assertEqual(spec["litellm_params"]["rpm"], 20)
+        self.assertNotIn("max_budget", spec["litellm_params"])
+        self.assertNotIn("cooldown_time", spec["litellm_params"])
+        self.assertEqual(spec["model_info"]["access_groups"], ["free"])
+        self.assertEqual(spec["model_info"]["id"], "free-router/openrouter/openrouter/free")
+        # Its id is nobody else's: the model groups keep their ids.
+        self.assertEqual(len({s["model_info"]["id"] for s in specs}), len(specs))
+
+    def test_the_router_step_is_planned_only_while_the_route_lists_it_usable(self):
+        none = plan(free("openrouter", "google/gemma-4-31b-it:free"), rules=dict(BASE_RULES, free_routers=REAL["free_routers"]))
+        self.assertFalse([s for s in none if s["name"] == self.ROUTER])
+        blocked = plan(("openrouter", "openrouter/free", "blocked", {"free": True}), rules=dict(BASE_RULES, free_routers=REAL["free_routers"]))
+        self.assertEqual(blocked, [])
+
+    def test_a_free_router_must_be_named_for_a_free_only_route(self):
+        for bad in ({"free-router/vibe": {"route": "vibe", "upstream_id": "x"}},
+                    {"free/openrouter": {"route": "openrouter", "upstream_id": "openrouter/free"}},
+                    {"free-router/openrouter": {"route": "openrouter"}}):
+            with self.assertRaises(RuntimeError, msg=bad):
+                sync.free_routers({"free_routers": bad})
+        self.assertEqual(list(sync.free_routers(REAL)), [self.ROUTER])
+
+    def test_tier_free_ends_on_the_router_and_stays_free(self):
+        chain = sync.tier_chains(REAL)["tier-free"]
+        self.assertEqual(chain[-1], {"model": self.ROUTER, "cost": "free"})
+        self.assertEqual({step["cost"] for step in chain}, {"free"})
+        sync.validate_tiers(REAL)
+        for tier in ("tier-vibe", "tier-go-cheap", "tier-strong-open", "tier-review"):
+            self.assertNotIn(self.ROUTER, [s["model"] for s in sync.tier_chains(REAL)[tier]])
+        rules = copy.deepcopy(REAL)
+        rules["tier_groups"]["tier-free"]["steps"][-1]["cost"] = "vibe"
+        with self.assertRaises(RuntimeError):
+            sync.validate_tiers(rules)
+
+    def test_the_router_step_is_in_the_rendered_config(self):
+        self.assertIn('"free/qwen3.8-27b", "free-router/openrouter"]', (ROOT / "config" / "config.yaml").read_text())
+
+    def test_every_free_deployment_is_labelled_free_with_its_limit(self):
+        specs = self.specs()
+        limit = "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        self.assertEqual(sync.free_limit_note("openrouter", REAL), limit)
+        for spec in specs:
+            info = spec["model_info"]
+            self.assertIs(info["free"], True, info["id"])
+            self.assertEqual((info["cost_class"], info["free_limit"]), ("free", limit), info["id"])
+        # A route whose limits are not published still says so, and a paid deployment carries no such label.
+        self.assertIn("not published", sync.free_limit_note("nvidia", {}))
+        paid = plan(("vibe", "mistral-large", "usable", {}), rules=dict(BASE_RULES))
+        self.assertTrue(paid)
+        for spec in paid:
+            self.assertNotIn("free", spec["model_info"])
+
+    def test_the_published_catalogue_entry_says_free_with_the_limit(self):
+        from unittest import mock
+        entry = next(e for e in sync.ROUTES if e["route"] == "openrouter")
+        listing = {"data": [{"id": "particle-ai/particle-1:free", "pricing": {"prompt": "0", "completion": "0"}},
+                            {"id": "paid/model", "pricing": {"prompt": "0.1", "completion": "0.1"}}]}
+        env = {"OPENROUTER_API_KEY": "k", "OPENROUTER_API_BASE": "https://or.invalid/v1"}
+        with mock.patch.object(sync, "fetch_listing", return_value=(200, listing)):
+            cat, _ = sync.build(env, lambda *a: (200, listing), {}, datetime.datetime(2026, 11, 27, tzinfo=UTC), rules=REAL)
+        models = {m["id"]: m for m in cat["providers"]["openrouter"]["models"]}
+        free_entry = models["openrouter/particle-ai/particle-1:free"]
+        self.assertEqual(free_entry["metadata"]["cost_class"], "free")
+        self.assertEqual(free_entry["metadata"]["free_limit"], sync.free_limit_note("openrouter", REAL))
+        self.assertTrue(free_entry["description"].startswith("free (50 requests a day per account"))
+        self.assertNotIn("cost_class", models["openrouter/paid/model"]["metadata"])
+        self.assertEqual(models["openrouter/paid/model"]["description"], "")
+
+
 class PaidOnly(unittest.TestCase):
     """Cloudflare's paid-plan models (routing.json paid_only, from its pricing page) are never free."""
 
@@ -223,7 +325,8 @@ class Generated(unittest.TestCase):
             name, info, params = entry["model_name"], entry["model_info"], entry["litellm_params"]
             free = params.get("input_cost_per_token") == 0 and params.get("output_cost_per_token") == 0 and "account" not in info
             if info.get("route") in sync.FREE_GROUP_ROUTES and free or "free" in info.get("access_groups", []):
-                self.assertTrue(name.startswith("free/"), name)
+                # The one exception is a free router step (routing.json free_routers), see OpenRouterFree.
+                self.assertTrue(name.startswith(("free/", sync.FREE_ROUTER_PREFIX)), name)
                 self.assertEqual(info["access_groups"], ["free"], name)
             if name.startswith("free/"):
                 self.assertNotIn("free", name[len("free/"):], name)
