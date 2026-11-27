@@ -7124,31 +7124,6 @@
     {
       "model_name": "free/mimo-v2.6-flash",
       "litellm_params": {
-        "model": "openai/mimo-v2.6-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/mimo-v2.6-flash:free",
-        "route": "unorouter",
-        "canonical": "mimo-v2.6-flash",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/mimo-v2.6-flash",
-      "litellm_params": {
         "model": "neosantara/mimo-v2.6-flash-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
