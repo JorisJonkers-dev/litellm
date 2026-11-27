@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.12.0...v1.12.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **free-limits:** skip a free copy whose per-request input cap a request exceeds ([#118](https://github.com/JorisJonkers-dev/litellm/issues/118)) ([f04ee01](https://github.com/JorisJonkers-dev/litellm/commit/f04ee010cdc0656156a8e9f561fc056a6eb10d75))
+
 ## [1.12.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.11.0...v1.12.0) (2026-11-26)
 
 
