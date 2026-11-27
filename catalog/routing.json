@@ -84,7 +84,7 @@
     "openrouter": {"deployment": {"rpm": 20}, "shared": [{"requests": 50, "per": "day", "note": "1000 once the account has bought 10 credits"}], "reset": "00:00",
                    "scope": "deployment", "account_match": "free-models-per-day|free_model_daily|per day", "status": "confirmed",
                    "source": "https://openrouter.ai/docs/api-reference/limits: :free models 20 RPM; 50 per day under 10 credits bought, 1000 at 10 or more; one daily counter per account (current UTC day); 429 with Retry-After."},
-    "kilo": {"shared": [{"requests": 200, "per": "hour"}], "scope": "account", "status": "confirmed",
+    "kilo": {"shared": [{"requests": 200, "per": "hour"}], "window": "hour", "scope": "account", "status": "confirmed",
              "source": "https://kilo.ai/docs/gateway/usage-and-billing: 200 requests per hour per IP for all free models; 429 'Rate limit exceeded for free models'. Window alignment not stated (counted per clock hour)."},
     "cloudflare": {"deployment": {"rpm": 300}, "reset": "00:00", "scope": "deployment", "account_match": "neuron|daily|allocation|quota", "status": "partial",
                    "source": "https://developers.cloudflare.com/workers-ai/platform/limits/ (300 RPM for text generation) and /pricing/ (10,000 Neurons a day per account, all limits reset 00:00 UTC). Neurons per request vary, so the daily allowance is learned from the 429, not counted."},
@@ -138,8 +138,8 @@
     "routeway": 3600,
     "inferbase": 120,
     "bazaarlink": 3600,
-    "electronhub": 120,
-    "unorouter": 120,
+    "electronhub": 300,
+    "unorouter": 300,
     "cohere": 3600,
     "airforce": 3600,
     "plugsky": 3600,
@@ -152,7 +152,7 @@
     "sealion": 120,
     "gonka": 120,
     "longcat": 120,
-    "neosantara": 120
+    "neosantara": 300
   },
   "opt_in_only": ["glm-5.3", "kimi-k3.1-pro", "gpt-6-luna"],
   "tier_cost_classes": ["free", "vibe", "go"],
