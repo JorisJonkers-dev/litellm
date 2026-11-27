@@ -2619,26 +2619,6 @@
       }
     },
     {
-      "model_name": "free/gemini-4-hydrogen",
-      "litellm_params": {
-        "model": "openai/gemini-4-hydrogen:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-4-hydrogen:free",
-        "route": "unorouter",
-        "canonical": "gemini-4-hydrogen",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
       "model_name": "free/gemini-4-neon",
       "litellm_params": {
         "model": "gemini/gemini-4-neon",
@@ -3918,6 +3898,29 @@
       }
     },
     {
+      "model_name": "free/glm-5.4",
+      "litellm_params": {
+        "model": "openai/glm-5.4:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/glm-5.4:free",
+        "route": "unorouter",
+        "canonical": "glm-5.4",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/glyph-cluster",
       "litellm_params": {
         "model": "openai/stealth/glyph-cluster",
@@ -5135,6 +5138,29 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/k-exaone-2.5",
+      "litellm_params": {
+        "model": "openai/k-exaone-2.5:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/k-exaone-2.5:free",
+        "route": "unorouter",
+        "canonical": "k-exaone-2.5",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
