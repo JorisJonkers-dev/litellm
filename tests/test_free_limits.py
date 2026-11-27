@@ -684,8 +684,11 @@ class Hook(unittest.TestCase):
         self.assertTrue(free_specs)
         for spec in free_specs:
             self.assertEqual(spec["litellm_params"]["timeout"], sync.FREE_TIMEOUT, spec["route"])
-            self.assertEqual(spec["litellm_params"]["stream_timeout"], sync.FREE_TIMEOUT, spec["route"])
+            self.assertEqual(spec["litellm_params"]["stream_timeout"], sync.FREE_STREAM_TIMEOUT, spec["route"])
         self.assertEqual(sync.free_timeout("poe", dict(REAL, free_limits={"poe": {"timeout": 90}})), 90)
+        self.assertEqual(sync.free_stream_timeout("poe", dict(REAL, free_limits={"poe": {"stream_timeout": 45}})), 45)
+        # A finished answer may take far longer than a stream may go silent.
+        self.assertGreater(sync.FREE_TIMEOUT, sync.FREE_STREAM_TIMEOUT)
 
     def test_when_every_copy_is_limited_the_call_fails_at_once(self):
         a = dep("electronhub", "a")
