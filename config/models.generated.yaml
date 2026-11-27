@@ -2088,26 +2088,6 @@
     {
       "model_name": "free/gemini-2.5-flash",
       "litellm_params": {
-        "model": "openai/gemini-2.5-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-2.5-flash:free",
-        "route": "unorouter",
-        "canonical": "gemini-2.5-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/gemini-2.5-flash",
-      "litellm_params": {
         "model": "openai/google/gemini-2.5-flash:free",
         "litellm_credential_name": "naga",
         "order": 6,
@@ -2121,7 +2101,10 @@
         "canonical": "gemini-2.5-flash",
         "access_groups": [
           "free"
-        ]
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -2671,27 +2654,10 @@
         "canonical": "gemini-4-neon",
         "access_groups": [
           "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/gemini-4-neon",
-      "litellm_params": {
-        "model": "openai/gemini-4-neon:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-4-neon:free",
-        "route": "unorouter",
-        "canonical": "gemini-4-neon",
-        "access_groups": [
-          "free"
-        ]
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -5565,26 +5531,10 @@
         "canonical": "ling-3.2-flash",
         "access_groups": [
           "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/ling-3.2-flash",
-      "litellm_params": {
-        "model": "openai/inclusionai/ling-3.2-flash:free",
-        "litellm_credential_name": "naga",
-        "order": 6,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/naga/inclusionai/ling-3.2-flash:free",
-        "route": "naga",
-        "canonical": "ling-3.2-flash",
-        "access_groups": [
-          "free"
-        ]
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -6132,6 +6082,26 @@
       "model_info": {
         "id": "free/electronhub/minimax-m2.7:free",
         "route": "electronhub",
+        "canonical": "minimax-m2.7",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m2.7",
+      "litellm_params": {
+        "model": "openai/minimax-m2.7",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/minimax-m2.7",
+        "route": "unorouter",
         "canonical": "minimax-m2.7",
         "access_groups": [
           "free"
@@ -6703,29 +6673,6 @@
       }
     },
     {
-      "model_name": "free/mistral-small-3.2",
-      "litellm_params": {
-        "model": "openai/mistral-small-3.2:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/mistral-small-3.2:free",
-        "route": "unorouter",
-        "canonical": "mistral-small-3.2",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/mistral-small-3.2-24b-instruct",
       "litellm_params": {
         "model": "openai/mistral-small-3.2-24b-instruct:free",
@@ -6862,26 +6809,6 @@
     {
       "model_name": "free/muse-glimmer-30b",
       "litellm_params": {
-        "model": "openai/muse-glimmer-30b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/muse-glimmer-30b:free",
-        "route": "unorouter",
-        "canonical": "muse-glimmer-30b",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/muse-glimmer-30b",
-      "litellm_params": {
         "model": "openai/nvidia/muse-glimmer-30b",
         "litellm_credential_name": "requesty",
         "order": 6,
@@ -6895,7 +6822,10 @@
         "canonical": "muse-glimmer-30b",
         "access_groups": [
           "free"
-        ]
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
