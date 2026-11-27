@@ -372,7 +372,7 @@
     {
       "model_name": "codestral-embed",
       "litellm_params": {
-        "model": "mistral/codestral-embed",
+        "model": "mistral/codestral-embed-2505",
         "litellm_credential_name": "vibe-api",
         "order": 1,
         "weight": 2,
@@ -381,7 +381,7 @@
         "cooldown_time": 3600
       },
       "model_info": {
-        "id": "vibe-api:codestral-embed",
+        "id": "vibe-api:codestral-embed-2505",
         "route": "vibe-api",
         "canonical": "codestral-embed",
         "access_groups": [
@@ -394,7 +394,7 @@
     {
       "model_name": "codestral-embed",
       "litellm_params": {
-        "model": "mistral/codestral-embed",
+        "model": "mistral/codestral-embed-2505",
         "litellm_credential_name": "vibe-study-api",
         "order": 1,
         "weight": 1,
@@ -403,7 +403,7 @@
         "cooldown_time": 3600
       },
       "model_info": {
-        "id": "vibe-study-api:codestral-embed",
+        "id": "vibe-study-api:codestral-embed-2505",
         "route": "vibe-study-api",
         "canonical": "codestral-embed",
         "access_groups": [
@@ -1399,6 +1399,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -1421,28 +1422,7 @@
         "access_groups": [
           "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/deepseek-v3-1",
-      "litellm_params": {
-        "model": "openai/deepseek-v3-1",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/deepseek-v3-1",
-        "route": "inferbase",
-        "canonical": "deepseek-v3-1",
-        "access_groups": [
-          "free"
-        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -1464,10 +1444,27 @@
         "canonical": "deepseek-v3.1",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/deepseek-v3.1",
+      "litellm_params": {
+        "model": "openai/deepseek-v3-1",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v3-1",
+        "route": "inferbase",
+        "canonical": "deepseek-v3.1",
+        "access_groups": [
+          "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
@@ -1509,9 +1506,9 @@
       }
     },
     {
-      "model_name": "free/deepseek-v4-1-flash",
+      "model_name": "free/deepseek-v3.2",
       "litellm_params": {
-        "model": "openai/deepseek-v4-1-flash",
+        "model": "openai/deepseek-v3-2",
         "litellm_credential_name": "inferbase",
         "order": 10,
         "weight": 1,
@@ -1519,15 +1516,13 @@
         "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/inferbase/deepseek-v4-1-flash",
+        "id": "free/inferbase/deepseek-v3-2",
         "route": "inferbase",
-        "canonical": "deepseek-v4-1-flash",
+        "canonical": "deepseek-v3.2",
         "access_groups": [
           "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
@@ -1565,7 +1560,8 @@
         "canonical": "deepseek-v4-flash",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -1642,6 +1638,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -1682,7 +1679,8 @@
         "canonical": "deepseek-v4-pro",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -1765,7 +1763,7 @@
     {
       "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
-        "model": "openai/deepseek-v4-1-flash-1017",
+        "model": "openai/deepseek-v4-1-flash",
         "litellm_credential_name": "inferbase",
         "order": 10,
         "weight": 1,
@@ -1773,12 +1771,13 @@
         "output_cost_per_token": 0
       },
       "model_info": {
-        "id": "free/inferbase/deepseek-v4-1-flash-1017",
+        "id": "free/inferbase/deepseek-v4-1-flash",
         "route": "inferbase",
         "canonical": "deepseek-v4.1-flash",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -2089,26 +2088,6 @@
     {
       "model_name": "free/gemini-2.5-flash",
       "litellm_params": {
-        "model": "openai/gemini-2.5-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-2.5-flash:free",
-        "route": "unorouter",
-        "canonical": "gemini-2.5-flash",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/gemini-2.5-flash",
-      "litellm_params": {
         "model": "openai/google/gemini-2.5-flash:free",
         "litellm_credential_name": "naga",
         "order": 6,
@@ -2122,7 +2101,10 @@
         "canonical": "gemini-2.5-flash",
         "access_groups": [
           "free"
-        ]
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -3236,25 +3218,6 @@
     {
       "model_name": "free/gemma-4-31b-it",
       "litellm_params": {
-        "model": "openai/google/gemma-4-31b-it:free",
-        "litellm_credential_name": "naga",
-        "order": 6,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/naga/google/gemma-4-31b-it:free",
-        "route": "naga",
-        "canonical": "gemma-4-31b-it",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/gemma-4-31b-it",
-      "litellm_params": {
         "model": "openai/google/gemma-4-31b-it",
         "litellm_credential_name": "requesty",
         "order": 6,
@@ -3368,6 +3331,29 @@
         "id": "free/nvidia/fastino/gliner2-pii",
         "route": "nvidia",
         "canonical": "gliner2-pii",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/glm-4.1v-thinking-flash",
+      "litellm_params": {
+        "model": "openai/glm-4.1v-thinking-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/glm-4.1v-thinking-flash:free",
+        "route": "unorouter",
+        "canonical": "glm-4.1v-thinking-flash",
         "access_groups": [
           "free"
         ],
@@ -3628,7 +3614,8 @@
         "canonical": "glm-5",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -3707,7 +3694,8 @@
         "canonical": "glm-5.2",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -3745,7 +3733,8 @@
         "canonical": "glm-5.3",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -3901,7 +3890,8 @@
         "canonical": "glm-5.3-flash",
         "access_groups": [
           "free"
-        ]
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -4000,6 +3990,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -4022,6 +4013,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -4044,6 +4036,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -4512,6 +4505,29 @@
         "id": "free/unorouter/gpt-6-luna:free",
         "route": "unorouter",
         "canonical": "gpt-6-luna",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/gpt-6.1-sol",
+      "litellm_params": {
+        "model": "openai/gpt-6.1-sol:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/gpt-6.1-sol:free",
+        "route": "unorouter",
+        "canonical": "gpt-6.1-sol",
         "access_groups": [
           "free"
         ],
@@ -5104,29 +5120,6 @@
       }
     },
     {
-      "model_name": "free/k-exaone-2.5",
-      "litellm_params": {
-        "model": "openai/k-exaone-2.5:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/k-exaone-2.5:free",
-        "route": "unorouter",
-        "canonical": "k-exaone-2.5",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/k2-horizon",
       "litellm_params": {
         "model": "openai/k2-horizon:free",
@@ -5251,6 +5244,52 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/l3-70b-euryale-v2.1",
+      "litellm_params": {
+        "model": "openai/l3-70b-euryale-v2.1:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/l3-70b-euryale-v2.1:free",
+        "route": "unorouter",
+        "canonical": "l3-70b-euryale-v2.1",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/l3.3-ms-nevoria-70b",
+      "litellm_params": {
+        "model": "openai/l3.3-ms-nevoria-70b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/l3.3-ms-nevoria-70b:free",
+        "route": "unorouter",
+        "canonical": "l3.3-ms-nevoria-70b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -5722,6 +5761,52 @@
       }
     },
     {
+      "model_name": "free/manta-flash-1.0",
+      "litellm_params": {
+        "model": "openai/manta-flash-1.0:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/manta-flash-1.0:free",
+        "route": "unorouter",
+        "canonical": "manta-flash-1.0",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/manta-mini-1.0",
+      "litellm_params": {
+        "model": "openai/manta-mini-1.0:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/manta-mini-1.0:free",
+        "route": "unorouter",
+        "canonical": "manta-mini-1.0",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/mercury-3",
       "litellm_params": {
         "model": "openai/mercury-3:free",
@@ -5784,6 +5869,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -5806,6 +5892,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -5868,6 +5955,26 @@
       "model_info": {
         "id": "free/poe/mimo-v2.6-flash",
         "route": "poe",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "openai/mimo-v2.6-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/mimo-v2.6-flash:free",
+        "route": "unorouter",
         "canonical": "mimo-v2.6-flash",
         "access_groups": [
           "free"
@@ -6027,26 +6134,6 @@
     {
       "model_name": "free/minimax-m2.7",
       "litellm_params": {
-        "model": "openai/minimax-m2.7",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/minimax-m2.7",
-        "route": "unorouter",
-        "canonical": "minimax-m2.7",
-        "access_groups": [
-          "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/minimax-m2.7",
-      "litellm_params": {
         "model": "neosantara/minimax-m2.7-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -6136,29 +6223,8 @@
         "canonical": "minimax-m3",
         "access_groups": [
           "free"
-        ]
-      }
-    },
-    {
-      "model_name": "free/minimax-m3-1-flash",
-      "litellm_params": {
-        "model": "openai/minimax-m3-1-flash",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/minimax-m3-1-flash",
-        "route": "inferbase",
-        "canonical": "minimax-m3-1-flash",
-        "access_groups": [
-          "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
@@ -6236,6 +6302,26 @@
         "access_groups": [
           "free"
         ]
+      }
+    },
+    {
+      "model_name": "free/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "openai/minimax-m3-1-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/minimax-m3-1-flash",
+        "route": "inferbase",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192
       }
     },
     {
@@ -6492,6 +6578,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -6537,6 +6624,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -6579,6 +6667,29 @@
         "id": "free/cloudflare/@cf/mistralai/mistral-small-3.1-24b-instruct",
         "route": "cloudflare",
         "canonical": "mistral-small-3.1-24b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/mistral-small-3.2",
+      "litellm_params": {
+        "model": "openai/mistral-small-3.2:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/mistral-small-3.2:free",
+        "route": "unorouter",
+        "canonical": "mistral-small-3.2",
         "access_groups": [
           "free"
         ],
@@ -6654,6 +6765,52 @@
       }
     },
     {
+      "model_name": "free/mn-violet-lotus-12b",
+      "litellm_params": {
+        "model": "openai/mn-violet-lotus-12b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/mn-violet-lotus-12b:free",
+        "route": "unorouter",
+        "canonical": "mn-violet-lotus-12b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/moonshot-kimi-k2-instruct",
+      "litellm_params": {
+        "model": "openai/moonshot-kimi-k2-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/moonshot-kimi-k2-instruct",
+        "route": "inferbase",
+        "canonical": "moonshot-kimi-k2-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/muse-ember",
       "litellm_params": {
         "model": "poe/muse-ember",
@@ -6678,6 +6835,26 @@
     {
       "model_name": "free/muse-glimmer-30b",
       "litellm_params": {
+        "model": "openai/muse-glimmer-30b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/muse-glimmer-30b:free",
+        "route": "unorouter",
+        "canonical": "muse-glimmer-30b",
+        "access_groups": [
+          "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/muse-glimmer-30b",
+      "litellm_params": {
         "model": "openai/nvidia/muse-glimmer-30b",
         "litellm_credential_name": "requesty",
         "order": 6,
@@ -6691,10 +6868,7 @@
         "canonical": "muse-glimmer-30b",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -7580,6 +7754,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -7602,6 +7777,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -7624,6 +7800,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -7781,6 +7958,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -7800,6 +7978,30 @@
         "id": "free/inferbase/openai-gpt-oss-20b",
         "route": "inferbase",
         "canonical": "openai-gpt-oss-20b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/orca-router",
+      "litellm_params": {
+        "model": "openai/orca-router:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/orca-router:free",
+        "route": "unorouter",
+        "canonical": "orca-router",
         "access_groups": [
           "free"
         ],
@@ -7998,6 +8200,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8060,6 +8263,29 @@
         "access_groups": [
           "free"
         ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen2.5-72b-instruct",
+      "litellm_params": {
+        "model": "openai/qwen2-5-72b-instruct",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen2-5-72b-instruct",
+        "route": "inferbase",
+        "canonical": "qwen2.5-72b-instruct",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8151,6 +8377,30 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3-235b",
+      "litellm_params": {
+        "model": "openai/qwen3-235b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/qwen3-235b:free",
+        "route": "unorouter",
+        "canonical": "qwen3-235b",
+        "access_groups": [
+          "free"
+        ],
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8173,29 +8423,7 @@
         "access_groups": [
           "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-235b-instruct",
-      "litellm_params": {
-        "model": "openai/qwen3-235b-instruct:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1
-      },
-      "model_info": {
-        "id": "free/unorouter/qwen3-235b-instruct:free",
-        "route": "unorouter",
-        "canonical": "qwen3-235b-instruct",
-        "access_groups": [
-          "free"
-        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8218,6 +8446,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8240,248 +8469,7 @@
         "access_groups": [
           "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-5-122b-a10b",
-      "litellm_params": {
-        "model": "openai/qwen3-5-122b-a10b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-5-122b-a10b",
-        "route": "inferbase",
-        "canonical": "qwen3-5-122b-a10b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-5-27b",
-      "litellm_params": {
-        "model": "openai/qwen3-5-27b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-5-27b",
-        "route": "inferbase",
-        "canonical": "qwen3-5-27b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-5-35b-a3b",
-      "litellm_params": {
-        "model": "openai/qwen3-5-35b-a3b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-5-35b-a3b",
-        "route": "inferbase",
-        "canonical": "qwen3-5-35b-a3b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-5-397b-a17b",
-      "litellm_params": {
-        "model": "openai/qwen3-5-397b-a17b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-5-397b-a17b",
-        "route": "inferbase",
-        "canonical": "qwen3-5-397b-a17b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-5-9b",
-      "litellm_params": {
-        "model": "openai/qwen3-5-9b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-5-9b",
-        "route": "inferbase",
-        "canonical": "qwen3-5-9b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-6-27b",
-      "litellm_params": {
-        "model": "openai/qwen3-6-27b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-6-27b",
-        "route": "inferbase",
-        "canonical": "qwen3-6-27b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-6-35b-a3b",
-      "litellm_params": {
-        "model": "openai/qwen3-6-35b-a3b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-6-35b-a3b",
-        "route": "inferbase",
-        "canonical": "qwen3-6-35b-a3b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-7-max",
-      "litellm_params": {
-        "model": "openai/qwen3-7-max",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-7-max",
-        "route": "inferbase",
-        "canonical": "qwen3-7-max",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-8-27b",
-      "litellm_params": {
-        "model": "openai/qwen3-8-27b",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-8-27b",
-        "route": "inferbase",
-        "canonical": "qwen3-8-27b",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-8-flash",
-      "litellm_params": {
-        "model": "openai/qwen3-8-flash",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-8-flash",
-        "route": "inferbase",
-        "canonical": "qwen3-8-flash",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-8-max",
-      "litellm_params": {
-        "model": "openai/qwen3-8-max",
-        "litellm_credential_name": "inferbase",
-        "order": 10,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0
-      },
-      "model_info": {
-        "id": "free/inferbase/qwen3-8-max",
-        "route": "inferbase",
-        "canonical": "qwen3-8-max",
-        "access_groups": [
-          "free"
-        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8526,6 +8514,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8570,6 +8559,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8592,6 +8582,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8614,6 +8605,99 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-27b",
+        "route": "inferbase",
+        "canonical": "qwen3.5-27b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-35b-a3b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-35b-a3b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-35b-a3b",
+        "route": "inferbase",
+        "canonical": "qwen3.5-35b-a3b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-397b-a17b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-397b-a17b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-397b-a17b",
+        "route": "inferbase",
+        "canonical": "qwen3.5-397b-a17b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.5-9b",
+      "litellm_params": {
+        "model": "openai/qwen3-5-9b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-5-9b",
+        "route": "inferbase",
+        "canonical": "qwen3.5-9b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8679,10 +8763,27 @@
         "canonical": "qwen3.6-27b",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/qwen3.6-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-6-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-6-27b",
+        "route": "inferbase",
+        "canonical": "qwen3.6-27b",
+        "access_groups": [
+          "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
@@ -8701,10 +8802,27 @@
         "canonical": "qwen3.6-35b-a3b",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/qwen3.6-35b-a3b",
+      "litellm_params": {
+        "model": "openai/qwen3-6-35b-a3b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-6-35b-a3b",
+        "route": "inferbase",
+        "canonical": "qwen3.6-35b-a3b",
+        "access_groups": [
+          "free"
         ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "max_input_tokens": 8192
       }
     },
     {
@@ -8724,6 +8842,29 @@
         "access_groups": [
           "free"
         ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/qwen3.7-max",
+      "litellm_params": {
+        "model": "openai/qwen3-7-max",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-7-max",
+        "route": "inferbase",
+        "canonical": "qwen3.7-max",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8835,6 +8976,26 @@
       }
     },
     {
+      "model_name": "free/qwen3.8-27b",
+      "litellm_params": {
+        "model": "openai/qwen3-8-27b",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-27b",
+        "route": "inferbase",
+        "canonical": "qwen3.8-27b",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192
+      }
+    },
+    {
       "model_name": "free/qwen3.8-flash",
       "litellm_params": {
         "model": "poe/qwen3.8-flash",
@@ -8850,7 +9011,47 @@
         "canonical": "qwen3.8-flash",
         "access_groups": [
           "free"
+        ]
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-flash",
+      "litellm_params": {
+        "model": "openai/qwen3-8-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-flash",
+        "route": "inferbase",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "free"
         ],
+        "max_input_tokens": 8192
+      }
+    },
+    {
+      "model_name": "free/qwen3.8-max",
+      "litellm_params": {
+        "model": "openai/qwen3-8-max",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-max",
+        "route": "inferbase",
+        "canonical": "qwen3.8-max",
+        "access_groups": [
+          "free"
+        ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -9025,6 +9226,29 @@
         "id": "free/unorouter/sensenova-6.8-flash-lite:free",
         "route": "unorouter",
         "canonical": "sensenova-6.8-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/solar-mini-4",
+      "litellm_params": {
+        "model": "openai/solar-mini-4:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1
+      },
+      "model_info": {
+        "id": "free/unorouter/solar-mini-4:free",
+        "route": "unorouter",
+        "canonical": "solar-mini-4",
         "access_groups": [
           "free"
         ],
@@ -9402,6 +9626,7 @@
         "access_groups": [
           "free"
         ],
+        "max_input_tokens": 8192,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -9720,6 +9945,48 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe",
+        "order": 1,
+        "weight": 2,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:magistral-medium-latest",
+        "route": "vibe",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "canonical"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:magistral-medium-latest",
+        "route": "vibe-study",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "canonical"
+        ],
+        "account": "vibe-study"
       }
     },
     {
@@ -10058,7 +10325,7 @@
     {
       "model_name": "mistral-embed",
       "litellm_params": {
-        "model": "mistral/mistral-embed",
+        "model": "mistral/mistral-embed-2312",
         "litellm_credential_name": "vibe-api",
         "order": 1,
         "weight": 2,
@@ -10067,7 +10334,7 @@
         "cooldown_time": 3600
       },
       "model_info": {
-        "id": "vibe-api:mistral-embed",
+        "id": "vibe-api:mistral-embed-2312",
         "route": "vibe-api",
         "canonical": "mistral-embed",
         "access_groups": [
@@ -10080,7 +10347,7 @@
     {
       "model_name": "mistral-embed",
       "litellm_params": {
-        "model": "mistral/mistral-embed",
+        "model": "mistral/mistral-embed-2312",
         "litellm_credential_name": "vibe-study-api",
         "order": 1,
         "weight": 1,
@@ -10089,7 +10356,7 @@
         "cooldown_time": 3600
       },
       "model_info": {
-        "id": "vibe-study-api:mistral-embed",
+        "id": "vibe-study-api:mistral-embed-2312",
         "route": "vibe-study-api",
         "canonical": "mistral-embed",
         "access_groups": [
@@ -10097,48 +10364,6 @@
         ],
         "account": "vibe-study-api",
         "mode": "embedding"
-      }
-    },
-    {
-      "model_name": "mistral-large",
-      "litellm_params": {
-        "model": "mistral/mistral-large-latest",
-        "litellm_credential_name": "vibe",
-        "order": 1,
-        "weight": 2,
-        "max_budget": 255,
-        "budget_duration": "1mo",
-        "cooldown_time": 3600
-      },
-      "model_info": {
-        "id": "vibe:mistral-large-latest",
-        "route": "vibe",
-        "canonical": "mistral-large",
-        "access_groups": [
-          "canonical"
-        ],
-        "account": "vibe"
-      }
-    },
-    {
-      "model_name": "mistral-large",
-      "litellm_params": {
-        "model": "mistral/mistral-large-latest",
-        "litellm_credential_name": "vibe-study",
-        "order": 1,
-        "weight": 1,
-        "max_budget": 127,
-        "budget_duration": "1mo",
-        "cooldown_time": 3600
-      },
-      "model_info": {
-        "id": "vibe-study:mistral-large-latest",
-        "route": "vibe-study",
-        "canonical": "mistral-large",
-        "access_groups": [
-          "canonical"
-        ],
-        "account": "vibe-study"
       }
     },
     {
@@ -10658,48 +10883,6 @@
       }
     },
     {
-      "model_name": "mistral-vibe-cli",
-      "litellm_params": {
-        "model": "mistral/mistral-vibe-cli-latest",
-        "litellm_credential_name": "vibe",
-        "order": 1,
-        "weight": 2,
-        "max_budget": 255,
-        "budget_duration": "1mo",
-        "cooldown_time": 3600
-      },
-      "model_info": {
-        "id": "vibe:mistral-vibe-cli-latest",
-        "route": "vibe",
-        "canonical": "mistral-vibe-cli",
-        "access_groups": [
-          "canonical"
-        ],
-        "account": "vibe"
-      }
-    },
-    {
-      "model_name": "mistral-vibe-cli",
-      "litellm_params": {
-        "model": "mistral/mistral-vibe-cli-latest",
-        "litellm_credential_name": "vibe-study",
-        "order": 1,
-        "weight": 1,
-        "max_budget": 127,
-        "budget_duration": "1mo",
-        "cooldown_time": 3600
-      },
-      "model_info": {
-        "id": "vibe-study:mistral-vibe-cli-latest",
-        "route": "vibe-study",
-        "canonical": "mistral-vibe-cli",
-        "access_groups": [
-          "canonical"
-        ],
-        "account": "vibe-study"
-      }
-    },
-    {
       "model_name": "mistral-vibe-cli-fast",
       "litellm_params": {
         "model": "mistral/mistral-vibe-cli-fast",
@@ -10943,6 +11126,2280 @@
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
+      }
+    },
+    {
+      "model_name": "paid/codestral",
+      "litellm_params": {
+        "model": "mistral/codestral-2508",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:codestral-2508",
+        "route": "vibe-study",
+        "canonical": "codestral",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/codestral",
+      "litellm_params": {
+        "model": "mistral/codestral-2508",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:codestral-2508",
+        "route": "vibe",
+        "canonical": "codestral",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/codestral",
+      "litellm_params": {
+        "model": "mistral/codestral-2508",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:codestral-2508",
+        "route": "vibe-study-api",
+        "canonical": "codestral",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/codestral",
+      "litellm_params": {
+        "model": "mistral/codestral-2508",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:codestral-2508",
+        "route": "vibe-api",
+        "canonical": "codestral",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "mistral/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:deepseek-v4-1-flash-1017",
+        "route": "vibe-study",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "mistral/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:deepseek-v4-1-flash-1017",
+        "route": "vibe",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "opencode_go/deepseek-v4.1-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:deepseek-v4.1-flash",
+        "route": "opencode-go",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go"
+      }
+    },
+    {
+      "model_name": "paid/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "mistral/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:deepseek-v4-1-flash-1017",
+        "route": "vibe-study-api",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "mistral/deepseek-v4-1-flash-1017",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:deepseek-v4-1-flash-1017",
+        "route": "vibe-api",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/gemini-decision-1",
+      "litellm_params": {
+        "model": "opencode_go/gemini-decision-1",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:gemini-decision-1",
+        "route": "opencode-go",
+        "canonical": "gemini-decision-1",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/glm-5",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:zai-glm-5",
+        "route": "vibe-study",
+        "canonical": "glm-5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/glm-5",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:zai-glm-5",
+        "route": "vibe",
+        "canonical": "glm-5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/glm-5",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:zai-glm-5",
+        "route": "vibe-study-api",
+        "canonical": "glm-5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/glm-5",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:zai-glm-5",
+        "route": "vibe-api",
+        "canonical": "glm-5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:zai-glm-5-3",
+        "route": "vibe-study",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:zai-glm-5-3",
+        "route": "vibe",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:zai-glm-5-3",
+        "route": "vibe-study-api",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:zai-glm-5-3",
+        "route": "vibe-api",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3-flash",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3-flash",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:zai-glm-5-3-flash",
+        "route": "vibe-study",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3-flash",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3-flash",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:zai-glm-5-3-flash",
+        "route": "vibe",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3-flash",
+      "litellm_params": {
+        "model": "opencode_go/glm-5.3-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:glm-5.3-flash",
+        "route": "opencode-go",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3-flash",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3-flash",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:zai-glm-5-3-flash",
+        "route": "vibe-study-api",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/glm-5.3-flash",
+      "litellm_params": {
+        "model": "mistral/zai-glm-5-3-flash",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:zai-glm-5-3-flash",
+        "route": "vibe-api",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/gpt-6-luna",
+      "litellm_params": {
+        "model": "opencode_go/gpt-6-luna",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:gpt-6-luna",
+        "route": "opencode-go",
+        "canonical": "gpt-6-luna",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/hy3",
+      "litellm_params": {
+        "model": "opencode_go/hy3",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:hy3",
+        "route": "opencode-go",
+        "canonical": "hy3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/hy4-preview",
+      "litellm_params": {
+        "model": "opencode_go/hy4-preview",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:hy4-preview",
+        "route": "opencode-go",
+        "canonical": "hy4-preview",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/jev-1.14.0",
+      "litellm_params": {
+        "model": "opencode_go/jev-1.14",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:jev-1.14",
+        "route": "opencode-go",
+        "canonical": "jev-1.14.0",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/kimi-k2.7-code",
+      "litellm_params": {
+        "model": "opencode_go/kimi-k2.7-code",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:kimi-k2.7-code",
+        "route": "opencode-go",
+        "canonical": "kimi-k2.7-code",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/longcat-2.5",
+      "litellm_params": {
+        "model": "opencode_go/longcat-2.5",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:longcat-2.5",
+        "route": "opencode-go",
+        "canonical": "longcat-2.5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:magistral-medium-latest",
+        "route": "vibe-study",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:magistral-medium-latest",
+        "route": "vibe",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:magistral-medium-latest",
+        "route": "vibe-study-api",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/magistral-medium",
+      "litellm_params": {
+        "model": "mistral/magistral-medium-latest",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:magistral-medium-latest",
+        "route": "vibe-api",
+        "canonical": "magistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/magistral-small",
+      "litellm_params": {
+        "model": "mistral/magistral-small-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:magistral-small-latest",
+        "route": "vibe-study",
+        "canonical": "magistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/magistral-small",
+      "litellm_params": {
+        "model": "mistral/magistral-small-latest",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:magistral-small-latest",
+        "route": "vibe",
+        "canonical": "magistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/magistral-small",
+      "litellm_params": {
+        "model": "mistral/magistral-small-latest",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:magistral-small-latest",
+        "route": "vibe-study-api",
+        "canonical": "magistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/magistral-small",
+      "litellm_params": {
+        "model": "mistral/magistral-small-latest",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:magistral-small-latest",
+        "route": "vibe-api",
+        "canonical": "magistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "opencode_go/mimo-v2.6-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:mimo-v2.6-flash",
+        "route": "opencode-go",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/mimo-v2.6-pro",
+      "litellm_params": {
+        "model": "opencode_go/mimo-v2.6-pro",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:mimo-v2.6-pro",
+        "route": "opencode-go",
+        "canonical": "mimo-v2.6-pro",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "opencode_go/minimax-m3.1-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:minimax-m3.1-flash",
+        "route": "opencode-go",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/ministral-14b",
+      "litellm_params": {
+        "model": "mistral/ministral-14b-2512",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:ministral-14b-2512",
+        "route": "vibe-study",
+        "canonical": "ministral-14b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/ministral-14b",
+      "litellm_params": {
+        "model": "mistral/ministral-14b-2512",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:ministral-14b-2512",
+        "route": "vibe",
+        "canonical": "ministral-14b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/ministral-14b",
+      "litellm_params": {
+        "model": "mistral/ministral-14b-2512",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:ministral-14b-2512",
+        "route": "vibe-study-api",
+        "canonical": "ministral-14b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/ministral-14b",
+      "litellm_params": {
+        "model": "mistral/ministral-14b-2512",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:ministral-14b-2512",
+        "route": "vibe-api",
+        "canonical": "ministral-14b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/ministral-3b",
+      "litellm_params": {
+        "model": "mistral/ministral-3b-2512",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:ministral-3b-2512",
+        "route": "vibe-study",
+        "canonical": "ministral-3b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/ministral-3b",
+      "litellm_params": {
+        "model": "mistral/ministral-3b-2512",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:ministral-3b-2512",
+        "route": "vibe",
+        "canonical": "ministral-3b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/ministral-3b",
+      "litellm_params": {
+        "model": "mistral/ministral-3b-2512",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:ministral-3b-2512",
+        "route": "vibe-study-api",
+        "canonical": "ministral-3b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/ministral-3b",
+      "litellm_params": {
+        "model": "mistral/ministral-3b-2512",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:ministral-3b-2512",
+        "route": "vibe-api",
+        "canonical": "ministral-3b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/ministral-8b",
+      "litellm_params": {
+        "model": "mistral/ministral-8b-2512",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:ministral-8b-2512",
+        "route": "vibe-study",
+        "canonical": "ministral-8b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/ministral-8b",
+      "litellm_params": {
+        "model": "mistral/ministral-8b-2512",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:ministral-8b-2512",
+        "route": "vibe",
+        "canonical": "ministral-8b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/ministral-8b",
+      "litellm_params": {
+        "model": "mistral/ministral-8b-2512",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:ministral-8b-2512",
+        "route": "vibe-study-api",
+        "canonical": "ministral-8b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/ministral-8b",
+      "litellm_params": {
+        "model": "mistral/ministral-8b-2512",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:ministral-8b-2512",
+        "route": "vibe-api",
+        "canonical": "ministral-8b",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code",
+      "litellm_params": {
+        "model": "mistral/mistral-code-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-code-latest",
+        "route": "vibe-study",
+        "canonical": "mistral-code",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code",
+      "litellm_params": {
+        "model": "mistral/mistral-code-latest",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-code-latest",
+        "route": "vibe",
+        "canonical": "mistral-code",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code",
+      "litellm_params": {
+        "model": "mistral/mistral-code-latest",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-code-latest",
+        "route": "vibe-study-api",
+        "canonical": "mistral-code",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code",
+      "litellm_params": {
+        "model": "mistral/mistral-code-latest",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-code-latest",
+        "route": "vibe-api",
+        "canonical": "mistral-code",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code-fim",
+      "litellm_params": {
+        "model": "mistral/mistral-code-fim-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-code-fim-latest",
+        "route": "vibe-study",
+        "canonical": "mistral-code-fim",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code-fim",
+      "litellm_params": {
+        "model": "mistral/mistral-code-fim-latest",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-code-fim-latest",
+        "route": "vibe",
+        "canonical": "mistral-code-fim",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code-fim",
+      "litellm_params": {
+        "model": "mistral/mistral-code-fim-latest",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-code-fim-latest",
+        "route": "vibe-study-api",
+        "canonical": "mistral-code-fim",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-code-fim",
+      "litellm_params": {
+        "model": "mistral/mistral-code-fim-latest",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-code-fim-latest",
+        "route": "vibe-api",
+        "canonical": "mistral-code-fim",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-large-4",
+        "route": "vibe-study",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-large-4",
+        "route": "vibe",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-large-4",
+        "route": "vibe-study-api",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-large-4",
+        "route": "vibe-api",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4-0",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4-0",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-large-4-0",
+        "route": "vibe-study",
+        "canonical": "mistral-large-4-0",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4-0",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4-0",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-large-4-0",
+        "route": "vibe",
+        "canonical": "mistral-large-4-0",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4-0",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4-0",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-large-4-0",
+        "route": "vibe-study-api",
+        "canonical": "mistral-large-4-0",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-large-4-0",
+      "litellm_params": {
+        "model": "mistral/mistral-large-4-0",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-large-4-0",
+        "route": "vibe-api",
+        "canonical": "mistral-large-4-0",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium",
+      "litellm_params": {
+        "model": "mistral/mistral-medium",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-medium",
+        "route": "vibe-study",
+        "canonical": "mistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium",
+      "litellm_params": {
+        "model": "mistral/mistral-medium",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-medium",
+        "route": "vibe",
+        "canonical": "mistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium",
+      "litellm_params": {
+        "model": "mistral/mistral-medium",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-medium",
+        "route": "vibe-study-api",
+        "canonical": "mistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium",
+      "litellm_params": {
+        "model": "mistral/mistral-medium",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-medium",
+        "route": "vibe-api",
+        "canonical": "mistral-medium",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-medium-3",
+        "route": "vibe-study",
+        "canonical": "mistral-medium-3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-medium-3",
+        "route": "vibe",
+        "canonical": "mistral-medium-3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-medium-3",
+        "route": "vibe-study-api",
+        "canonical": "mistral-medium-3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-medium-3",
+        "route": "vibe-api",
+        "canonical": "mistral-medium-3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3.5",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3-5",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-medium-3-5",
+        "route": "vibe-study",
+        "canonical": "mistral-medium-3.5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3.5",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3-5",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-medium-3-5",
+        "route": "vibe",
+        "canonical": "mistral-medium-3.5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3.5",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3-5",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-medium-3-5",
+        "route": "vibe-study-api",
+        "canonical": "mistral-medium-3.5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-medium-3.5",
+      "litellm_params": {
+        "model": "mistral/mistral-medium-3-5",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-medium-3-5",
+        "route": "vibe-api",
+        "canonical": "mistral-medium-3.5",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-small",
+      "litellm_params": {
+        "model": "mistral/mistral-small-2603",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-small-2603",
+        "route": "vibe-study",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-small",
+      "litellm_params": {
+        "model": "mistral/mistral-small-2603",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-small-2603",
+        "route": "vibe",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-small",
+      "litellm_params": {
+        "model": "mistral/mistral-small-2603",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-small-2603",
+        "route": "vibe-study-api",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-small",
+      "litellm_params": {
+        "model": "mistral/mistral-small-2603",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-small-2603",
+        "route": "vibe-api",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-fast",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-fast",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-vibe-cli-fast",
+        "route": "vibe-study",
+        "canonical": "mistral-vibe-cli-fast",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-fast",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-fast",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-vibe-cli-fast",
+        "route": "vibe",
+        "canonical": "mistral-vibe-cli-fast",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-fast",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-fast",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-vibe-cli-fast",
+        "route": "vibe-study-api",
+        "canonical": "mistral-vibe-cli-fast",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-fast",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-fast",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-vibe-cli-fast",
+        "route": "vibe-api",
+        "canonical": "mistral-vibe-cli-fast",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-with-tools",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-with-tools",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:mistral-vibe-cli-with-tools",
+        "route": "vibe-study",
+        "canonical": "mistral-vibe-cli-with-tools",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-with-tools",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-with-tools",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:mistral-vibe-cli-with-tools",
+        "route": "vibe",
+        "canonical": "mistral-vibe-cli-with-tools",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-with-tools",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-with-tools",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:mistral-vibe-cli-with-tools",
+        "route": "vibe-study-api",
+        "canonical": "mistral-vibe-cli-with-tools",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/mistral-vibe-cli-with-tools",
+      "litellm_params": {
+        "model": "mistral/mistral-vibe-cli-with-tools",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:mistral-vibe-cli-with-tools",
+        "route": "vibe-api",
+        "canonical": "mistral-vibe-cli-with-tools",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/muse-spark-1.2",
+      "litellm_params": {
+        "model": "opencode_go/muse-spark-1.2-contributor",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:muse-spark-1.2-contributor",
+        "route": "opencode-go",
+        "canonical": "muse-spark-1.2",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/muse-spark-1.3",
+      "litellm_params": {
+        "model": "opencode_go/muse-spark-1.3-contributor",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:muse-spark-1.3-contributor",
+        "route": "opencode-go",
+        "canonical": "muse-spark-1.3",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/qwen3.8-flash",
+      "litellm_params": {
+        "model": "opencode_go/qwen3.8-flash",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:qwen3.8-flash",
+        "route": "opencode-go",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/step-5-preview",
+      "litellm_params": {
+        "model": "opencode_go/step-5-preview",
+        "litellm_credential_name": "opencode-go",
+        "extra_headers": {
+          "x-opencode-session": "litellm-proxy"
+        },
+        "order": 3,
+        "weight": 1,
+        "max_budget": 40,
+        "budget_duration": "30d",
+        "cooldown_time": 900
+      },
+      "model_info": {
+        "id": "opencode-go:step-5-preview",
+        "route": "opencode-go",
+        "canonical": "step-5-preview",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "opencode-go",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "paid/voxtral-small",
+      "litellm_params": {
+        "model": "mistral/voxtral-small-2507",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:voxtral-small-2507",
+        "route": "vibe-study",
+        "canonical": "voxtral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/voxtral-small",
+      "litellm_params": {
+        "model": "mistral/voxtral-small-2507",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:voxtral-small-2507",
+        "route": "vibe",
+        "canonical": "voxtral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/voxtral-small",
+      "litellm_params": {
+        "model": "mistral/voxtral-small-2507",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:voxtral-small-2507",
+        "route": "vibe-study-api",
+        "canonical": "voxtral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/voxtral-small",
+      "litellm_params": {
+        "model": "mistral/voxtral-small-2507",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:voxtral-small-2507",
+        "route": "vibe-api",
+        "canonical": "voxtral-small",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
+      }
+    },
+    {
+      "model_name": "paid/zai-glm",
+      "litellm_params": {
+        "model": "mistral/zai-glm-latest",
+        "litellm_credential_name": "vibe-study",
+        "order": 1,
+        "weight": 1,
+        "max_budget": 127,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study:zai-glm-latest",
+        "route": "vibe-study",
+        "canonical": "zai-glm",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study"
+      }
+    },
+    {
+      "model_name": "paid/zai-glm",
+      "litellm_params": {
+        "model": "mistral/zai-glm-latest",
+        "litellm_credential_name": "vibe",
+        "order": 2,
+        "weight": 1,
+        "max_budget": 255,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe:zai-glm-latest",
+        "route": "vibe",
+        "canonical": "zai-glm",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe"
+      }
+    },
+    {
+      "model_name": "paid/zai-glm",
+      "litellm_params": {
+        "model": "mistral/zai-glm-latest",
+        "litellm_credential_name": "vibe-study-api",
+        "order": 4,
+        "weight": 1,
+        "max_budget": 12.7,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-study-api:zai-glm-latest",
+        "route": "vibe-study-api",
+        "canonical": "zai-glm",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-study-api"
+      }
+    },
+    {
+      "model_name": "paid/zai-glm",
+      "litellm_params": {
+        "model": "mistral/zai-glm-latest",
+        "litellm_credential_name": "vibe-api",
+        "order": 5,
+        "weight": 1,
+        "max_budget": 25.5,
+        "budget_duration": "1mo",
+        "cooldown_time": 3600
+      },
+      "model_info": {
+        "id": "vibe-api:zai-glm-latest",
+        "route": "vibe-api",
+        "canonical": "zai-glm",
+        "access_groups": [
+          "paid"
+        ],
+        "account": "vibe-api"
       }
     },
     {
