@@ -143,17 +143,19 @@ test('every anthropic deployment is gated behind the anthropic access group, nev
   assert.doesNotMatch(CONFIG, /model_name: anthropic\//)
 })
 
-test('every opencode-go free id is public only, in its own opencode-go-free group', () => {
-  for (const deployment of DEPLOYMENTS) {
-    if (deployment.model_name.startsWith('free/')) continue // the shared free group has its own access group
-    const free = deployment.model_info?.route === 'opencode-go' && deployment.litellm_params.model.endsWith('-free')
-    assert.equal(deployment.model_info.access_groups.includes('opencode-go-free-public'), free, deployment.model_info.id)
-    if (free) {
-      assert.deepEqual(deployment.model_info.access_groups, ['opencode-go-free-public', 'free'], deployment.model_info.id)
-      assert.ok(deployment.model_name.startsWith('opencode-go-free/'), deployment.model_name)
-      assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
-    }
+test('every opencode-go -free id is a free/<model> copy alone in the free group, never in a paid group', () => {
+  // OpenCode Go serves its -free ids on a paid route: they join free/<model> only (AGENTS.md, "Free groups").
+  const free = DEPLOYMENTS.filter((deployment) => deployment.model_info?.route === 'opencode-go' && deployment.litellm_params.model.endsWith('-free'))
+  assert.ok(free.length > 0)
+  for (const deployment of free) {
+    assert.ok(deployment.model_name.startsWith('free/'), deployment.model_name)
+    assert.deepEqual(deployment.model_info.access_groups, ['free'], deployment.model_info.id)
+    assert.equal(deployment.litellm_params.input_cost_per_token, 0, deployment.model_info.id)
+    assert.equal(deployment.litellm_params.output_cost_per_token, 0, deployment.model_info.id)
+    assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
   }
+  assert.ok(!DEPLOYMENTS.some((deployment) => deployment.model_name.startsWith('opencode-go-free/')))
+  assert.ok(!DEPLOYMENTS.some((deployment) => deployment.model_info.access_groups.includes('opencode-go-free-public')))
 })
 
 test('no openrouter deployment denies free-model training: the route is public work only', () => {
