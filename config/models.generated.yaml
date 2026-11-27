@@ -5380,28 +5380,24 @@
       }
     },
     {
-      "model_name": "free/hy3",
+      "model_name": "free/hy4-flash",
       "litellm_params": {
-        "model": "openai/hy3:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
+        "model": "neosantara/hy4-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
         "weight": 1,
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
-        "rpm": 1,
         "timeout": 30,
         "stream_timeout": 30
       },
       "model_info": {
-        "id": "free/unorouter/hy3:free",
-        "route": "unorouter",
-        "canonical": "hy3",
+        "id": "free/neosantara/hy4-flash-free",
+        "route": "neosantara",
+        "canonical": "hy4-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -5425,10 +5421,7 @@
         "canonical": "hy4-flash",
         "access_groups": [
           "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        ]
       }
     },
     {
@@ -6176,31 +6169,6 @@
         "id": "free/neosantara/longcat-2.0",
         "route": "neosantara",
         "canonical": "longcat-2.0",
-        "access_groups": [
-          "free"
-        ],
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/manta-flash-1.0",
-      "litellm_params": {
-        "model": "openai/manta-flash-1.0:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 30,
-        "stream_timeout": 30
-      },
-      "model_info": {
-        "id": "free/unorouter/manta-flash-1.0:free",
-        "route": "unorouter",
-        "canonical": "manta-flash-1.0",
         "access_groups": [
           "free"
         ],
@@ -9980,6 +9948,30 @@
       }
     },
     {
+      "model_name": "free/solar-mini4",
+      "litellm_params": {
+        "model": "neosantara/solar-mini4-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 30,
+        "stream_timeout": 30
+      },
+      "model_info": {
+        "id": "free/neosantara/solar-mini4-free",
+        "route": "neosantara",
+        "canonical": "solar-mini4",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/solaria-3",
       "litellm_params": {
         "model": "ovhcloud/solaria-3",
@@ -10020,6 +10012,30 @@
         "id": "free/nvidia/bigcode/starcoder2-15b",
         "route": "nvidia",
         "canonical": "starcoder2-15b",
+        "access_groups": [
+          "free"
+        ],
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/step-3.7-flash",
+      "litellm_params": {
+        "model": "neosantara/step-3.7-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 30,
+        "stream_timeout": 30
+      },
+      "model_info": {
+        "id": "free/neosantara/step-3.7-flash-free",
+        "route": "neosantara",
+        "canonical": "step-3.7-flash",
         "access_groups": [
           "free"
         ],
