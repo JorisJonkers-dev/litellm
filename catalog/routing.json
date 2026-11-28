@@ -27,6 +27,19 @@
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
   "paid_route_order": ["vibe-study", "vibe", "opencode-go", "vibe-study-api", "vibe-api"],
+  "families": {
+    "_source": "Short family names (litellm#941): free/<family>, paid/<family> and auto/<family> are aliases of the newest model of the family in that prefix. A model joins a family when its name matches the pattern; the named group v is its version (dots split it into numbers, the larger tuple is newer). A family name that is itself a model group (Mistral's versionless names) is that group and gets no alias.",
+    "deepseek-flash": "^deepseek-v(?P<v>[0-9]+(?:\\.[0-9]+)*)-flash$",
+    "deepseek-pro": "^deepseek-v(?P<v>[0-9]+(?:\\.[0-9]+)*)-pro$",
+    "glm": "^glm-(?P<v>[0-9]+(?:\\.[0-9]+)*)$",
+    "glm-flash": "^glm-(?P<v>[0-9]+(?:\\.[0-9]+)*)-flash$",
+    "mistral-large": "^mistral-large-(?P<v>[0-9]{1,2}(?:\\.[0-9]+)*)$",
+    "mistral-medium": "^mistral-medium-(?P<v>[0-9]{1,2}(?:\\.[0-9]+)*)$",
+    "mistral-small": "^mistral-small-(?P<v>[0-9]{1,2}(?:\\.[0-9]+)*)$",
+    "codestral": "^codestral-(?P<v>[0-9]+)$",
+    "gemini-flash": "^gemini-(?P<v>[0-9]+(?:\\.[0-9]+)*)-flash$",
+    "gemini-pro": "^gemini-(?P<v>[0-9]+(?:\\.[0-9]+)*)-pro$"
+  },
   "paid_only": {
     "_source": "Models a free route's provider says need a paid plan: never free, never probed, never deployed, whatever the listing shows. Cloudflare: https://developers.cloudflare.com/workers-ai/platform/pricing/ (read 2026-11-26): 'Some models require a paid billing method. This applies to' the ids below; 'You can access these models with either the Workers Paid plan or prepaid AI Gateway credits.' The /ai/models/search listing the sync reads has no documented field for this (the limits page says each model page states it), so the list is kept here and checked by hand when the pricing page changes.",
     "cloudflare": ["@cf/moonshotai/kimi-k2.6", "@cf/moonshotai/kimi-k2.7-code", "@cf/zai-org/glm-5.2", "@cf/zai-org/glm-5.3",

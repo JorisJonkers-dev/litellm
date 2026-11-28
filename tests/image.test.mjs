@@ -46,6 +46,7 @@ function listen(handler) {
 
 async function startStub(envName) {
   const seen = []
+  const failAuth = new Set() // upstream keys this stub answers with 429 (a limited route)
   const stub = await listen((req, res) => {
     let raw = ''
     req.on('data', (chunk) => (raw += chunk))
@@ -53,6 +54,10 @@ async function startStub(envName) {
       const body = raw ? JSON.parse(raw) : {}
       seen.push({ method: req.method, path: req.url, auth: req.headers.authorization, model: body.model })
       res.setHeader('content-type', 'application/json')
+      if (req.method === 'POST' && failAuth.has(req.headers.authorization)) {
+        res.statusCode = 429
+        return res.end(JSON.stringify({ error: { message: 'rate limited', type: 'rate_limit_error' } }))
+      }
       if (req.method === 'GET') return res.end(JSON.stringify({ object: 'list', data: [{ id: 'listed-one' }, { id: 'listed-two' }] }))
       res.end(JSON.stringify({
         id: 'stub', object: 'chat.completion', created: 1, model: body.model,
@@ -61,7 +66,7 @@ async function startStub(envName) {
       }))
     })
   })
-  stubs[envName] = { ...stub, seen }
+  stubs[envName] = { ...stub, seen, failAuth }
 }
 
 async function waitForLive(url, timeoutMs) {
@@ -228,6 +233,60 @@ test('the tier names load and are served: an alias with ordered fallbacks, throu
     assert.match(served.model, /-free$/)
   }
   assert.equal(stubs.MISTRAL_API_BASE.seen.length, mistralBefore)
+})
+
+async function chatStatus(model) {
+  const res = await fetch(`${base}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'x-litellm-api-key': `Bearer ${MASTER}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: PROMPT }] }),
+  })
+  return { status: res.status, body: await res.text() }
+}
+
+const posts = (envName) => stubs[envName].seen.filter((seen) => seen.method === 'POST')
+
+test('paid/<model>: a limited first route falls through to the next paid route, and never to a free group', async () => {
+  // deepseek-v4.1-flash is served on vibe-study, vibe (the Mistral stub, told apart by key), opencode-go and the two API keys.
+  const mistral = stubs.MISTRAL_API_BASE
+  const before = posts('MISTRAL_API_BASE').length
+  mistral.failAuth.add('Bearer upstream-vibe-study')
+  try {
+    const answered = await chat('paid/deepseek-v4.1-flash')
+    assert.ok(answered.choices[0].message.content)
+    const calls = posts('MISTRAL_API_BASE').slice(before)
+    assert.deepEqual(calls.map((call) => call.auth), ['Bearer upstream-vibe-study', 'Bearer upstream-vibe'])
+    // Every paid route limited: the call fails, and a free copy (the free routes' hosts are unreachable here) is not tried.
+    mistral.failAuth.add('Bearer upstream-vibe')
+    mistral.failAuth.add('Bearer upstream-vibe-study-api')
+    mistral.failAuth.add('Bearer upstream-vibe-api')
+    stubs.OPENCODE_GO_API_BASE.failAuth.add('Bearer upstream-opencode-go')
+    const failed = await chatStatus('paid/deepseek-v4.1-flash')
+    assert.notEqual(failed.status, 200, failed.body)
+    assert.doesNotMatch(failed.body, /free\//)
+  } finally {
+    mistral.failAuth.clear()
+    stubs.OPENCODE_GO_API_BASE.failAuth.clear()
+  }
+})
+
+test('auto/<model>: the free group first, then the paid group when no free copy answers', async () => {
+  // The free copies' hosts are unreachable in this test (the free routes have no stub), so every free attempt fails
+  // and the call falls back to paid/glm-5.3-flash, which the stubs answer: first route first.
+  const before = posts('MISTRAL_API_BASE').length
+  const answered = await chat('auto/glm-5.3-flash')
+  assert.ok(answered.choices[0].message.content)
+  const calls = posts('MISTRAL_API_BASE').slice(before)
+  assert.equal(calls.at(-1).auth, 'Bearer upstream-vibe-study')
+  // The family alias walks the same chain.
+  const viaFamily = posts('MISTRAL_API_BASE').length
+  await chat('auto/glm-flash')
+  assert.equal(posts('MISTRAL_API_BASE').length, viaFamily + 1)
+  // free/ alone never reaches a paid deployment: with no free copy answering, it fails and no Mistral request goes out.
+  const mistralBefore = posts('MISTRAL_API_BASE').length
+  const free = await chatStatus('free/glm-5.3-flash')
+  assert.notEqual(free.status, 200, free.body)
+  assert.equal(posts('MISTRAL_API_BASE').length, mistralBefore)
 })
 
 test('OpenRouter has no wildcard: an id without a generated deployment is refused', async () => {
