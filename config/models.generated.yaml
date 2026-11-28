@@ -472,7 +472,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free-router/openrouter/openrouter/free",
@@ -501,7 +501,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/absolutereality:free",
@@ -528,7 +528,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/agnes-2.5-flash",
@@ -555,7 +555,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/agnes-3.0-flash",
@@ -582,7 +582,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/ai-synthetic-video-detector",
@@ -609,7 +609,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/aion-3.0:free",
@@ -636,7 +636,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/aion-3.0-mini:free",
@@ -664,7 +664,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/albedobase-xl-31:free",
@@ -696,7 +696,7 @@
         "tpd": 200000,
         "daily_reset_time": "00:00",
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/groq/allam-2-7b",
@@ -721,7 +721,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/allam-2-7b:free",
@@ -736,78 +736,6 @@
       }
     },
     {
-      "model_name": "free/ampersand-v0.1",
-      "litellm_params": {
-        "model": "openai/humansand/ampersand-v0.1",
-        "litellm_credential_name": "kilo",
-        "order": 3,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/kilo/humansand/ampersand-v0.1",
-        "route": "kilo",
-        "canonical": "ampersand-v0.1",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "200 requests an hour per account"
-      }
-    },
-    {
-      "model_name": "free/ampersand-v0.1",
-      "litellm_params": {
-        "model": "openai/ampersand-v0.1",
-        "litellm_credential_name": "bazaarlink",
-        "order": 6,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/bazaarlink/ampersand-v0.1",
-        "route": "bazaarlink",
-        "canonical": "ampersand-v0.1",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "10 requests a minute per account; 60 requests a day per account (weighted units; counted as requests); 2 in flight"
-      }
-    },
-    {
-      "model_name": "free/ampersand-v0.1",
-      "litellm_params": {
-        "model": "vercel_ai_gateway/humansand/ampersand-v0.1",
-        "litellm_credential_name": "vercel",
-        "order": 7,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/vercel/humansand/ampersand-v0.1",
-        "route": "vercel",
-        "canonical": "ampersand-v0.1",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)"
-      }
-    },
-    {
       "model_name": "free/anything-v5",
       "litellm_params": {
         "model": "openai/anything-v5:free",
@@ -818,7 +746,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/anything-v5:free",
@@ -846,7 +774,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/swiss-ai/apertus-v1.5-8b",
@@ -873,7 +801,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/aqa",
@@ -901,7 +829,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/aura-1:free",
@@ -928,7 +856,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/reflection/beam-free",
@@ -953,7 +881,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/beam:free",
@@ -977,7 +905,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/beam-free",
@@ -1004,7 +932,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/opencode-go/beam-free",
@@ -1028,7 +956,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/vercel/reflection/beam",
@@ -1053,7 +981,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/big-pickle:free",
@@ -1081,7 +1009,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/c4ai-aya-expanse-32b",
@@ -1109,7 +1037,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/c4ai-aya-vision-32b",
@@ -1137,7 +1065,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/cloudflare/clairic",
@@ -1165,7 +1093,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/cloudflare/clairic-flash",
@@ -1193,7 +1121,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/cloudflare/clef",
@@ -1221,7 +1149,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/cloudflare/clef-flash",
@@ -1249,7 +1177,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/cloudflare/clef-omni",
@@ -1267,6 +1195,34 @@
       }
     },
     {
+      "model_name": "free/codestral",
+      "litellm_params": {
+        "model": "openai/codestral-latest:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/codestral-latest:free",
+        "route": "unorouter",
+        "canonical": "codestral",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/codestral-2508",
       "litellm_params": {
         "model": "openai/codestral-2508",
@@ -1276,7 +1232,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/codestral-2508",
@@ -1303,7 +1259,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/command-a",
@@ -1331,7 +1287,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-a-03-2025",
@@ -1358,7 +1314,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/command-a-plus",
@@ -1386,7 +1342,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-a-plus-05-2026",
@@ -1414,7 +1370,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-a-reasoning-08-2025",
@@ -1442,7 +1398,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-a-translate-08-2025",
@@ -1470,7 +1426,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-a-vision-07-2025",
@@ -1498,7 +1454,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-r-08-2024",
@@ -1526,7 +1482,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-r-plus-08-2024",
@@ -1554,7 +1510,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-r7b-12-2024",
@@ -1582,7 +1538,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/command-r7b-arabic-02-2025",
@@ -1609,7 +1565,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-r1-0528",
@@ -1637,7 +1593,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v3",
@@ -1665,7 +1621,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/deepseek-v3.1",
@@ -1689,7 +1645,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v3-1",
@@ -1714,7 +1670,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/deepseek-v3.2:free",
@@ -1738,7 +1694,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/deepseek-v3.2",
@@ -1762,7 +1718,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v3-2",
@@ -1787,7 +1743,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/deepseek-v4-flash",
@@ -1811,7 +1767,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v4-flash",
@@ -1829,6 +1785,31 @@
     {
       "model_name": "free/deepseek-v4-flash-0731",
       "litellm_params": {
+        "model": "openai/deepseek-v4-flash-0731:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/deepseek-v4-flash-0731:free",
+        "route": "unorouter",
+        "canonical": "deepseek-v4-flash-0731",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/deepseek-v4-flash-0731",
+      "litellm_params": {
         "model": "openai/deepseek/deepseek-v4-flash-0731free:free",
         "litellm_credential_name": "bazaarlink",
         "order": 6,
@@ -1836,7 +1817,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/deepseek/deepseek-v4-flash-0731free:free",
@@ -1860,7 +1841,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/deepseek-v4-flash-0731-free",
@@ -1884,7 +1865,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/gonka/deepseek-ai/DeepSeek-V4-Flash-0731",
@@ -1908,7 +1889,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v4-flash-vision-exp",
@@ -1936,7 +1917,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/deepseek-v4-pro",
@@ -1960,7 +1941,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v4-pro",
@@ -1985,7 +1966,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/deepseek-v4.1-flash:free",
@@ -2009,7 +1990,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/deepseek-v4.1-flash-1017",
@@ -2026,7 +2007,7 @@
     {
       "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
-        "model": "openai/deepseek-v4.1-flash:free",
+        "model": "openai/deepseek-v4.1-flash-1017:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
         "weight": 1,
@@ -2034,10 +2015,10 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
-        "id": "free/unorouter/deepseek-v4.1-flash:free",
+        "id": "free/unorouter/deepseek-v4.1-flash-1017:free",
         "route": "unorouter",
         "canonical": "deepseek-v4.1-flash",
         "access_groups": [
@@ -2058,7 +2039,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/deepseek-v4.1-flash-free",
@@ -2082,7 +2063,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/deepseek-v4-1-flash",
@@ -2107,7 +2088,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/dots-3-note-preview:free",
@@ -2132,7 +2113,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/dots-3-note-preview:free",
@@ -2156,7 +2137,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/baidu/ernie-5.5-flash-preview:free",
@@ -2180,7 +2161,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/ernie-5.5-flash-preview:free",
@@ -2211,7 +2192,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/baidu/ernie-5.5-flash-preview:free",
@@ -2235,7 +2216,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/baidu/ernie-5.5-flash-preview:free",
@@ -2259,7 +2240,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/ernie-5.5-flash-preview-free",
@@ -2284,7 +2265,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/utter-project/eurollm-9b-it",
@@ -2311,7 +2292,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/recursive/flint-v1.0",
@@ -2335,7 +2316,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/flint-v1.0:free",
@@ -2366,7 +2347,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/recursive/flint-v1.0:free",
@@ -2391,7 +2372,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/flint-v1.0:free",
@@ -2415,7 +2396,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/flint-v1.0",
@@ -2439,7 +2420,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/recursive/flint-v1.0:free",
@@ -2463,7 +2444,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/vercel/recursive/flint-v1.0",
@@ -2480,25 +2461,26 @@
     {
       "model_name": "free/gemini-2.5-flash",
       "litellm_params": {
-        "model": "openai/google/gemini-2.5-flash:free",
-        "litellm_credential_name": "naga",
-        "order": 6,
+        "model": "openai/gemini-2.5-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
+        "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
-        "id": "free/naga/google/gemini-2.5-flash:free",
-        "route": "naga",
+        "id": "free/unorouter/gemini-2.5-flash:free",
+        "route": "unorouter",
         "canonical": "gemini-2.5-flash",
         "access_groups": [
           "free"
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "100 requests a day per account",
+        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -2514,7 +2496,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-2.5-flash-lite",
@@ -2525,10 +2507,32 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "free/gemini-2.5-flash-lite",
+      "litellm_params": {
+        "model": "openai/gemini-2.5-flash-lite:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-2.5-flash-lite:free",
+        "route": "unorouter",
+        "canonical": "gemini-2.5-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
@@ -2541,7 +2545,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3-flash",
@@ -2566,7 +2570,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemini-3-flash:free",
@@ -2590,7 +2594,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3-flash-preview",
@@ -2608,34 +2612,6 @@
       }
     },
     {
-      "model_name": "free/gemini-3-pro",
-      "litellm_params": {
-        "model": "openai/gemini-3-pro:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-3-pro:free",
-        "route": "unorouter",
-        "canonical": "gemini-3-pro",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gemini-3.1-flash-lite",
       "litellm_params": {
         "model": "poe/gemini-3.1-flash-lite",
@@ -2645,7 +2621,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.1-flash-lite",
@@ -2656,32 +2632,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "500 requests a minute per account"
-      }
-    },
-    {
-      "model_name": "free/gemini-3.1-flash-lite",
-      "litellm_params": {
-        "model": "openai/gemini-3.1-flash-lite:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-3.1-flash-lite:free",
-        "route": "unorouter",
-        "canonical": "gemini-3.1-flash-lite",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "500 requests a minute per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -2694,7 +2648,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.1-flash-lite-preview",
@@ -2721,7 +2675,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.1-pro",
@@ -2748,7 +2702,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.1-pro-preview",
@@ -2775,7 +2729,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.1-pro-preview-customtools",
@@ -2802,7 +2756,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.5-flash",
@@ -2829,7 +2783,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.5-flash-lite",
@@ -2853,7 +2807,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.5-flash-lite",
@@ -2878,7 +2832,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemini-3.5-flash-lite:free",
@@ -2902,7 +2856,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.6-flash",
@@ -2927,7 +2881,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemini-3.6-flash:free",
@@ -2951,7 +2905,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.7-flash",
@@ -2978,7 +2932,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-3.8-flash",
@@ -3002,7 +2956,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-3.8-flash",
@@ -3026,7 +2980,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-4-argon",
@@ -3053,7 +3007,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-4-carbon",
@@ -3080,7 +3034,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-4-hydrogen",
@@ -3104,7 +3058,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemini-4-hydrogen",
@@ -3128,7 +3082,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-4-neon",
@@ -3155,7 +3109,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-decision-1",
@@ -3173,6 +3127,34 @@
       }
     },
     {
+      "model_name": "free/gemini-flash-lite",
+      "litellm_params": {
+        "model": "openai/gemini-flash-lite-latest:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-flash-lite-latest:free",
+        "route": "unorouter",
+        "canonical": "gemini-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/gemini-robotics-er-2-preview",
       "litellm_params": {
         "model": "gemini/gemini-robotics-er-2-preview",
@@ -3182,7 +3164,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemini-robotics-er-2-preview",
@@ -3193,10 +3175,32 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "free/gemini-robotics-er-2-preview",
+      "litellm_params": {
+        "model": "openai/gemini-robotics-er-2-preview:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-robotics-er-2-preview:free",
+        "route": "unorouter",
+        "canonical": "gemini-robotics-er-2-preview",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
@@ -3210,7 +3214,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-12b:free",
@@ -3238,7 +3242,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b:free",
@@ -3265,7 +3269,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemma-4-26b-a4b",
@@ -3293,7 +3297,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/google/gemma-4-26b-a4b-it",
@@ -3317,7 +3321,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemma-4-26b-a4b-it",
@@ -3341,7 +3345,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/gemma-4-26b-a4b-it:free",
@@ -3372,7 +3376,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/google/gemma-4-26b-a4b-it:free",
@@ -3397,7 +3401,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b-a4b-it-chimerax:free",
@@ -3421,7 +3425,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-chimerax:free",
@@ -3446,7 +3450,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b-a4b-it-darksoul:free",
@@ -3470,7 +3474,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-darksoul:free",
@@ -3495,7 +3499,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b-a4b-it-luminous:free",
@@ -3519,7 +3523,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-luminous:free",
@@ -3544,7 +3548,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b-a4b-it-meromero:free",
@@ -3568,7 +3572,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-meromero:free",
@@ -3593,7 +3597,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-26b-a4b-it-moonlight:free",
@@ -3617,7 +3621,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-moonlight:free",
@@ -3641,7 +3645,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/gemma-4-26b-a4b-it-musica:free",
@@ -3668,7 +3672,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/google/gemma-4-31b-it",
@@ -3692,7 +3696,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/gemma-4-31b-it:free",
@@ -3723,7 +3727,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/google/gemma-4-31b-it:free",
@@ -3747,7 +3751,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gemma-4-31b",
@@ -3772,7 +3776,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gemma-4-31b:free",
@@ -3796,7 +3800,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/requesty/google/gemma-4-31b-it",
@@ -3820,7 +3824,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/gemma-4-uncensored:free",
@@ -3848,7 +3852,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/aisingapore/gemma-sea-lion-v4-27b-it",
@@ -3872,7 +3876,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/sealion/aisingapore/Gemma-SEA-LION-v4-27B-IT",
@@ -3896,7 +3900,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/gemma3-270m:free",
@@ -3923,7 +3927,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/fastino/gliner2-pii",
@@ -3951,7 +3955,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/glm-4.1v-thinking-flash:free",
@@ -3979,7 +3983,7 @@
         "output_cost_per_token": 0,
         "max_parallel_requests": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/zai/glm-4.5-flash",
@@ -4004,7 +4008,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/glm-4.5-flash:free",
@@ -4028,7 +4032,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-4.6:free",
@@ -4052,7 +4056,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-4.6",
@@ -4076,7 +4080,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-4.7:free",
@@ -4104,7 +4108,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/zai-org/glm-4.7-flash",
@@ -4129,7 +4133,7 @@
         "output_cost_per_token": 0,
         "max_parallel_requests": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/zai/glm-4.7-flash",
@@ -4153,7 +4157,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-4.7-flash:free",
@@ -4177,7 +4181,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-4.7-flash",
@@ -4202,7 +4206,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/glm-4.7-flash:free",
@@ -4226,7 +4230,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/glm-4.7-flash",
@@ -4250,7 +4254,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-5:free",
@@ -4274,7 +4278,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/zai-glm-5",
@@ -4299,7 +4303,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-5.1:free",
@@ -4326,7 +4330,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-5.2:free",
@@ -4350,7 +4354,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-5.2",
@@ -4374,7 +4378,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/zai-glm-5-2",
@@ -4399,7 +4403,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-5.3",
@@ -4423,7 +4427,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/zai-glm-5-3",
@@ -4448,7 +4452,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-5.3-fast",
@@ -4475,7 +4479,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/z-ai/glm-5.3-flash",
@@ -4499,7 +4503,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/glm-5.3-flash:free",
@@ -4523,7 +4527,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/glm-5.3-flash",
@@ -4548,7 +4552,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/glm-5.3-flash:free",
@@ -4572,7 +4576,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/glm-5.3-flash-free",
@@ -4596,7 +4600,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/gonka/zai-org/GLM-5.3-Flash",
@@ -4620,7 +4624,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/zai-glm-5-3-flash",
@@ -4645,7 +4649,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/glm-5.3-flashx-free",
@@ -4672,7 +4676,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/stealth/glyph-cluster",
@@ -4696,7 +4700,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/glyph-cluster",
@@ -4720,7 +4724,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/vercel/stealth/glyph-cluster",
@@ -4744,7 +4748,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/google-gemma-3-27b-it",
@@ -4772,7 +4776,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/google-gemma-4-26b-a4b-it",
@@ -4800,7 +4804,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/google-gemma-4-31b-it",
@@ -4828,7 +4832,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-4.1",
@@ -4855,7 +4859,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-4.1-mini",
@@ -4882,7 +4886,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-4o",
@@ -4907,7 +4911,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-4o:free",
@@ -4931,7 +4935,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-4o-aug",
@@ -4958,7 +4962,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-4o-mini",
@@ -4985,7 +4989,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5",
@@ -5012,7 +5016,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5-mini",
@@ -5037,7 +5041,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-5-mini:free",
@@ -5061,7 +5065,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5-nano",
@@ -5088,7 +5092,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5-pro",
@@ -5115,7 +5119,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.1",
@@ -5142,7 +5146,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.2",
@@ -5169,7 +5173,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.2-pro",
@@ -5196,7 +5200,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.3-codex",
@@ -5223,7 +5227,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.4",
@@ -5250,7 +5254,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.4-mini",
@@ -5275,7 +5279,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-5.4-mini:free",
@@ -5299,7 +5303,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.4-nano",
@@ -5326,7 +5330,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-5.4-pro",
@@ -5354,7 +5358,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-6:free",
@@ -5382,7 +5386,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-6-luna:free",
@@ -5410,7 +5414,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-6.1-sol:free",
@@ -5442,7 +5446,7 @@
         "tpd": 200000,
         "daily_reset_time": "00:00",
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/groq/openai/gpt-oss-120b",
@@ -5467,7 +5471,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/openai/gpt-oss-120b",
@@ -5491,7 +5495,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/gpt-oss-120b:free",
@@ -5515,7 +5519,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-oss-120b",
@@ -5540,7 +5544,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-oss-120b:free",
@@ -5564,7 +5568,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-oss-120b-cs",
@@ -5596,7 +5600,7 @@
         "tpd": 200000,
         "daily_reset_time": "00:00",
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/groq/openai/gpt-oss-20b",
@@ -5621,7 +5625,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/openai/gpt-oss-20b",
@@ -5645,7 +5649,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/gpt-oss-20b:free",
@@ -5669,7 +5673,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/gpt-oss-20b",
@@ -5694,7 +5698,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/gpt-oss-20b:free",
@@ -5718,7 +5722,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/gpt-oss-20b",
@@ -5743,7 +5747,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/ibm-granite/granite-4.0-h-micro",
@@ -5771,7 +5775,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/granite-4.0-micro:free",
@@ -5799,7 +5803,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/grok-4.1:free",
@@ -5826,7 +5830,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/grok-4.20-multi-agent",
@@ -5853,7 +5857,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/grok-4.3",
@@ -5880,7 +5884,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/grok-4.5",
@@ -5907,7 +5911,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/grok-4.6",
@@ -5934,7 +5938,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/grok-4.7",
@@ -5945,32 +5949,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "500 requests a minute per account"
-      }
-    },
-    {
-      "model_name": "free/grok-4.7",
-      "litellm_params": {
-        "model": "openai/grok-4.7:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/grok-4.7:free",
-        "route": "unorouter",
-        "canonical": "grok-4.7",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "500 requests a minute per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -5986,7 +5968,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/opencode-go/hungerg-free",
@@ -6004,6 +5986,34 @@
       }
     },
     {
+      "model_name": "free/hy3",
+      "litellm_params": {
+        "model": "openai/hy3:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/hy3:free",
+        "route": "unorouter",
+        "canonical": "hy3",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/hy4-flash",
       "litellm_params": {
         "model": "neosantara/hy4-flash-free",
@@ -6013,7 +6023,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/hy4-flash-free",
@@ -6040,7 +6050,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/opencode-go/hy4-flash-free",
@@ -6067,7 +6077,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/opencode-go/iceman-contributor-free",
@@ -6094,7 +6104,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/inkling",
@@ -6121,7 +6131,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/ising-calibration-1.5-31b",
@@ -6146,7 +6156,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/ising-calibration-1.5-31b:free",
@@ -6171,7 +6181,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/k-exaone-2.5:free",
@@ -6199,7 +6209,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/k2-horizon:free",
@@ -6226,7 +6236,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/kimi-k2.6",
@@ -6253,7 +6263,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/kimi-k2.7-code",
@@ -6280,7 +6290,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/kimi-k3",
@@ -6307,7 +6317,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/moonshotai/kimi-k3.1-pro",
@@ -6331,7 +6341,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/kimi-k3.1-pro",
@@ -6356,7 +6366,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/kimi-k3.1-pro:free",
@@ -6371,34 +6381,6 @@
       }
     },
     {
-      "model_name": "free/l3.3-ms-nevoria-70b",
-      "litellm_params": {
-        "model": "openai/l3.3-ms-nevoria-70b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/l3.3-ms-nevoria-70b:free",
-        "route": "unorouter",
-        "canonical": "l3.3-ms-nevoria-70b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/laguna-s-2.1",
       "litellm_params": {
         "model": "neosantara/laguna-s-2.1",
@@ -6408,7 +6390,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/laguna-s-2.1",
@@ -6435,7 +6417,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/poolside/laguna-xs-2.1",
@@ -6460,7 +6442,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/laguna-xs-2.1:free",
@@ -6484,7 +6466,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/laguna-xs-2.1",
@@ -6508,7 +6490,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/liquid/lfm-3-1.7b:free",
@@ -6532,7 +6514,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/lfm-3-1.7b:free",
@@ -6563,7 +6545,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/liquid/lfm-3-1.7b:free",
@@ -6587,7 +6569,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/liquid/lfm-3-1.7b:free",
@@ -6611,7 +6593,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/ling-3.0-flash-fin",
@@ -6638,7 +6620,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/ling-3.2-flash:free",
@@ -6666,40 +6648,12 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/llama-3.1-8b:free",
         "route": "unorouter",
         "canonical": "llama-3.1-8b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/llama-3.2-11b-vision",
-      "litellm_params": {
-        "model": "openai/llama-3.2-11b-vision:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/llama-3.2-11b-vision:free",
-        "route": "unorouter",
-        "canonical": "llama-3.2-11b-vision",
         "access_groups": [
           "free"
         ],
@@ -6722,7 +6676,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/meta/llama-3.2-11b-vision-instruct",
@@ -6749,7 +6703,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/llama-3.3-70b",
@@ -6777,7 +6731,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
@@ -6804,7 +6758,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/llama-4-maverick",
@@ -6832,7 +6786,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct",
@@ -6859,7 +6813,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/llama-instant",
@@ -6886,7 +6840,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/longcat-2.0",
@@ -6904,6 +6858,34 @@
       }
     },
     {
+      "model_name": "free/manta-flash-1.0",
+      "litellm_params": {
+        "model": "openai/manta-flash-1.0:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/manta-flash-1.0:free",
+        "route": "unorouter",
+        "canonical": "manta-flash-1.0",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/manta-mini-1.0",
       "litellm_params": {
         "model": "openai/manta-mini-1.0:free",
@@ -6914,7 +6896,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/manta-mini-1.0:free",
@@ -6942,7 +6924,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/mercury-3:free",
@@ -6970,7 +6952,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/mercury-decide:free",
@@ -6997,7 +6979,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/meta-llama-3-1-8b-instruct",
@@ -7025,7 +7007,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/meta-llama-3-3-70b-instruct",
@@ -7053,7 +7035,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/mimo-v2.5-free",
@@ -7080,7 +7062,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/mimo-v2.5-pro-free",
@@ -7107,7 +7089,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/mimo-v2.6-flash",
@@ -7124,6 +7106,31 @@
     {
       "model_name": "free/mimo-v2.6-flash",
       "litellm_params": {
+        "model": "openai/mimo-v2.6-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/mimo-v2.6-flash:free",
+        "route": "unorouter",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/mimo-v2.6-flash",
+      "litellm_params": {
         "model": "neosantara/mimo-v2.6-flash-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -7131,7 +7138,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/mimo-v2.6-flash-free",
@@ -7155,7 +7162,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/mimo-v2.6-pro-free",
@@ -7183,7 +7190,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/mindshub-air:free",
@@ -7211,7 +7218,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/minicpm5-2b:free",
@@ -7238,7 +7245,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/minimax-m2.1",
@@ -7265,7 +7272,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/minimax-m2.5",
@@ -7292,7 +7299,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/minimax-m2.7:free",
@@ -7309,6 +7316,31 @@
     {
       "model_name": "free/minimax-m2.7",
       "litellm_params": {
+        "model": "openai/minimax-m2.7",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/minimax-m2.7",
+        "route": "unorouter",
+        "canonical": "minimax-m2.7",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/minimax-m2.7",
+      "litellm_params": {
         "model": "neosantara/minimax-m2.7-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -7316,7 +7348,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/minimax-m2.7-free",
@@ -7340,7 +7372,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/gonka/MiniMaxAI/MiniMax-M2.7",
@@ -7364,7 +7396,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/minimax-m3",
@@ -7381,31 +7413,6 @@
     {
       "model_name": "free/minimax-m3",
       "litellm_params": {
-        "model": "openai/minimax-m3:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 60
-      },
-      "model_info": {
-        "id": "free/unorouter/minimax-m3:free",
-        "route": "unorouter",
-        "canonical": "minimax-m3",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/minimax-m3",
-      "litellm_params": {
         "model": "neosantara/minimax-m3-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -7413,7 +7420,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/minimax-m3-free",
@@ -7437,7 +7444,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/minimax-m3",
@@ -7462,7 +7469,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/minimaxai/minimax-m3.1-flash",
@@ -7487,7 +7494,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/minimax-m3.1-flash:free",
@@ -7511,7 +7518,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/routeway/minimax-m3.1-flash:free",
@@ -7535,7 +7542,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/minimax-m3.1-flash-free",
@@ -7559,7 +7566,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/minimax-m3-1-flash",
@@ -7584,7 +7591,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/ministral-14b-2512",
@@ -7611,7 +7618,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/ministral-3-8b-instruct:free",
@@ -7638,7 +7645,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/ministral-3b-2512",
@@ -7665,7 +7672,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/ministral-8b-2512",
@@ -7693,7 +7700,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/mistral/mistral-7b-instruct-v0.2-lora",
@@ -7720,7 +7727,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/mistral-code-latest",
@@ -7747,7 +7754,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/mistral-code-fim-latest",
@@ -7774,7 +7781,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/mistral-large-2512",
@@ -7801,7 +7808,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/mistral-large-4",
@@ -7825,7 +7832,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/mistral-large-4",
@@ -7849,7 +7856,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/mistralai/mistral-large-4-1t-a52b",
@@ -7876,7 +7883,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/mistral-nemo-instruct-2407",
@@ -7905,7 +7912,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/mistral-small:free",
@@ -7932,7 +7939,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/mistral-small-24b-instruct-2501",
@@ -7960,7 +7967,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/mistral-small-3.1",
@@ -7988,7 +7995,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/mistralai/mistral-small-3.1-24b-instruct",
@@ -8006,6 +8013,34 @@
       }
     },
     {
+      "model_name": "free/mistral-small-3.2",
+      "litellm_params": {
+        "model": "openai/mistral-small-3.2:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/mistral-small-3.2:free",
+        "route": "unorouter",
+        "canonical": "mistral-small-3.2",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/mistral-small-3.2-24b-instruct",
       "litellm_params": {
         "model": "openai/mistral-small-3.2-24b-instruct:free",
@@ -8015,7 +8050,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/mistral-small-3.2-24b-instruct:free",
@@ -8042,7 +8077,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/mistral-small-4",
@@ -8069,7 +8104,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/mistral-tiny-2407",
@@ -8097,7 +8132,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/mn-violet-lotus-12b:free",
@@ -8124,7 +8159,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/moonshot-kimi-k2-instruct",
@@ -8152,7 +8187,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/muse-ember",
@@ -8179,7 +8214,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/requesty/nvidia/muse-glimmer-30b",
@@ -8206,7 +8241,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/muse-spark-1-1",
@@ -8233,7 +8268,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/muse-spark-open",
@@ -8260,7 +8295,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/muse-wonder-1.0",
@@ -8287,7 +8322,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -8311,7 +8346,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
@@ -8335,7 +8370,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -8366,7 +8401,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -8391,7 +8426,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -8415,7 +8450,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -8439,7 +8474,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/requesty/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
@@ -8463,7 +8498,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -8487,7 +8522,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3-ultra-550b-a55b",
@@ -8511,7 +8546,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/nemotron-3-ultra-550b-a55b:free",
@@ -8542,7 +8577,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -8567,7 +8602,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-3-ultra-550b-a55b:free",
@@ -8591,7 +8626,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -8615,7 +8650,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/requesty/nvidia/nemotron-3-ultra-550b-a55b",
@@ -8639,7 +8674,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3.5-bolt-e4b",
@@ -8664,7 +8699,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-3.5-bolt-e4b:free",
@@ -8688,7 +8723,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3.5-content-safety",
@@ -8715,7 +8750,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3.5-lightning:free",
@@ -8739,7 +8774,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
@@ -8763,7 +8798,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/nemotron-3.5-lightning:free",
@@ -8794,7 +8829,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/nvidia/nemotron-3.5-lightning:free",
@@ -8819,7 +8854,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-3.5-lightning-30b-a3b:free",
@@ -8843,7 +8878,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/nemotron-3.5-lightning-free",
@@ -8867,7 +8902,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/nvidia/nemotron-3.5-lightning:free",
@@ -8891,7 +8926,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/requesty/nvidia/nemotron-3.5-lightning-30b-a3b",
@@ -8915,7 +8950,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/vercel/nvidia/nemotron-3.5-lightning-free",
@@ -8939,7 +8974,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/nvidia/nemotron-3.5-super-vl:free",
@@ -8963,7 +8998,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/nemotron-3.5-super-vl:free",
@@ -8994,7 +9029,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/nvidia/nemotron-3.5-super-vl:free",
@@ -9019,7 +9054,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-3.5-super-vl:free",
@@ -9043,7 +9078,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/nvidia/nemotron-3.5-super-vl:free",
@@ -9067,7 +9102,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
@@ -9095,7 +9130,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nemotron-sea-lion-v4.8-120b-a12b:free",
@@ -9123,7 +9158,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/north-mini-code:free",
@@ -9147,7 +9182,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/north-mini-code",
@@ -9172,7 +9207,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/north-mini-code-1.0",
@@ -9200,7 +9235,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/north-small-translate-1.0",
@@ -9228,7 +9263,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/nova-furry-pony:free",
@@ -9255,7 +9290,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/nvidia/nvclip",
@@ -9282,7 +9317,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/nvidia-nemotron-3-5-super-vl-120b-a12b",
@@ -9310,7 +9345,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/nvidia-nemotron-3-super-120b-a12b",
@@ -9338,7 +9373,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/nvidia-nemotron-3-ultra-550b-a55b",
@@ -9366,7 +9401,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/o3",
@@ -9393,7 +9428,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/o3-pro",
@@ -9421,7 +9456,7 @@
         "output_cost_per_token": 0,
         "rpm": 2,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/ovh/Olala-v1.0-mini-7A1B",
@@ -9449,7 +9484,7 @@
         "output_cost_per_token": 0,
         "rpm": 2,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/ovh/Olala-v1.0-summarise",
@@ -9477,7 +9512,7 @@
         "output_cost_per_token": 0,
         "rpm": 2,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/ovh/Olala-v1.0-translate",
@@ -9504,7 +9539,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/open-mistral-nemo",
@@ -9531,7 +9566,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/openai-gpt-oss-120b",
@@ -9559,7 +9594,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/openai-gpt-oss-20b",
@@ -9578,6 +9613,34 @@
       }
     },
     {
+      "model_name": "free/orca-router",
+      "litellm_params": {
+        "model": "openai/orca-router:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/orca-router:free",
+        "route": "unorouter",
+        "canonical": "orca-router",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/particle-1",
       "litellm_params": {
         "model": "openai/particle-ai/particle-1:free",
@@ -9587,7 +9650,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/kilo/particle-ai/particle-1:free",
@@ -9611,7 +9674,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/particle-1:free",
@@ -9642,7 +9705,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/openrouter/particle-ai/particle-1:free",
@@ -9666,7 +9729,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/naga/particle-ai/particle-1:free",
@@ -9691,7 +9754,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/daily-co/phonellm-mini-alpha-2",
@@ -9718,7 +9781,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/plugsky/plugsky-lite",
@@ -9745,7 +9808,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/plugsky/plugsky-micro",
@@ -9773,7 +9836,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/prefect-pony:free",
@@ -9800,7 +9863,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen-mt-plus",
@@ -9828,7 +9891,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/sealion/aisingapore/Qwen-SEA-LION-v4-32B-IT",
@@ -9853,7 +9916,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen-sea-lion-v4-32b-it:free",
@@ -9878,7 +9941,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen-sea-lion-v4.5-27b-it:free",
@@ -9905,7 +9968,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen2-5-72b-instruct",
@@ -9934,7 +9997,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen2.5-coder-32b:free",
@@ -9962,7 +10025,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/qwen/qwen2.5-coder-32b-instruct",
@@ -9990,7 +10053,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen2.5-vl-7b-instruct-awq:free",
@@ -10017,7 +10080,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-14b",
@@ -10046,7 +10109,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen3-235b:free",
@@ -10073,7 +10136,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-235b-a22b-2507",
@@ -10101,7 +10164,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-30b-a3b",
@@ -10129,7 +10192,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-32b",
@@ -10157,7 +10220,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/qwen3-coder-30-a3b-instruct:free",
@@ -10184,7 +10247,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-coder-480b-a35b-instruct",
@@ -10212,7 +10275,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3-coder-next",
@@ -10239,7 +10302,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-next-80b-a3b-instruct",
@@ -10267,7 +10330,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-vl-235b-a22b-instruct",
@@ -10295,7 +10358,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-vl-30b-a3b-instruct",
@@ -10323,7 +10386,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-5-27b",
@@ -10351,7 +10414,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-5-35b-a3b",
@@ -10379,7 +10442,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-5-397b-a17b",
@@ -10407,7 +10470,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-5-9b",
@@ -10435,7 +10498,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3.5-omni-flash",
@@ -10462,7 +10525,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3.5-omni-plus",
@@ -10489,7 +10552,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/qwen3.6-27b:free",
@@ -10513,7 +10576,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-6-27b",
@@ -10538,7 +10601,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/qwen3.6-35b-a3b:free",
@@ -10562,7 +10625,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-6-35b-a3b",
@@ -10580,6 +10643,31 @@
     {
       "model_name": "free/qwen3.7-flash",
       "litellm_params": {
+        "model": "openai/qwen3.7-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/qwen3.7-flash:free",
+        "route": "unorouter",
+        "canonical": "qwen3.7-flash",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/qwen3.7-flash",
+      "litellm_params": {
         "model": "openai/qwen/qwen3.7-flash:free",
         "litellm_credential_name": "bazaarlink",
         "order": 6,
@@ -10587,7 +10675,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/bazaarlink/qwen/qwen3.7-flash:free",
@@ -10598,10 +10686,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "10 requests a minute per account; 60 requests a day per account (weighted units; counted as requests); 2 in flight",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "10 requests a minute per account; 60 requests a day per account (weighted units; counted as requests); 2 in flight"
       }
     },
     {
@@ -10614,7 +10699,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-7-max",
@@ -10642,7 +10727,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3.8-2.4t-a95b",
@@ -10674,7 +10759,7 @@
         "tpd": 200000,
         "daily_reset_time": "00:00",
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/groq/qwen/qwen3.8-27b",
@@ -10699,7 +10784,7 @@
         "output_cost_per_token": 0,
         "rpm": 300,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cloudflare/@cf/qwen/qwen3.8-27b",
@@ -10723,7 +10808,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/electronhub/qwen3.8-27b:free",
@@ -10748,7 +10833,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen3.8-27b:free",
@@ -10772,7 +10857,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-8-27b",
@@ -10797,7 +10882,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3.8-flash",
@@ -10821,7 +10906,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-8-flash",
@@ -10847,7 +10932,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/qwen3.8-max:free",
@@ -10871,7 +10956,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/qwen3-8-max",
@@ -10896,7 +10981,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen3.8-max-0902",
@@ -10923,7 +11008,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/qwen4-max",
@@ -10950,7 +11035,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/seed-2.0-code",
@@ -10977,7 +11062,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/seed-2.0-lite",
@@ -11004,7 +11089,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/seed-2.0-mini",
@@ -11031,7 +11116,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/seed-2.0-pro",
@@ -11058,7 +11143,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/poe/seed-2.1-turbo",
@@ -11076,6 +11161,34 @@
       }
     },
     {
+      "model_name": "free/sensenova-6.8-flash",
+      "litellm_params": {
+        "model": "openai/sensenova-6.8-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/sensenova-6.8-flash:free",
+        "route": "unorouter",
+        "canonical": "sensenova-6.8-flash",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
       "model_name": "free/sensenova-6.8-flash-lite",
       "litellm_params": {
         "model": "openai/sensenova-6.8-flash-lite:free",
@@ -11086,7 +11199,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/sensenova-6.8-flash-lite:free",
@@ -11114,7 +11227,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/solar-mini-4:free",
@@ -11125,14 +11238,11 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
-      "model_name": "free/solar-mini4",
+      "model_name": "free/solar-mini-4",
       "litellm_params": {
         "model": "neosantara/solar-mini4-free",
         "litellm_credential_name": "neosantara",
@@ -11141,18 +11251,43 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/solar-mini4-free",
         "route": "neosantara",
-        "canonical": "solar-mini4",
+        "canonical": "solar-mini-4",
         "access_groups": [
           "free"
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "free/solar-pro4",
+      "litellm_params": {
+        "model": "openai/solar-pro4:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/solar-pro4:free",
+        "route": "unorouter",
+        "canonical": "solar-pro4",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -11169,7 +11304,7 @@
         "output_cost_per_token": 0,
         "rpm": 2,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/ovh/solaria-3",
@@ -11196,7 +11331,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/bigcode/starcoder2-15b",
@@ -11223,7 +11358,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/neosantara/step-3.7-flash-free",
@@ -11250,7 +11385,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/nvidia/stepfun-ai/step-5-preview",
@@ -11275,7 +11410,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/step-5-preview:free",
@@ -11300,7 +11435,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/swe-1-6-slow:free",
@@ -11328,7 +11463,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/syn-pro:free",
@@ -11356,7 +11491,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/tagflow-code-27b:free",
@@ -11384,7 +11519,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/tiny-aya-earth",
@@ -11412,7 +11547,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/tiny-aya-fire",
@@ -11440,7 +11575,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/tiny-aya-global",
@@ -11468,7 +11603,7 @@
         "output_cost_per_token": 0,
         "rpm": 20,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/cohere/tiny-aya-water",
@@ -11496,7 +11631,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/tunix-pony:free",
@@ -11524,7 +11659,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/typhoon-v2.5-30b-a3b-instruct:free",
@@ -11548,7 +11683,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/typhoon/typhoon-v2.5-30b-a3b-instruct",
@@ -11572,7 +11707,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/airforce/voxtral-small-2507",
@@ -11600,7 +11735,7 @@
         "output_cost_per_token": 0,
         "rpm": 1,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/unorouter/xing4.0-29b-a4b:free",
@@ -11627,7 +11762,7 @@
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
         "timeout": 300,
-        "stream_timeout": 60
+        "stream_timeout": 25
       },
       "model_info": {
         "id": "free/inferbase/zai-glm-5-1",
