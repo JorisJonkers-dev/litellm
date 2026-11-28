@@ -476,6 +476,9 @@ test('the on-release job Process is the scheduled catalogue Process, run once pe
   const rest = (text) => text.replace(/^ {6}- name: .*\n/m, '').replace(/^ {8}lifecycle: .*\n/m, '')
     .replace(/^ {8}schedule: .*\n/m, '').replace(/^ {8}startupBudget: .*\n/m, '').trimEnd()
   assert.equal(rest(onRelease), rest(scheduled))
+  // deploy-kit reads a Process's environment from deploy/env/<process>/: the job gets the scheduled one's, unchanged.
+  assert.equal(readFileSync(`${ROOT}/deploy/env/litellm-catalog-on-release/base.env`, 'utf8'),
+    readFileSync(`${ROOT}/deploy/env/litellm-catalog/base.env`, 'utf8'))
 })
 
 test('the Project declares the scrape, the dashboard and the catalogue sync', () => {
