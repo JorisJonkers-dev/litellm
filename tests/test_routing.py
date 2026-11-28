@@ -414,6 +414,7 @@ class Plan(unittest.TestCase):
             "max_budget": 50,
             "budget_duration": "30d",
             "cooldown_time": 5,
+            "stream_timeout": sync.PAID_STREAM_TIMEOUT,
         })
         self.assertEqual(spec["model_info"], {
             "id": "vibe-api:mistral-large",

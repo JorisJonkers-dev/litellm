@@ -69,6 +69,21 @@ class PaidChains(unittest.TestCase):
         self.assertIn(("opencode-go", 3), chain(specs, "deepseek-v4.1-flash"))
 
 
+class StreamTimeouts(unittest.TestCase):
+    def test_every_direct_and_paid_deployment_drops_a_silent_stream_but_the_local_route(self):
+        specs = plan(*[usable(route, model_id) for route, model_id in ALL_FIVE])
+        self.assertTrue([spec for spec in specs if not spec["name"].startswith("paid/")])
+        for spec in specs:
+            self.assertEqual(spec["litellm_params"].get("stream_timeout"), sync.PAID_STREAM_TIMEOUT, spec["name"])
+        local = next(entry for entry in sync.ROUTES if entry["route"] == "local")
+        chosen = {"upstream_id": "qwen3:32b", "modality": "chat"}
+        try:
+            spec = sync.deployment("qwen3:32b", "qwen3:32b", "local", chosen, 1, 1, local)
+        except KeyError as missing:  # the builder reads more of a chosen copy than this test names
+            self.fail(f"deployment() needs {missing} in the chosen copy")
+        self.assertNotIn("stream_timeout", spec["litellm_params"])
+
+
 class MistralReleases(unittest.TestCase):
     def test_a_mistral_model_has_one_name_and_the_newest_release(self):
         specs = plan(usable("vibe", "mistral-large-2411"), usable("vibe", "mistral-large-2512"),
