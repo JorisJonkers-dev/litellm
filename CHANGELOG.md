@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.2...v1.17.0) (2026-11-28)
+
+
+### Features
+
+* **catalog:** add auto/&lt;model&gt; groups and family aliases, block deployments only on repeated refusals, test paid fall-through in the real proxy ([#204](https://github.com/JorisJonkers-dev/litellm/issues/204)) ([f9faca2](https://github.com/JorisJonkers-dev/litellm/commit/f9faca2f358d9499eb9591a5992ef25ee4fffc80))
+
 ## [1.16.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.1...v1.16.2) (2026-11-28)
 
 
