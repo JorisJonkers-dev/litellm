@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.18.1...v1.18.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* block a free copy that times out or answers 524, and run the Router tests inside the image in CI ([#219](https://github.com/JorisJonkers-dev/litellm/issues/219)) ([a983557](https://github.com/JorisJonkers-dev/litellm/commit/a9835579e328030008a4867feeb2604cdd47c5a6))
+
 ## [1.18.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.18.0...v1.18.1) (2026-11-28)
 
 
