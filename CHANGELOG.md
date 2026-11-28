@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.3...v1.15.0) (2026-11-28)
+
+
+### Features
+
+* **deploy:** sync the catalogue once after every release ([#177](https://github.com/JorisJonkers-dev/litellm/issues/177)) ([57e096f](https://github.com/JorisJonkers-dev/litellm/commit/57e096f109eb7c1b744cb2f87e67c840186e9d28))
+
 ## [1.14.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.2...v1.14.3) (2026-11-27)
 
 
