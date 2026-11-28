@@ -319,7 +319,11 @@ DEPLOYMENT_LIMITS = ("rpm", "tpm", "rpd", "tpd", "max_parallel_requests")
 SHARED_WINDOWS = ("minute", "hour", "day", "month")
 LIMIT_SCOPES = ("deployment", "account")
 FREE_TIMEOUT = 300  # seconds a free deployment may take to finish an answer (litellm_params.timeout)
-FREE_STREAM_TIMEOUT = 60  # seconds a streamed free answer may go silent before it is dropped (litellm_params.stream_timeout)
+# seconds a streamed free answer may go silent before it is dropped (litellm_params.stream_timeout). Cloudflare
+# in front of the proxy closes a request that sends no byte for about 100 s, and the proxy sends nothing until
+# the first token, so every attempt (the first and router_settings.num_retries more) must fit inside that.
+FREE_STREAM_TIMEOUT = 25
+CLOUDFLARE_IDLE_LIMIT = 100  # seconds Cloudflare lets a proxied request stay silent before it answers 524
 DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
