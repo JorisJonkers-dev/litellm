@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.1...v1.16.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **catalog:** drop a silent stream on the direct model names too, except the local route ([#198](https://github.com/JorisJonkers-dev/litellm/issues/198)) ([fbd1887](https://github.com/JorisJonkers-dev/litellm/commit/fbd1887ddf00e83ffd27d9ba108522a1216d6146))
+* **models:** refresh the generated model deployments ([#202](https://github.com/JorisJonkers-dev/litellm/issues/202)) ([2f9d4eb](https://github.com/JorisJonkers-dev/litellm/commit/2f9d4ebdb6fa8b09834d747ca31bcbe13a2d22d6))
+
 ## [1.16.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.0...v1.16.1) (2026-11-28)
 
 
