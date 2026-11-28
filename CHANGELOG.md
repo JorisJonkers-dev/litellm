@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.1...v1.15.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **catalog:** fit every attempt at a free stream inside Cloudflare's 100 s, and settle two near-miss free groups ([#188](https://github.com/JorisJonkers-dev/litellm/issues/188)) ([dca3e00](https://github.com/JorisJonkers-dev/litellm/commit/dca3e003b324b2950b1772cef6822260f847b997))
+
 ## [1.15.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.0...v1.15.1) (2026-11-28)
 
 
