@@ -1469,34 +1469,6 @@
       }
     },
     {
-      "model_name": "free/absolutereality",
-      "litellm_params": {
-        "model": "openai/absolutereality:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/absolutereality:free",
-        "route": "unorouter",
-        "canonical": "absolutereality",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/agnes-2.5-flash",
       "litellm_params": {
         "model": "neosantara/agnes-2.5-flash",
@@ -1632,34 +1604,6 @@
       }
     },
     {
-      "model_name": "free/albedobase-xl-31",
-      "litellm_params": {
-        "model": "openai/albedobase-xl-31:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/albedobase-xl-31:free",
-        "route": "unorouter",
-        "canonical": "albedobase-xl-31",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/allam-2-7b",
       "litellm_params": {
         "model": "groq/allam-2-7b",
@@ -1714,34 +1658,6 @@
       }
     },
     {
-      "model_name": "free/anything-v5",
-      "litellm_params": {
-        "model": "openai/anything-v5:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/anything-v5:free",
-        "route": "unorouter",
-        "canonical": "anything-v5",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/apertus-v1.5-8b",
       "litellm_params": {
         "model": "cloudflare/@cf/swiss-ai/apertus-v1.5-8b",
@@ -1791,34 +1707,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/aura-1",
-      "litellm_params": {
-        "model": "openai/aura-1:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/aura-1:free",
-        "route": "unorouter",
-        "canonical": "aura-1",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -3074,32 +2962,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)"
-      }
-    },
-    {
-      "model_name": "free/dots-3-note-preview",
-      "litellm_params": {
-        "model": "openai/dots-3-note-preview:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/dots-3-note-preview:free",
-        "route": "unorouter",
-        "canonical": "dots-3-note-preview",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -4173,34 +4039,6 @@
       }
     },
     {
-      "model_name": "free/gemma-4-12b",
-      "litellm_params": {
-        "model": "openai/gemma-4-12b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemma-4-12b:free",
-        "route": "unorouter",
-        "canonical": "gemma-4-12b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gemma-4-26b",
       "litellm_params": {
         "model": "openai/gemma-4-26b:free",
@@ -4510,31 +4348,6 @@
       "model_name": "free/gemma-4-26b-a4b-it-meromero",
       "litellm_params": {
         "model": "openai/gemma-4-26b-a4b-it-meromero:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemma-4-26b-a4b-it-meromero:free",
-        "route": "unorouter",
-        "canonical": "gemma-4-26b-a4b-it-meromero",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/gemma-4-26b-a4b-it-meromero",
-      "litellm_params": {
-        "model": "openai/gemma-4-26b-a4b-it-meromero:free",
         "litellm_credential_name": "routeway",
         "order": 6,
         "weight": 1,
@@ -4552,7 +4365,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "200 requests a day per account; 1 in flight"
+        "free_limit": "200 requests a day per account; 1 in flight",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -4908,34 +4724,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "40 requests a minute per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/glm-4.1v-thinking-flash",
-      "litellm_params": {
-        "model": "openai/glm-4.1v-thinking-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/glm-4.1v-thinking-flash:free",
-        "route": "unorouter",
-        "canonical": "glm-4.1v-thinking-flash",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -6317,34 +6105,6 @@
       }
     },
     {
-      "model_name": "free/gpt-6",
-      "litellm_params": {
-        "model": "openai/gpt-6:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gpt-6:free",
-        "route": "unorouter",
-        "canonical": "gpt-6",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gpt-6-luna",
       "litellm_params": {
         "model": "openai/gpt-6-luna:free",
@@ -6706,34 +6466,6 @@
       }
     },
     {
-      "model_name": "free/granite-4.0-micro",
-      "litellm_params": {
-        "model": "openai/granite-4.0-micro:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/granite-4.0-micro:free",
-        "route": "unorouter",
-        "canonical": "granite-4.0-micro",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/grok-4.1",
       "litellm_params": {
         "model": "openai/grok-4.1:free",
@@ -7083,85 +6815,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "40 requests a minute per account"
-      }
-    },
-    {
-      "model_name": "free/ising-calibration-1.5-31b",
-      "litellm_params": {
-        "model": "openai/ising-calibration-1.5-31b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/ising-calibration-1.5-31b:free",
-        "route": "unorouter",
-        "canonical": "ising-calibration-1.5-31b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/k-exaone-2.5",
-      "litellm_params": {
-        "model": "openai/k-exaone-2.5:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/k-exaone-2.5:free",
-        "route": "unorouter",
-        "canonical": "k-exaone-2.5",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/k2-horizon",
-      "litellm_params": {
-        "model": "openai/k2-horizon:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/k2-horizon:free",
-        "route": "unorouter",
-        "canonical": "k2-horizon",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
+        "free_limit": "40 requests a minute per account",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -7607,34 +7261,6 @@
       }
     },
     {
-      "model_name": "free/llama-3.2-11b-vision",
-      "litellm_params": {
-        "model": "openai/llama-3.2-11b-vision:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/llama-3.2-11b-vision:free",
-        "route": "unorouter",
-        "canonical": "llama-3.2-11b-vision",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/llama-3.2-11b-vision-instruct",
       "litellm_params": {
         "model": "cloudflare/@cf/meta/llama-3.2-11b-vision-instruct",
@@ -7911,34 +7537,6 @@
       }
     },
     {
-      "model_name": "free/mercury-decide",
-      "litellm_params": {
-        "model": "openai/mercury-decide:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/mercury-decide:free",
-        "route": "unorouter",
-        "canonical": "mercury-decide",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/meta-llama-3-1-8b-instruct",
       "litellm_params": {
         "model": "openai/meta-llama-3-1-8b-instruct",
@@ -8143,34 +7741,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/mindshub-air",
-      "litellm_params": {
-        "model": "openai/mindshub-air:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/mindshub-air:free",
-        "route": "unorouter",
-        "canonical": "mindshub-air",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -9091,34 +8661,6 @@
       }
     },
     {
-      "model_name": "free/mn-violet-lotus-12b",
-      "litellm_params": {
-        "model": "openai/mn-violet-lotus-12b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/mn-violet-lotus-12b:free",
-        "route": "unorouter",
-        "canonical": "mn-violet-lotus-12b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/moonshot-kimi-k2-instruct",
       "litellm_params": {
         "model": "openai/moonshot-kimi-k2-instruct",
@@ -9676,32 +9218,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "40 requests a minute per account"
-      }
-    },
-    {
-      "model_name": "free/nemotron-3.5-bolt-e4b",
-      "litellm_params": {
-        "model": "openai/nemotron-3.5-bolt-e4b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/nemotron-3.5-bolt-e4b:free",
-        "route": "unorouter",
-        "canonical": "nemotron-3.5-bolt-e4b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "40 requests a minute per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -10111,34 +9631,6 @@
       }
     },
     {
-      "model_name": "free/nemotron-sea-lion-v4.8-120b-a12b",
-      "litellm_params": {
-        "model": "openai/nemotron-sea-lion-v4.8-120b-a12b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/nemotron-sea-lion-v4.8-120b-a12b:free",
-        "route": "unorouter",
-        "canonical": "nemotron-sea-lion-v4.8-120b-a12b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/north-mini-code",
       "litellm_params": {
         "model": "openai/north-mini-code:free",
@@ -10238,34 +9730,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "1,000 requests a month per account; 20 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/nova-furry-pony",
-      "litellm_params": {
-        "model": "openai/nova-furry-pony:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/nova-furry-pony:free",
-        "route": "unorouter",
-        "canonical": "nova-furry-pony",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -10604,34 +10068,6 @@
       }
     },
     {
-      "model_name": "free/orca-router",
-      "litellm_params": {
-        "model": "openai/orca-router:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/orca-router:free",
-        "route": "unorouter",
-        "canonical": "orca-router",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/particle-1",
       "litellm_params": {
         "model": "openai/particle-ai/particle-1:free",
@@ -10817,34 +10253,6 @@
       }
     },
     {
-      "model_name": "free/prefect-pony",
-      "litellm_params": {
-        "model": "openai/prefect-pony:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/prefect-pony:free",
-        "route": "unorouter",
-        "canonical": "prefect-pony",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/qwen-mt-plus",
       "litellm_params": {
         "model": "openai/qwen-mt-plus",
@@ -10922,34 +10330,6 @@
       }
     },
     {
-      "model_name": "free/qwen-sea-lion-v4.5-27b-it",
-      "litellm_params": {
-        "model": "openai/qwen-sea-lion-v4.5-27b-it:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/qwen-sea-lion-v4.5-27b-it:free",
-        "route": "unorouter",
-        "canonical": "qwen-sea-lion-v4.5-27b-it",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/qwen2.5-72b-instruct",
       "litellm_params": {
         "model": "openai/qwen2-5-72b-instruct",
@@ -10972,34 +10352,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen2.5-coder-32b",
-      "litellm_params": {
-        "model": "openai/qwen2.5-coder-32b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/qwen2.5-coder-32b:free",
-        "route": "unorouter",
-        "canonical": "qwen2.5-coder-32b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -11034,34 +10386,6 @@
       }
     },
     {
-      "model_name": "free/qwen2.5-vl-7b-instruct-awq",
-      "litellm_params": {
-        "model": "openai/qwen2.5-vl-7b-instruct-awq:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/qwen2.5-vl-7b-instruct-awq:free",
-        "route": "unorouter",
-        "canonical": "qwen2.5-vl-7b-instruct-awq",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/qwen3-14b",
       "litellm_params": {
         "model": "openai/qwen3-14b",
@@ -11084,34 +10408,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-235b",
-      "litellm_params": {
-        "model": "openai/qwen3-235b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/qwen3-235b:free",
-        "route": "unorouter",
-        "canonical": "qwen3-235b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -12152,34 +11448,6 @@
       }
     },
     {
-      "model_name": "free/sensenova-6.8-flash",
-      "litellm_params": {
-        "model": "openai/sensenova-6.8-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/sensenova-6.8-flash:free",
-        "route": "unorouter",
-        "canonical": "sensenova-6.8-flash",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/sensenova-6.8-flash-lite",
       "litellm_params": {
         "model": "openai/sensenova-6.8-flash-lite:free",
@@ -12416,90 +11684,6 @@
       }
     },
     {
-      "model_name": "free/swe-1-6-slow",
-      "litellm_params": {
-        "model": "openai/swe-1-6-slow:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/swe-1-6-slow:free",
-        "route": "unorouter",
-        "canonical": "swe-1-6-slow",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/syn-pro",
-      "litellm_params": {
-        "model": "openai/syn-pro:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/syn-pro:free",
-        "route": "unorouter",
-        "canonical": "syn-pro",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/tagflow-code-27b",
-      "litellm_params": {
-        "model": "openai/tagflow-code-27b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/tagflow-code-27b:free",
-        "route": "unorouter",
-        "canonical": "tagflow-code-27b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/tiny-aya-earth",
       "litellm_params": {
         "model": "cohere_chat/tiny-aya-earth",
@@ -12612,59 +11796,6 @@
       }
     },
     {
-      "model_name": "free/tunix-pony",
-      "litellm_params": {
-        "model": "openai/tunix-pony:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/tunix-pony:free",
-        "route": "unorouter",
-        "canonical": "tunix-pony",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/typhoon-v2.5-30b-a3b-instruct",
-      "litellm_params": {
-        "model": "openai/typhoon-v2.5-30b-a3b-instruct:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/typhoon-v2.5-30b-a3b-instruct:free",
-        "route": "unorouter",
-        "canonical": "typhoon-v2.5-30b-a3b-instruct",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
       "model_name": "free/typhoon-v2.5-30b-a3b-instruct",
       "litellm_params": {
         "model": "openai/typhoon-v2.5-30b-a3b-instruct",
@@ -12685,7 +11816,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -12710,34 +11844,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "1 requests a minute per account; 1,000 requests a day per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/xing4.0-29b-a4b",
-      "litellm_params": {
-        "model": "openai/xing4.0-29b-a4b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/xing4.0-29b-a4b:free",
-        "route": "unorouter",
-        "canonical": "xing4.0-29b-a4b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
