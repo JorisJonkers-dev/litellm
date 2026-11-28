@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.17.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.17.1...v1.17.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **models:** refresh the generated model deployments ([#206](https://github.com/JorisJonkers-dev/litellm/issues/206)) ([7f4008d](https://github.com/JorisJonkers-dev/litellm/commit/7f4008d9b89a7523109942ec4a55c0a44b43790f))
+
+## [1.17.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.17.0...v1.17.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **catalog:** require chat evidence for UnoRouter free ids and refuse diffusion, speech and router names ([#205](https://github.com/JorisJonkers-dev/litellm/issues/205)) ([b12b11c](https://github.com/JorisJonkers-dev/litellm/commit/b12b11c4b81f620916ae53f1b8e46786bdbd3896))
+
 ## [1.17.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.2...v1.17.0) (2026-11-28)
 
 
