@@ -332,8 +332,8 @@ test('the local route calls the GPU workstation gate with the key only this proj
     assert.match(env, /^LOCAL_LLM_API_BASE=http:\/\/100\.112\.121\.102:11435\/v1$/m, file)
     assert.match(env, /^LOCAL_LLM_API_KEY=\$\{secret:secret\/data\/platform\/litellm#local_llm_api_key\}$/m, file)
   }
-  // Both Processes read the key, so both grants name it.
-  assert.equal((PROJECT.match(/^ +- local_llm_api_key$/gm) ?? []).length, 2)
+  // The proxy and both catalogue Processes (scheduled and on release) read the key, so each grant names it.
+  assert.equal((PROJECT.match(/^ +- local_llm_api_key$/gm) ?? []).length, 3)
 })
 
 test('no model is stored in the proxy database', () => {
@@ -459,7 +459,23 @@ test('the catalogue Process needs no proxy and no master key', () => {
   assert.doesNotMatch(CATALOG, /master_key/)
   // Its one edge is the estate Prometheus, for the real-traffic series; never the proxy.
   assert.match(CATALOG, /dependsOn:\n\s+- \{ application: prometheus, surface: http \}\n/)
-  assert.equal([...CATALOG.matchAll(/application: (\S+?),/g)].map((m) => m[1]).join(), 'prometheus')
+  // Each of its two Processes (scheduled and on release) declares that edge.
+  assert.equal([...CATALOG.matchAll(/application: (\S+?),/g)].map((m) => m[1]).join(), 'prometheus,prometheus')
+})
+
+test('the on-release job Process is the scheduled catalogue Process, run once per release', () => {
+  const start = CATALOG.indexOf('      - name: litellm-catalog\n')
+  const job = CATALOG.indexOf('      - name: litellm-catalog-on-release\n')
+  assert.ok(start >= 0 && job > start)
+  const scheduled = CATALOG.slice(start, job).replace(/^ *#.*\n/gm, '')
+  const onRelease = CATALOG.slice(job).replace(/^ *#.*\n/gm, '')
+  assert.match(onRelease, /^ {8}lifecycle: job$/m)
+  assert.match(onRelease, /^ {8}startupBudget: 900s/m)
+  assert.doesNotMatch(onRelease, /^ {8}(schedule|probes|provides|replicas|cutover):/m)
+  // Everything else (image, runtime, command, egress, edges, secrets, placement) is the scheduled Process's.
+  const rest = (text) => text.replace(/^ {6}- name: .*\n/m, '').replace(/^ {8}lifecycle: .*\n/m, '')
+    .replace(/^ {8}schedule: .*\n/m, '').replace(/^ {8}startupBudget: .*\n/m, '').trimEnd()
+  assert.equal(rest(onRelease), rest(scheduled))
 })
 
 test('the Project declares the scrape, the dashboard and the catalogue sync', () => {
