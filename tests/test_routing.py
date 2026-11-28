@@ -727,7 +727,7 @@ class FreeRoutesWave2(unittest.TestCase):
         self.assertFalse({route for tier in rules["tiers"] for route, _ in tier} & set(self.ROUTES))
         for route in ("bazaarlink", "cohere", "airforce", "plugsky"):
             self.assertEqual(rules["cooldowns"][route], 3600, route)
-        self.assertEqual({r for r in self.ROUTES if entry(r).get("anonymous")}, {"unorouter"})
+        self.assertEqual({r for r in self.ROUTES if entry(r).get("anonymous")}, set())
 
     def test_the_real_static_lists_name_only_what_the_spec_names(self):
         free_ids = sync.load_rules()["free_ids"]

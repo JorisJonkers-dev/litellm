@@ -255,7 +255,7 @@ class OpenRouterFree(unittest.TestCase):
 
     def test_every_free_deployment_is_labelled_free_with_its_limit(self):
         specs = self.specs()
-        limit = "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        limit = "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
         self.assertEqual(sync.free_limit_note("openrouter", REAL), limit)
         for spec in specs:
             info = spec["model_info"]
@@ -280,7 +280,7 @@ class OpenRouterFree(unittest.TestCase):
         free_entry = models["openrouter/particle-ai/particle-1:free"]
         self.assertEqual(free_entry["metadata"]["cost_class"], "free")
         self.assertEqual(free_entry["metadata"]["free_limit"], sync.free_limit_note("openrouter", REAL))
-        self.assertTrue(free_entry["description"].startswith("free (50 requests a day per account"))
+        self.assertTrue(free_entry["description"].startswith("free (1,000 requests a day per account"))
         self.assertNotIn("cost_class", models["openrouter/paid/model"]["metadata"])
         self.assertEqual(models["openrouter/paid/model"]["description"], "")
 

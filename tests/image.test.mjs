@@ -109,7 +109,7 @@ function runLitellm(name, extra = []) {
       NAGA: 'naga', ROUTEWAY: 'routeway', INFERBASE: 'inferbase',
     }).flatMap(([name, route]) => ['-e', `${name}_API_KEY=upstream-${route}`]),
     // The second wave's credentials (litellm#64). Cohere and watsonx carry a key and no base; BazaarLink's base is unset in the files.
-    ...['BAZAARLINK', 'ELECTRONHUB', 'COHERE', 'AIRFORCE', 'PLUGSKY', 'POE', 'VERCEL_AI_GATEWAY', 'WATSONX', 'NOVITA', 'TOGETHER',
+    ...['BAZAARLINK', 'ELECTRONHUB', 'UNOROUTER', 'COHERE', 'AIRFORCE', 'PLUGSKY', 'POE', 'VERCEL_AI_GATEWAY', 'WATSONX', 'NOVITA', 'TOGETHER',
       'TYPHOON', 'SEALION', 'GONKA', 'LONGCAT', 'NEOSANTARA'].flatMap((name) => ['-e', `${name}_API_KEY=upstream-${name.toLowerCase()}`]),
     ...['ELECTRONHUB', 'UNOROUTER', 'AIRFORCE', 'PLUGSKY', 'POE', 'VERCEL_AI_GATEWAY', 'NOVITA', 'TOGETHER', 'TYPHOON', 'SEALION', 'GONKA',
       'LONGCAT', 'NEOSANTARA'].flatMap((name) => ['-e', `${name}_API_BASE=https://${name.toLowerCase()}.example.test/v1`]),

@@ -26,13 +26,13 @@ const ROUTER = CONFIG.slice(CONFIG.indexOf('router_settings:'), CONFIG.indexOf('
 const GENERATED = readFileSync(`${ROOT}/config/models.generated.yaml`, 'utf8')
   .split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n')
 const DEPLOYMENTS = JSON.parse(GENERATED).model_list
-// The second wave (litellm#64): UnoRouter is anonymous, so it has no Vault field.
+// The second wave (litellm#64); every route has a Vault key field (UnoRouter's since 2026-11-28).
 const WAVE2_ROUTES = [
   'bazaarlink', 'electronhub', 'unorouter', 'cohere', 'airforce', 'plugsky', 'poe', 'vercel', 'watsonx', 'novita', 'together',
   'typhoon', 'sealion', 'gonka', 'longcat', 'neosantara',
 ]
 const WAVE2_FIELDS = {
-  bazaarlink: 'bazaarlink_api_key', electronhub: 'electronhub_api_key', cohere: 'cohere_api_key', airforce: 'airforce_api_key',
+  bazaarlink: 'bazaarlink_api_key', electronhub: 'electronhub_api_key', unorouter: 'unorouter_api_key', cohere: 'cohere_api_key', airforce: 'airforce_api_key',
   plugsky: 'plugsky_api_key', poe: 'poe_api_key', vercel: 'vercel_ai_gateway_api_key', watsonx: 'watsonx_api_key',
   novita: 'novita_api_key', together: 'together_api_key', typhoon: 'typhoon_api_key', sealion: 'sealion_api_key',
   gonka: 'gonka_api_key', longcat: 'longcat_api_key', neosantara: 'neosantara_api_key',
@@ -229,7 +229,7 @@ test('every free-only route has a credential and no wildcard, and a key is a Vau
   // The anonymous routes carry a placeholder key, not a Vault field.
   assert.deepEqual(CREDENTIAL_VALUES.kilo.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
   assert.deepEqual(CREDENTIAL_VALUES.ovh.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
-  assert.deepEqual(CREDENTIAL_VALUES.unorouter.api_key, 'os.environ/ANONYMOUS_UPSTREAM_KEY')
+  assert.deepEqual(CREDENTIAL_VALUES.unorouter.api_key, 'os.environ/UNOROUTER_API_KEY')
 })
 
 test('the second-wave routes: optional Vault fields, a base only where the spec names one, free-only deployments', () => {
@@ -239,7 +239,7 @@ test('the second-wave routes: optional Vault fields, a base only where the spec 
       assert.match(env, new RegExp(`^${field.replace(/_api_key$/, '').toUpperCase()}_API_KEY=\\$\\{secret:secret/data/platform/litellm#${field}\\}$`, 'm'), `${file} ${route}`)
     }
   }
-  assert.equal(Object.keys(WAVE2_FIELDS).length, WAVE2_ROUTES.length - 1) // every route but UnoRouter has a key
+  assert.equal(Object.keys(WAVE2_FIELDS).length, WAVE2_ROUTES.length) // every second-wave route has a key
   // Settings that are not secrets are optional Vault fields too, mapped by the env files; no placeholder is left.
   const SETTINGS = { cloudflare_account_id: 'CLOUDFLARE_ACCOUNT_ID', bazaarlink_api_base: 'BAZAARLINK_API_BASE', cohere_api_base: 'COHERE_LIST_BASE',
     watsonx_api_base: 'WATSONX_API_BASE', watsonx_project_id: 'WATSONX_PROJECT_ID' }

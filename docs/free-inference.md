@@ -75,7 +75,7 @@ client:
 | 18 | GitHub Copilot Free | monthly AI-credit allowance, auto model only | GitHub account | `github_copilot/` (terms unread) | B (`copilot`) | ledger | add | partly |
 | 19 | BazaarLink | 4 free models; 10 RPM, 60 weighted units a day | none or email | `openai/` | A | yes | later | yes |
 | 20 | Electron Hub | about 24 `:free` ids | email | `openai/` | A | yes | later | partly |
-| 21 | UnoRouter | about 170 `:free` ids, queue-throttled | none | `openai/` | A | yes | later | partly |
+| 21 | UnoRouter | about 170 `:free` ids, queue-throttled | key (401 without) | `openai/` | A | yes | later | partly |
 | 22 | Cohere | Command A family; 20 RPM, 1,000 calls a month | email | `cohere_chat/` | A | yes | later | yes |
 | 23 | Api.Airforce | 1 RPM, 1,000 RPD; 4 of 26 free ids operational | Discord or email | `openai/` | A | yes | later | yes |
 | 24 | Plugsky | own micro and lite models; 500 RPD, 250K TPD, 30 RPM | email, no card | `openai/` | A | yes | later | yes |
@@ -335,7 +335,7 @@ Groq is the example. The `openrouter` route is the pattern to follow.
 1. **Vault.** The owner writes `groq_api_key` in `secret/data/platform/litellm` with estate's
    `./bootstrap/secrets.sh --only litellm`. Add the field to both `keys:` lists in
    `deploy/litellm.project.yml` (the proxy and the `litellm-catalog` Process). Anonymous routes
-   (`kilo`, `ovh`, `unorouter`) have none.
+   (`kilo`, `ovh`) have none.
 2. **Environment.** Add `GROQ_API_KEY=${secret:...#groq_api_key}` and
    `GROQ_API_BASE=https://api.groq.com/openai/v1` to `deploy/env/litellm/base.env` and the
    catalogue's env file.
@@ -352,7 +352,7 @@ Groq is the example. The `openrouter` route is the pattern to follow.
    - For the plan-wide free tiers (Groq, Cloudflare, Z.ai, Cohere, AxForge, Plugsky, Inferbase),
      use a static `free_ids` list in `routing.json`. Then a paid id can never be deployed on a
      route that must not bill.
-   - Add `"anonymous": true` for `kilo`, `ovh` and `unorouter`, so a route without a key is listed
+   - Add `"anonymous": true` for `kilo` and `ovh`, so a route without a key is listed
      and probed instead of skipped. The probe already omits `Authorization` when the key is empty.
    - Add a limit per route in `DEFAULT_ROUTE_LIMITS`, below the provider's daily cap: Requesty,
      Naga and Routeway 100 to 200 a day, Cohere 1,000 a month, OVH and Airforce a handful.

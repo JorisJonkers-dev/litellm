@@ -99,7 +99,7 @@ credential_list:
     credential_values: { api_key: os.environ/ELECTRONHUB_API_KEY, api_base: os.environ/ELECTRONHUB_API_BASE }
     credential_info: {}
   - credential_name: unorouter
-    credential_values: { api_key: os.environ/ANONYMOUS_UPSTREAM_KEY, api_base: os.environ/UNOROUTER_API_BASE }
+    credential_values: { api_key: os.environ/UNOROUTER_API_KEY, api_base: os.environ/UNOROUTER_API_BASE }
     credential_info: {}
   - credential_name: cohere
     credential_values: { api_key: os.environ/COHERE_API_KEY }

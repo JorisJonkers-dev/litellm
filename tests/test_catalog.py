@@ -508,7 +508,7 @@ class Build(unittest.TestCase):
     def test_unorouter_free_ids_are_decided_by_the_listing_with_no_request(self):
         lists = {"https://uno/v1/models": {"data": [{"id": f"m{i}:free"} for i in range(20)]}}
         http = Http(lists=lists)
-        cat, stats = sync.build({"UNOROUTER_API_BASE": "https://uno/v1"}, http, {}, NOW, rules=sync.load_rules())
+        cat, stats = sync.build({"UNOROUTER_API_BASE": "https://uno/v1", "UNOROUTER_API_KEY": "k"}, http, {}, NOW, rules=sync.load_rules())
         self.assertEqual((stats["probed"], http.probed()), (0, []))
         self.assertEqual(cat["providers"]["unorouter"]["metadata"]["by_status"], {"usable": 20})
 
@@ -1224,14 +1224,17 @@ class FreeSignals(unittest.TestCase):
         self.assertEqual(http.probed_ids(), [])
         self.assertEqual(sync.plan_groups(cat, dict(RULES, free_ids=rules["free_ids"])), [])
 
-    def test_unorouter_is_anonymous_and_a_keyed_second_wave_route_is_skipped_without_its_key(self):
-        env = {"UNOROUTER_API_BASE": "https://uno/v1"}
+    def test_unorouter_is_keyed_and_skipped_without_its_key_like_every_keyed_route(self):
+        env = {"UNOROUTER_API_BASE": "https://uno/v1", "UNOROUTER_API_KEY": "k"}
         http = Http(lists={"https://uno/v1/models": {"data": [{"id": "a:free"}, {"id": "paid"}]}})
         cat, stats = sync.build(env, http, {"providers": {}}, NOW, probe_ids=EVERYTHING, rules={})
         self.assertEqual(stats["route_errors"], [])
         self.assertEqual(http.probed_ids(), ["a:free"])
         for call in http.calls:
-            self.assertNotIn("Authorization", call[2])
+            self.assertEqual(call[2].get("Authorization"), "Bearer k")
+        http = Http(lists={})
+        cat, stats = sync.build({"UNOROUTER_API_BASE": "https://uno/v1"}, http, {"providers": {}}, NOW, rules={})
+        self.assertEqual((cat["providers"]["unorouter"]["models"], stats["route_errors"], http.calls), ([], [], []))
         http = Http(lists={})
         cat, stats = sync.build({"ELECTRONHUB_API_BASE": "https://eh/v1"}, http, {"providers": {}}, NOW, rules={})
         self.assertEqual((cat["providers"]["electronhub"]["models"], stats["route_errors"], http.calls), ([], [], []))
