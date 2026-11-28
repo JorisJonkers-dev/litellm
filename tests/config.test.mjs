@@ -104,6 +104,13 @@ test('no free-route deployment is in canonical, each is in its own route group a
       continue
     }
     if (deployment.model_name.startsWith('free/')) continue // the shared free group, checked below
+    if (deployment.model_name.startsWith('auto/')) {
+      // An auto/ group copies free deployments for public-repository keys (litellm#941): its own access group, zero cost, no budget.
+      assert.deepEqual(found, ['public-repo'], deployment.model_info.id)
+      assert.equal(deployment.litellm_params.input_cost_per_token, 0, deployment.model_info.id)
+      assert.equal(deployment.litellm_params.max_budget, undefined, deployment.model_info.id)
+      continue
+    }
     if (deployment.model_name.startsWith('opencode-go-free/')) continue // its own test below
     if (!(route in groups)) {
       assert.ok(!found.includes('free') && !found.some((group) => group.endsWith('-free-public') && !['opencode-go-free-public', 'google-free-public'].includes(group)),

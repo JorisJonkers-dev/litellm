@@ -1,5 +1,7 @@
 """The paid/<model> chains: one group per chat model across the paid routes, in routing.json's order."""
+import asyncio
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -9,6 +11,12 @@ sys.path.insert(0, str(ROOT / "catalog"))
 sys.path.insert(0, str(ROOT / "tests"))
 import sync  # noqa: E402
 from test_routing import ENV, RULES, Http, catalogue, entry  # noqa: E402
+from test_tiers import configured_tiers  # noqa: E402
+
+try:  # in the image, not on a workstation
+    from litellm import Router
+except ImportError:  # pragma: no cover
+    Router = None
 
 PAID_ROUTES = ["vibe-study", "vibe", "opencode-go", "vibe-study-api", "vibe-api"]
 PAID_RULES = dict(
@@ -151,6 +159,58 @@ class ClaudeAccess(unittest.TestCase):
         bad["model_info"]["access_groups"] = ["canonical"]
         with self.assertRaisesRegex(RuntimeError, "anthropic"):
             sync.assert_paid_groups(specs + [bad], PAID_RULES)
+
+
+GENERATED_TEXT = (ROOT / "config" / "models.generated.yaml").read_text()
+GENERATED = json.loads(GENERATED_TEXT[GENERATED_TEXT.index("\n{"):])["model_list"]
+
+
+class GeneratedChains(unittest.TestCase):
+    """The checked-in config/models.generated.yaml, as the proxy loads it."""
+
+    def test_the_two_flash_models_list_the_five_routes_in_the_fixed_order(self):
+        for model in ("deepseek-v4.1-flash", "glm-5.3-flash"):
+            routes = [e["model_info"]["route"] for e in GENERATED if e["model_name"] == f"paid/{model}"]
+            self.assertEqual(routes, PAID_ROUTES, model)
+
+    def test_no_paid_group_holds_openrouter_and_claude_is_only_in_the_anthropic_group(self):
+        self.assertFalse([e for e in GENERATED if e["model_name"].startswith("paid/") and e["model_info"]["route"] == "openrouter"])
+        self.assertFalse([e["model_name"] for e in GENERATED if e["model_name"].endswith("-latest")])
+        claude = [e for e in GENERATED if str(e["model_info"].get("canonical", "")).startswith("claude")]
+        self.assertTrue(claude)
+        self.assertEqual({tuple(e["model_info"]["access_groups"]) for e in claude}, {("anthropic",)})
+
+
+@unittest.skipIf(Router is None, "litellm is not importable here; it is in the image (run the suite there)")
+class PaidFallthrough(unittest.TestCase):
+    """A real LiteLLM Router over the generated paid chain, the upstream mocked: a limited route falls to the next."""
+
+    MODEL = "deepseek-v4.1-flash"
+
+    def router(self, limited):
+        _, fallbacks = configured_tiers()
+        model_list = []
+        for e in GENERATED:
+            if e["model_name"] not in (f"paid/{self.MODEL}", f"free/{self.MODEL}"):
+                continue
+            route = e["model_info"]["route"]
+            fails = e["model_name"].startswith("paid/") and route in limited
+            model_list.append({"model_name": e["model_name"], "model_info": {"id": e["model_info"]["id"]},
+                               "litellm_params": {"model": "openai/mock", "api_key": "k", "order": e["litellm_params"]["order"],
+                                                  "mock_response": "litellm.RateLimitError" if fails else f"{e['model_name']}@{route}"}})
+        return Router(model_list=model_list, fallbacks=fallbacks, num_retries=0, allowed_fails=0)
+
+    def ask(self, router):
+        reply = asyncio.run(router.acompletion(model=f"paid/{self.MODEL}", messages=[{"role": "user", "content": "hi"}]))
+        return reply.choices[0].message.content
+
+    def test_a_limited_route_falls_through_to_the_next_paid_route(self):
+        for index, route in enumerate(PAID_ROUTES):
+            self.assertEqual(self.ask(self.router(set(PAID_ROUTES[:index]))), f"paid/{self.MODEL}@{route}")
+
+    def test_when_every_paid_route_is_limited_the_call_fails_and_never_reaches_a_free_group(self):
+        with self.assertRaises(Exception):
+            self.ask(self.router(set(PAID_ROUTES)))
 
 
 if __name__ == "__main__":

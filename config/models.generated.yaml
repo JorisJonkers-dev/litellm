@@ -3,6 +3,984 @@
 {
   "model_list": [
     {
+      "model_name": "auto/codestral",
+      "litellm_params": {
+        "model": "openai/codestral-latest:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/codestral-latest:free",
+        "route": "unorouter",
+        "canonical": "codestral",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4.1-flash:free",
+        "litellm_credential_name": "electronhub",
+        "order": 4,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/electronhub/deepseek-v4.1-flash:free",
+        "route": "electronhub",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "poe/deepseek-v4.1-flash-1017",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/deepseek-v4.1-flash-1017",
+        "route": "poe",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4.1-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/deepseek-v4.1-flash:free",
+        "route": "unorouter",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "auto/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "neosantara/deepseek-v4.1-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/neosantara/deepseek-v4.1-flash-free",
+        "route": "neosantara",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/deepseek-v4.1-flash",
+      "litellm_params": {
+        "model": "openai/deepseek-v4-1-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/deepseek-v4-1-flash",
+        "route": "inferbase",
+        "canonical": "deepseek-v4.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/gemini-decision-1",
+      "litellm_params": {
+        "model": "gemini/gemini-decision-1",
+        "litellm_credential_name": "google",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/google/gemini-decision-1",
+        "route": "google",
+        "canonical": "gemini-decision-1",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/glm-5",
+      "litellm_params": {
+        "model": "openai/glm-5:free",
+        "litellm_credential_name": "electronhub",
+        "order": 4,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/electronhub/glm-5:free",
+        "route": "electronhub",
+        "canonical": "glm-5",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5",
+      "litellm_params": {
+        "model": "openai/zai-glm-5",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5",
+        "route": "inferbase",
+        "canonical": "glm-5",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3",
+      "litellm_params": {
+        "model": "poe/glm-5.3",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.3",
+        "route": "poe",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-3",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-3",
+        "route": "inferbase",
+        "canonical": "glm-5.3",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "nvidia_nim/z-ai/glm-5.3-flash",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/nvidia/z-ai/glm-5.3-flash",
+        "route": "nvidia",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "40 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "openai/glm-5.3-flash:free",
+        "litellm_credential_name": "electronhub",
+        "order": 4,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/electronhub/glm-5.3-flash:free",
+        "route": "electronhub",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "poe/glm-5.3-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/glm-5.3-flash",
+        "route": "poe",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "openai/glm-5.3-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/glm-5.3-flash:free",
+        "route": "unorouter",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "neosantara/glm-5.3-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/neosantara/glm-5.3-flash-free",
+        "route": "neosantara",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "openai/zai-org/GLM-5.3-Flash",
+        "litellm_credential_name": "gonka",
+        "order": 8,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/gonka/zai-org/GLM-5.3-Flash",
+        "route": "gonka",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/glm-5.3-flash",
+      "litellm_params": {
+        "model": "openai/zai-glm-5-3-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/zai-glm-5-3-flash",
+        "route": "inferbase",
+        "canonical": "glm-5.3-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/gpt-6-luna",
+      "litellm_params": {
+        "model": "openai/gpt-6-luna:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gpt-6-luna:free",
+        "route": "unorouter",
+        "canonical": "gpt-6-luna",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/hy3",
+      "litellm_params": {
+        "model": "openai/hy3:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/hy3:free",
+        "route": "unorouter",
+        "canonical": "hy3",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/kimi-k2.7-code",
+      "litellm_params": {
+        "model": "openai/kimi-k2.7-code",
+        "litellm_credential_name": "airforce",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/airforce/kimi-k2.7-code",
+        "route": "airforce",
+        "canonical": "kimi-k2.7-code",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per account; 1,000 requests a day per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "poe/mimo-v2.6-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/mimo-v2.6-flash",
+        "route": "poe",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "openai/mimo-v2.6-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/mimo-v2.6-flash:free",
+        "route": "unorouter",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "auto/mimo-v2.6-flash",
+      "litellm_params": {
+        "model": "neosantara/mimo-v2.6-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/neosantara/mimo-v2.6-flash-free",
+        "route": "neosantara",
+        "canonical": "mimo-v2.6-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/mimo-v2.6-pro",
+      "litellm_params": {
+        "model": "neosantara/mimo-v2.6-pro-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/neosantara/mimo-v2.6-pro-free",
+        "route": "neosantara",
+        "canonical": "mimo-v2.6-pro",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "nvidia_nim/minimaxai/minimax-m3.1-flash",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/nvidia/minimaxai/minimax-m3.1-flash",
+        "route": "nvidia",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "40 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "openai/minimax-m3.1-flash:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/minimax-m3.1-flash:free",
+        "route": "unorouter",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "auto/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "openai/minimax-m3.1-flash:free",
+        "litellm_credential_name": "routeway",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/routeway/minimax-m3.1-flash:free",
+        "route": "routeway",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "200 requests a day per account; 1 in flight"
+      }
+    },
+    {
+      "model_name": "auto/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "neosantara/minimax-m3.1-flash-free",
+        "litellm_credential_name": "neosantara",
+        "order": 7,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/neosantara/minimax-m3.1-flash-free",
+        "route": "neosantara",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/minimax-m3.1-flash",
+      "litellm_params": {
+        "model": "openai/minimax-m3-1-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/minimax-m3-1-flash",
+        "route": "inferbase",
+        "canonical": "minimax-m3.1-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/mistral-code",
+      "litellm_params": {
+        "model": "openai/mistral-code-latest",
+        "litellm_credential_name": "airforce",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/airforce/mistral-code-latest",
+        "route": "airforce",
+        "canonical": "mistral-code",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per account; 1,000 requests a day per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/mistral-code-fim",
+      "litellm_params": {
+        "model": "openai/mistral-code-fim-latest",
+        "litellm_credential_name": "airforce",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/airforce/mistral-code-fim-latest",
+        "route": "airforce",
+        "canonical": "mistral-code-fim",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per account; 1,000 requests a day per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/mistral-large-4",
+      "litellm_params": {
+        "model": "poe/mistral-large-4",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/mistral-large-4",
+        "route": "poe",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/mistral-large-4",
+      "litellm_params": {
+        "model": "openai/mistral-large-4",
+        "litellm_credential_name": "airforce",
+        "order": 6,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/airforce/mistral-large-4",
+        "route": "airforce",
+        "canonical": "mistral-large-4",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per account; 1,000 requests a day per account"
+      }
+    },
+    {
+      "model_name": "auto/mistral-small",
+      "litellm_params": {
+        "model": "openai/mistral-small:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/mistral-small:free",
+        "route": "unorouter",
+        "canonical": "mistral-small",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "auto/qwen3.8-flash",
+      "litellm_params": {
+        "model": "poe/qwen3.8-flash",
+        "litellm_credential_name": "poe",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/poe/qwen3.8-flash",
+        "route": "poe",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/qwen3.8-flash",
+      "litellm_params": {
+        "model": "openai/qwen3-8-flash",
+        "litellm_credential_name": "inferbase",
+        "order": 10,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/inferbase/qwen3-8-flash",
+        "route": "inferbase",
+        "canonical": "qwen3.8-flash",
+        "access_groups": [
+          "public-repo"
+        ],
+        "max_input_tokens": 8192,
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "auto/step-5-preview",
+      "litellm_params": {
+        "model": "nvidia_nim/stepfun-ai/step-5-preview",
+        "litellm_credential_name": "nvidia",
+        "order": 3,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/nvidia/stepfun-ai/step-5-preview",
+        "route": "nvidia",
+        "canonical": "step-5-preview",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "40 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "auto/step-5-preview",
+      "litellm_params": {
+        "model": "openai/step-5-preview:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/step-5-preview:free",
+        "route": "unorouter",
+        "canonical": "step-5-preview",
+        "access_groups": [
+          "public-repo"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
       "model_name": "claude-fable-5",
       "litellm_params": {
         "model": "anthropic/claude-fable-5",
