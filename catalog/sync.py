@@ -324,8 +324,9 @@ FREE_TIMEOUT = 300  # seconds a free deployment may take to finish an answer (li
 # the first token, so every attempt (the first and router_settings.num_retries more) must fit inside that.
 FREE_STREAM_TIMEOUT = 25
 CLOUDFLARE_IDLE_LIMIT = 100  # seconds Cloudflare lets a proxied request stay silent before it answers 524
-# seconds a streamed paid/<model> or tier-step answer may go silent before it is dropped. Paid copies are
-# fewer and steadier than free ones, so they get a little longer, still inside CLOUDFLARE_IDLE_LIMIT for the
+# seconds a streamed answer of any deployment that is not a free copy may go silent before it is dropped: the
+# direct model names, paid/<model> and the paid tier steps (not the GPU workstation's local/ route). Paid copies
+# are fewer and steadier than free ones, so they get a little longer, still inside CLOUDFLARE_IDLE_LIMIT for the
 # first attempt and router_settings.num_retries more.
 PAID_STREAM_TIMEOUT = 30
 DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -1387,6 +1388,10 @@ def deployment(group, canonical, route, chosen, order, weight, entry, public=Fal
         params.update(limits)
     if timeout:
         params["timeout"] = timeout
+    if stream_timeout is None and route != "local":
+        # Every deployment behind the proxy streams through Cloudflare's idle limit. The GPU workstation is left at
+        # LiteLLM's default: a model it loads cold can take longer than this before its first token.
+        stream_timeout = PAID_STREAM_TIMEOUT
     if stream_timeout:
         params["stream_timeout"] = stream_timeout
     if free_only:
