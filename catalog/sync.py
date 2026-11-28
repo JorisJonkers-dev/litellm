@@ -324,6 +324,10 @@ FREE_TIMEOUT = 300  # seconds a free deployment may take to finish an answer (li
 # the first token, so every attempt (the first and router_settings.num_retries more) must fit inside that.
 FREE_STREAM_TIMEOUT = 25
 CLOUDFLARE_IDLE_LIMIT = 100  # seconds Cloudflare lets a proxied request stay silent before it answers 524
+# seconds a streamed paid/<model> or tier-step answer may go silent before it is dropped. Paid copies are
+# fewer and steadier than free ones, so they get a little longer, still inside CLOUDFLARE_IDLE_LIMIT for the
+# first attempt and router_settings.num_retries more.
+PAID_STREAM_TIMEOUT = 30
 DAILY_RESET = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -1667,7 +1671,7 @@ def paid_groups(members, by_route, rules):
     for name, routes in sorted(members.items()):
         for route in sorted(routes, key=lambda r: order[r]):
             spec = deployment(f"{PAID_GROUP}/{name}", name, route, routes[route], order[route], 1, by_route[route],
-                              budget=budgets.get(route), cooldown=cooldowns.get(route))
+                              budget=budgets.get(route), cooldown=cooldowns.get(route), stream_timeout=PAID_STREAM_TIMEOUT)
             spec["model_info"]["access_groups"] = [PAID_ACCESS_GROUP]
             specs.append(spec)
     return specs
@@ -1954,6 +1958,7 @@ def tier_copies(specs, rules):
                     copy["name"] = step["model"]
                     copy["order"], copy["weight"] = 1, 1
                     copy["litellm_params"]["order"], copy["litellm_params"]["weight"] = 1, 1
+                    copy["litellm_params"]["stream_timeout"] = PAID_STREAM_TIMEOUT
                     opt_in = canonical_name(None, upstream_id, rules) in set(rules.get("opt_in_only") or [])
                     copy["model_info"]["access_groups"] = [OPT_IN_ACCESS_GROUP if opt_in else prefix]
                     copy["model_info"].pop("allowed_fails_policy", None)

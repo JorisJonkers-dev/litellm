@@ -56,6 +56,8 @@ class PaidChains(unittest.TestCase):
         self.assertEqual(len(copies), 5)
         for copy_spec in copies:
             self.assertEqual(copy_spec["litellm_params"]["max_budget"], 10)
+            # A streamed paid answer that goes silent is dropped in time for the next route, inside Cloudflare's limit.
+            self.assertEqual(copy_spec["litellm_params"]["stream_timeout"], sync.PAID_STREAM_TIMEOUT)
             self.assertTrue(copy_spec["model_info"].get("account"))
             origin = canonical.get(copy_spec["model_info"]["id"])
             if origin is not None:

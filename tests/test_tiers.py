@@ -339,6 +339,7 @@ class TierCopies(unittest.TestCase):
             origin = by_id[copy["model_info"]["id"]]  # the same id: one spend counter
             self.assertEqual(copy["model_info"]["account"], origin["model_info"]["account"])
             self.assertEqual(copy["litellm_params"]["max_budget"], 0.05)
+            self.assertEqual(copy["litellm_params"]["stream_timeout"], sync.PAID_STREAM_TIMEOUT)
             self.assertEqual(copy["litellm_params"]["max_budget"], origin["litellm_params"]["max_budget"])
             self.assertEqual(copy["model_info"]["access_groups"], [name.split("/")[0]])
             self.assertEqual(copy["litellm_params"]["model"], origin["litellm_params"]["model"])

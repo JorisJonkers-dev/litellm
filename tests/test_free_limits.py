@@ -807,6 +807,7 @@ class Hook(unittest.TestCase):
         retries = int(re.search(r"^\s*num_retries:\s*(\d+)", router, re.MULTILINE).group(1))
         routes = {"": sync.FREE_STREAM_TIMEOUT}
         routes.update({route: sync.free_stream_timeout(route, REAL) for route, rule in (REAL.get("free_limits") or {}).items() if isinstance(rule, dict)})
+        routes["paid and tier steps"] = sync.PAID_STREAM_TIMEOUT
         for route, seconds in routes.items():
             self.assertLess((retries + 1) * seconds, sync.CLOUDFLARE_IDLE_LIMIT, route or "default")
 
