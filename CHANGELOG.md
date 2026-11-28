@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.0...v1.15.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **deploy:** give the on-release catalogue job the catalogue's environment ([#180](https://github.com/JorisJonkers-dev/litellm/issues/180)) ([dd1a71f](https://github.com/JorisJonkers-dev/litellm/commit/dd1a71fde0d8f1ecf3d19c118c1d8d05dd2e62ec))
+
 ## [1.15.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.14.3...v1.15.0) (2026-11-28)
 
 
