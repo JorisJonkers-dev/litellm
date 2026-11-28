@@ -142,7 +142,8 @@ class ChatOnly(unittest.TestCase):
         ids = ["dreamshaper:free", "juggernaut-xl:free", "wai-cute-pony:free", "voyage-4:free", "bge-m3:free", "rerank-v3.5",
                "typhoon-asr-realtime", "cohere-transcribe-03-2026", "riva-translate-4b-instruct-v2", "typhoon-ocr-v2", "parse-v5.0",
                "suno-v5:free", "google/lyria-3-pro-preview:free", "meta/llama-guard-3-8b", "qwen3guard-gen-8b", "sea-guard",
-               "gpt-oss-safeguard-20b:free", "llama-prompt-guard-2-86m"]
+               "gpt-oss-safeguard-20b:free", "llama-prompt-guard-2-86m", "absolutereality:free", "albedobase-xl-31:free",
+               "anything-v5:free", "nova-furry-pony:free", "prefect-pony:free", "aura-1:free", "orca-router:free"]
         specs = plan(*[free("unorouter", i) for i in ids], free("unorouter", "glm-4.7-flash:free"))
         self.assertEqual({s["name"] for s in specs if s["name"].startswith("free/")}, {"free/glm-4.7-flash"})
 
@@ -153,7 +154,23 @@ class ChatOnly(unittest.TestCase):
         rules = dict(BASE_RULES, free_all=["typhoon"], free_order=REAL["free_order"])
         names = {s["name"] for s in plan(*evidence, rules=rules) if s["name"].startswith("free/")}
         self.assertIn("free/typhoon-v2.5-30b-a3b-instruct", names)
-        self.assertEqual(group(plan(*evidence, rules=rules), "free/mystery-model"), ["unorouter"])
+        self.assertEqual(group(plan(*evidence, rules=rules), "free/mystery-model"), [])
+
+    def test_unorouter_needs_chat_evidence_not_just_the_free_suffix(self):
+        # Its listing carries no model type: image, speech and router ids arrive with ":free" like chat models.
+        unknown = ["absolutereality:free", "albedobase-xl-31:free", "anything-v5:free", "nova-furry-pony:free", "prefect-pony:free",
+                   "tunix-pony:free", "aura-1:free", "orca-router:free", "mystery-model:free"]
+        bare = [("unorouter", i, "usable", {"free": True}) for i in unknown]
+        self.assertEqual([s for s in plan(*bare) if s["name"].startswith("free/")], [])
+        # A name alone refuses a diffusion, speech or router id even when something vouches for it.
+        vouched = [("unorouter", i, "usable", {"free": True, "chat_evidence": "models.dev"}) for i in unknown[:-1]]
+        self.assertEqual([s for s in plan(*vouched) if s["name"].startswith("free/")], [])
+        # A chat model with models.dev evidence stays; other routes are unaffected.
+        kept = plan(("unorouter", "glm-4.7-flash:free", "usable", {"free": True, "chat_evidence": "models.dev"}),
+                    ("unorouter", "mystery-model:free", "usable", {"free": True}),
+                    ("kilo", "mystery-model:free", "usable", {"free": True}))
+        self.assertEqual(group(kept, "free/glm-4.7-flash"), ["unorouter"])
+        self.assertEqual(group(kept, "free/mystery-model"), ["kilo"])
 
     def test_the_generated_free_groups_hold_no_non_chat_model(self):
         for entry in GENERATED:

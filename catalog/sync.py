@@ -1098,12 +1098,18 @@ VERSION_HYPHEN = re.compile(r"(?<=[a-z])(\d+)-(\d{1,2})(?=-|$)")
 # rerankers, speech, transcription and translation-only models, OCR and document parsers, music, and guard or
 # classifier models. Used only when nothing better (a typed listing, models.dev) says what a model is.
 FREE_NON_CHAT = re.compile(
-    r"dreamshaper|juggernaut|(?:^|[-_])pony(?:[-_]|$)|ponyxl|rev-?animated|swampony|nova-anime|(?:^|[-/])wai-|icbinp|cyberrealistic|"
+    r"dreamshaper|juggernaut|(?:^|[-_])pony(?:[-_:]|$)|ponyxl|rev-?animated|swampony|nova-anime|(?:^|[-/])wai-|icbinp|cyberrealistic|"
     r"deliberate|quiet-goodnight|ntr-mix|animerge|fustercluck|stable-diffusion|sdxl|(?:^|[-/])flux|dall-?e|imagen|"
     r"embed|voyage|(?:^|[-/])bge-|(?:^|[-/])e5-|(?:^|[-/])gte-|rerank|"
-    r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|orpheus|riva-translate|indictrans|"
+    r"(?:^|[-_])asr(?:[-_]|$)|transcri|whisper|(?:^|[-_/])tts(?:[-_]|$)|(?:^|[-/])aura-\d|orpheus|riva-translate|indictrans|"
+    r"absolutereality|albedobase|anything-v\d|(?:^|[-_])sd-?(?:xl|\d)|-xl-\d|(?:^|[-_/])[a-z]*-router(?:$|[-_:])|"
     r"(?:^|[-_])ocr(?:[-_.]|$)|(?:^|[-_])parse(?:[-_.]|$)|suno|lyria|musicgen|"
     r"guard|moderation|classifier|(?:^|[-_])image(?:[-_]|$)|nano-banana|(?:^|[-_])live(?:[-_]|$)|deep-research|computer-use|genie|antigravity|gemini-omni|native-audio|(?:^|[-_])streaming(?:[-_]|$)", re.I)
+
+
+# Routes that join the free groups on a `:free` suffix but whose listing carries no model type (UnoRouter lists image and
+# speech models with the suffix too): like a `free_all` route they need chat evidence (models.dev, other providers, free_ids).
+CHAT_EVIDENCE_ROUTES = frozenset({"unorouter"})
 
 
 def free_chat(route, chosen, rules):
@@ -1119,7 +1125,7 @@ def free_chat(route, chosen, rules):
         # Google's key has no billing account (owner, 2026-11-26): every chat model joins, a moving "-latest" alias
         # does not (it is not one model), and models.dev's "not chat" already set the mode in the listing.
         return not chosen["upstream_id"].endswith("-latest")
-    if approves_all(rules, route):
+    if approves_all(rules, route) or route in CHAT_EVIDENCE_ROUTES:
         return bool(chosen.get("chat_evidence")) or chosen["upstream_id"] in (((rules or {}).get("free_ids") or {}).get(route) or [])
     return True
 

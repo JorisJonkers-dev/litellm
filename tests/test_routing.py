@@ -702,7 +702,7 @@ class FreeRoutesWave2(unittest.TestCase):
     def test_a_paid_id_is_never_deployed_and_a_free_one_is_in_its_own_group_plus_free(self):
         paid = [(route, "paid-model", "usable", {"free": False}) for route in self.ROUTES]
         self.assertEqual(self.plan(*paid), [])
-        specs = self.plan(*paid, *[(route, "m", "usable", {"free": True}) for route in self.ROUTES], ("vibe", "m", "usable", {}))
+        specs = self.plan(*paid, *[(route, "m", "usable", {"free": True, "chat_evidence": "listing"}) for route in self.ROUTES], ("vibe", "m", "usable", {}))
         shared = [s for s in specs if s["name"].startswith("free/")]
         self.assertTrue(shared)
         for spec in shared:  # the shared free/<canonical> group: free copies only, the access group free alone
