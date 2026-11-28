@@ -352,6 +352,33 @@ class Build(unittest.TestCase):
         self.assertEqual(meta["opencode-go/deepseek-v4-pro"]["status"], "blocked")
         self.assertIn("traffic", meta["opencode-go/deepseek-v4-pro"]["reason"])
 
+    def test_one_refusal_does_not_block_a_deployment_and_serving_wins_over_refusals(self):
+        env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
+
+        def series(denied_count, ok_count):
+            def call(method, url, headers, body):
+                if "total_requests" in urllib.parse.unquote(url):
+                    rows = [{"metric": {"model_id": "opencode-go/deepseek-v4-pro", "status_code": "200"}, "value": [0, str(ok_count)]}] if ok_count else []
+                else:
+                    rows = [{"metric": {"model_id": "opencode-go/deepseek-v4-pro", "exception_status": "404"}, "value": [0, str(denied_count)]}]
+                return 200, {"data": {"result": rows}}
+            plain = Http()
+
+            def route(method, url, headers, body):
+                return call(method, url, headers, body) if url.startswith("http://prom/api/v1/query") else plain(method, url, headers, body)
+            return route
+
+        def status(denied_count, ok_count=0):
+            cat, _ = sync.build(env, series(denied_count, ok_count), {}, NOW)
+            meta = {m["id"]: m["metadata"] for p in cat["providers"].values() for m in p["models"]}
+            return meta["opencode-go/deepseek-v4-pro"]["status"]
+
+        self.assertEqual(status(1), "usable")  # decided by the listing: one 404 is not repeated
+        self.assertEqual(status(1.4), "usable")
+        self.assertEqual(status(1.6), "blocked")  # increase() extrapolates: two refusals read as 1.6
+        self.assertEqual(status(5), "blocked")
+        self.assertEqual(status(5, ok_count=3), "usable")
+
     def test_a_blocked_deployment_that_serves_traffic_becomes_usable(self):
         env = dict(ENV, TRAFFIC_PROMETHEUS_URL="http://prom")
         blocked, _ = sync.build(env, Build().prom_http(denied=["opencode-go/deepseek-v4-pro"]), {}, NOW)
@@ -892,6 +919,19 @@ class Models(unittest.TestCase):
             self.assertIn("deployments added:", gh.pulls[0]["body"])
             self.assertIn("deployments removed:", gh.pulls[0]["body"])
             self.assertEqual(gh.labels, [("https://api.github.com/repos/o/r/issues/1/labels", ["type: chore", "area: platform"])])
+
+    def test_the_config_follows_the_generated_file_on_the_same_branch(self):
+        # litellm#941: the family aliases and auto fallbacks of config.yaml are rendered from the group names of the file.
+        config = (Path(sync.CONFIG_PATH)).read_text()
+        stale = config.replace(config[config.index(sync.TIERS_BEGIN):config.index(sync.TIERS_END)], sync.TIERS_BEGIN + "\n  model_group_alias: {}\n  fallbacks: []\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Gh({sync.CONFIG_FILE_PATH: stale})
+            self.assertEqual(sync.main(["--output", os.path.join(tmp, "c.json")], self.env(), gh, NOW), 0)
+            self.assertEqual([p for p, _ in gh.puts], [sync.MODELS_PATH, sync.CONFIG_FILE_PATH])
+            models = base64.b64decode(next(b for p, b in gh.puts if p == sync.MODELS_PATH)["content"]).decode()
+            written = base64.b64decode(next(b for p, b in gh.puts if p == sync.CONFIG_FILE_PATH)["content"]).decode()
+            self.assertEqual(written, sync.splice_tier_block(stale, sync.load_rules(), sync.group_names(models)))
+            self.assertEqual(len(gh.pulls), 1)
 
     def test_a_second_run_reuses_the_open_pull_request(self):
         with tempfile.TemporaryDirectory() as tmp:

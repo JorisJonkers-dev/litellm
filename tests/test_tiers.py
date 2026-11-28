@@ -150,7 +150,9 @@ class Rendering(unittest.TestCase):
         self.assertNotIn("default_fallbacks", (ROOT / "config" / "models.generated.yaml").read_text())
         _, fallbacks = configured_tiers()
         keyed = {key for entry in fallbacks for key in entry}
-        self.assertEqual(keyed, set(TIERS))
+        # The tiers, and the auto/ groups and family aliases (litellm#941): never a free/ or paid/ group.
+        self.assertTrue(set(TIERS) <= keyed)
+        self.assertEqual({key for key in keyed if key not in TIERS}, {key for key in keyed if key.startswith("auto/")})
         self.assertFalse(any(key.startswith("free/") for key in keyed))
 
     def test_tier_free_and_tier_review_reach_a_paid_deployment_only_through_declared_paid_steps(self):
@@ -196,6 +198,7 @@ class Rendering(unittest.TestCase):
             path = Path(tmp) / "config.yaml"
             stale = CONFIG.replace('"tier-free": "free/hy4-flash-free"', '"tier-free": "stale"')
             path.write_text(stale)
+            (Path(tmp) / "models.generated.yaml").write_text((ROOT / "config" / "models.generated.yaml").read_text())
             with mock.patch.object(sync, "CONFIG_PATH", str(path)):
                 self.assertEqual(sync.main(["--render-tiers"]), 0)
             self.assertEqual(path.read_text(), CONFIG)

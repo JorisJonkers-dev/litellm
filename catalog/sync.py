@@ -146,10 +146,14 @@ APPROVAL_REASON = "not in free_ids of catalog/routing.json (a free-plan id is ap
 #   1. the live listing (a free call): chat, free, served, retired;
 #   2. the public catalogue models.dev, joined by id (reference_index()): chat or not, price (0 is free), deprecated;
 #   3. real traffic through the proxy (Prometheus, TRAFFIC_PROMETHEUS_URL): served requests make a deployment usable,
-#      401, 403 or 404 block it until the evidence ages out of the window;
+#      repeated 401, 403 or 404 (DENIED_BLOCK_AFTER) block it until the evidence ages out of the window;
 #   4. the answer already recorded.
 TRAFFIC_WINDOW = "7d"
 DENIED_STATUSES = ("401", "403", "404")
+# A deployment is blocked on traffic only after this many refusals in the window: one stray 404 (a bad request, a
+# client that named a wrong model) must not drop a working deployment out of its chains. increase() extrapolates, so
+# the count is rounded.
+DENIED_BLOCK_AFTER = 2
 # Free-only routes whose free ids are named in routing.json (`free_ids`): the plan is free, the list is not.
 STATIC_KINDS = ("groq", "cloudflare", "zai", "axforge", "inferbase", "bazaarlink", "cohere", "plugsky", "poe", "watsonx",
                 "together", "typhoon", "sealion", "gonka", "longcat", "neosantara")
@@ -235,6 +239,7 @@ GOOGLE_FREE_ROUTE = "google-free"
 CANONICAL_ACCESS_GROUP = "canonical"
 # The generated deployments: a file in the litellm repository, refreshed by a pull request.
 MODELS_PATH = "config/models.generated.yaml"
+CONFIG_FILE_PATH = "config/config.yaml"
 MODELS_BRANCH = "bot/model-catalog"
 MODELS_TITLE = "fix(models): refresh the generated model deployments"
 MODELS_MESSAGE = "fix(models): refresh the generated model deployments"
@@ -1608,10 +1613,12 @@ def plan_groups(catalogue, rules):
         extra = (rules.get("policies") or {}).get(spec["route"])
         if extra:
             spec["model_info"]["allowed_fails_policy"] = {**spec["model_info"].get("allowed_fails_policy", {}), **extra}
+    specs.extend(auto_groups(specs))
     assert_free_groups(specs)
     assert_tier_copies(specs, rules)
     assert_no_tier_shadow(specs, rules)
     assert_paid_groups(specs, rules)
+    assert_auto_groups(specs)
     return sorted(specs, key=lambda spec: (spec["name"], spec["order"], spec["route"]))
 
 
@@ -1708,6 +1715,121 @@ def assert_paid_groups(specs, rules):
                 problems.append("a Claude deployment carries an access group other than anthropic")
         if problems:
             raise RuntimeError(f"{info.get('id')} may not join {spec['name']}: " + "; ".join(problems))
+
+
+AUTO_GROUP = "auto"
+# The access group of an auto/<model> group. Only a key for public repositories holds it: the free copies of an
+# auto group are public work (a free provider may train on the prompt), and its fallback is a paid group.
+AUTO_ACCESS_GROUP = "public-repo"
+
+
+def auto_groups(specs):
+    """The auto/<model> groups: the free copies of a model, falling back to its paid group (config.yaml).
+
+    A model has an auto group when it has both a free/<model> and a paid/<model> group: those are the models where
+    "free first, then paid" differs from either chain. The group holds the free/<model> deployments (the same
+    model_info.id and params, so the free limits, cooldowns and counters are the ones of the free group) with the
+    access group "public-repo" alone. The step after them, `paid/<model>`, is a router fallback rendered into
+    config.yaml (auto_fallbacks()), tried when every free copy has failed. A model with only one of the two is
+    reached as free/<model> or paid/<model>.
+    """
+    free, paid = {}, set()
+    for spec in specs:
+        prefix, _, model = spec["name"].partition("/")
+        if prefix == FREE_GROUP:
+            free.setdefault(model, []).append(spec)
+        elif prefix == PAID_GROUP:
+            paid.add(model)
+    out = []
+    for model in sorted(set(free) & paid):
+        for source in free[model]:
+            spec = copy_module.deepcopy(source)
+            spec["name"] = f"{AUTO_GROUP}/{model}"
+            spec["model_info"]["access_groups"] = [AUTO_ACCESS_GROUP]
+            out.append(spec)
+    return out
+
+
+def assert_auto_groups(specs):
+    """Fail the sync when an auto/* deployment is not a copy of a free/ deployment of the same model.
+
+    No auto group may reach a deployment outside its prefixes' chain rules: every deployment of auto/<model> is the
+    same deployment (id, params) as one of free/<model>, so it is a zero-cost, unbudgeted copy, and its access group
+    is "public-repo" alone. The paid step is paid/<model>, a router fallback, never a deployment of the auto group.
+    """
+    chains = {}
+    for spec in specs:
+        prefix, _, model = spec["name"].partition("/")
+        if prefix == FREE_GROUP:
+            chains.setdefault((prefix, model), {})[spec["model_info"]["id"]] = spec
+    for spec in specs:
+        prefix, _, model = spec["name"].partition("/")
+        if prefix != AUTO_GROUP:
+            continue
+        info, problems = spec["model_info"], []
+        origin = (chains.get((FREE_GROUP, model)) or {}).get(info["id"])
+        if origin is None:
+            problems.append("it is not a free/ deployment of this model")
+        elif spec["litellm_params"] != origin["litellm_params"]:
+            problems.append("its params differ from the deployment it copies")
+        if info.get("access_groups") != [AUTO_ACCESS_GROUP]:
+            problems.append("its access groups are not exactly the public-repo group")
+        if problems:
+            raise RuntimeError(f"{info.get('id')} may not join {spec['name']}: " + "; ".join(problems))
+
+
+def group_names(models_text):
+    """The model group names a generated models file holds (its header lines skipped)."""
+    document = json.loads(models_text[models_text.index("\n{"):])
+    return sorted({entry["model_name"] for entry in document["model_list"]})
+
+
+def family_aliases(names, rules):
+    """{alias: target} for the short family names: `<prefix>/<family>` points at the newest model of the family.
+
+    `names` are model group names; for each prefix (free, paid, auto) and family of rules["families"], the
+    members are the group names under that prefix matching the family's pattern, and the newest is the one with
+    the largest version (its named group v, split on dots into numbers). A family without a member in a prefix has
+    no alias there, and a family name that is itself a group (a versionless Mistral name) is that group, not an alias.
+    """
+    families = {name: pattern for name, pattern in ((rules or {}).get("families") or {}).items() if not name.startswith("_")}
+    present = set(names)
+    aliases = {}
+    for prefix in (FREE_GROUP, PAID_GROUP, AUTO_GROUP):
+        for family, pattern in families.items():
+            alias = f"{prefix}/{family}"
+            if alias in present:
+                continue
+            best, best_version = None, None
+            for name in sorted(present):
+                match = re.match(pattern, name[len(prefix) + 1:]) if name.startswith(prefix + "/") else None
+                if match:
+                    version = tuple(int(part) for part in match.group("v").split("."))
+                    if best_version is None or version > best_version:
+                        best, best_version = name, version
+            if best:
+                aliases[alias] = best
+    return aliases
+
+
+def auto_fallbacks(names, aliases):
+    """The router fallbacks of the auto groups: auto/<model> (and the family alias of it) -> paid/<model>.
+
+    Only a model with both a free group and a paid group has the step: a paid-only auto group is the paid copies
+    already, and a free-only one has nothing to fall back to. The keys name the auto group and each family alias of it.
+    """
+    present = set(names)
+    out = []
+    for name in sorted(present):
+        prefix, _, model = name.partition("/")
+        if prefix == AUTO_GROUP and f"{FREE_GROUP}/{model}" in present and f"{PAID_GROUP}/{model}" in present:
+            out.append((name, f"{PAID_GROUP}/{model}"))
+    for alias, target in sorted(aliases.items()):
+        if alias.startswith(AUTO_GROUP + "/"):
+            model = target.partition("/")[2]
+            if f"{FREE_GROUP}/{model}" in present and f"{PAID_GROUP}/{model}" in present:
+                out.append((alias, f"{PAID_GROUP}/{model}"))
+    return [{key: [step]} for key, step in out]
 
 
 def free_group(name, members, by_route, rules):
@@ -1905,7 +2027,7 @@ def assert_no_tier_shadow(specs, rules):
         raise RuntimeError("a model group is named like a tier: " + ", ".join(clash))
 
 
-def tier_router_settings(rules):
+def tier_router_settings(rules, names=()):
     """The router settings that make the tiers callable: {"model_group_alias", "fallbacks"}.
 
     A tier name is an alias of its first step's group, and the rest of its chain is the ordered
@@ -1915,15 +2037,19 @@ def tier_router_settings(rules):
     """
     validate_tiers(rules)
     chains = tier_chains(rules)
+    aliases = family_aliases(names, rules)
     return {
-        "model_group_alias": {name: chain[0]["model"] for name, chain in chains.items()},
-        "fallbacks": [{name: [step["model"] for step in chain[1:]]} for name, chain in chains.items() if len(chain) > 1],
+        "model_group_alias": {**{name: chain[0]["model"] for name, chain in chains.items()}, **aliases},
+        "fallbacks": [{name: [step["model"] for step in chain[1:]]} for name, chain in chains.items() if len(chain) > 1]
+        + auto_fallbacks(names, aliases),
     }
 
 
-def render_tier_block(rules):
-    """The lines config/config.yaml holds inside router_settings, from the tier definitions."""
-    settings = tier_router_settings(rules)
+def render_tier_block(rules, names=None):
+    """The lines config/config.yaml holds inside router_settings: the tiers, the family aliases and the auto fallbacks.
+
+    `names` are the model group names of the generated models file (default: the file beside config.yaml)."""
+    settings = tier_router_settings(rules, generated_names() if names is None else names)
     lines = [TIERS_BEGIN + TIERS_NOTE, "  model_group_alias:"]
     lines += [f"    {json.dumps(name)}: {json.dumps(target)}" for name, target in settings["model_group_alias"].items()]
     lines.append("  fallbacks:")
@@ -1932,12 +2058,18 @@ def render_tier_block(rules):
     return "\n".join(lines)
 
 
-def splice_tier_block(config_text, rules):
+def generated_names():
+    """The group names of config/models.generated.yaml beside config.yaml."""
+    with open(os.path.join(os.path.dirname(CONFIG_PATH), "models.generated.yaml")) as handle:
+        return group_names(handle.read())
+
+
+def splice_tier_block(config_text, rules, names=None):
     """config.yaml's text with the rendered tier block in place of the marked one."""
     start, end = config_text.find(TIERS_BEGIN), config_text.find(TIERS_END)
     if start < 0 or end < start:
         raise RuntimeError("config.yaml has no tiers block between its BEGIN and END markers")
-    return config_text[:start] + render_tier_block(rules) + config_text[end + len(TIERS_END):]
+    return config_text[:start] + render_tier_block(rules, names) + config_text[end + len(TIERS_END):]
 
 
 def tier_copies(specs, rules):
@@ -2018,7 +2150,7 @@ def record_groups(deployments):
         })
         if gated:
             entry["access_groups"] = gated
-        elif FREE_ACCESS_GROUP in access:
+        elif FREE_ACCESS_GROUP in access or AUTO_ACCESS_GROUP in access:
             # A free group names its own access groups, so a reader reaches it by the exact group.
             entry["access_groups"] = list(access)
         entry["deployments"].append({
@@ -2289,8 +2421,8 @@ def build(env, http, previous, now, probe_ids=(), rules=None):
                 seen = (traffic or {}).get(full) or {}
                 if seen.get("ok"):
                     meta.update(status="usable", reason="", failing_probes=0, verified_by="traffic", probed_at=stamp)
-                elif seen.get("denied"):
-                    # Real traffic was refused (401, 403, 404): blocked while that evidence is inside the window.
+                elif round(seen.get("denied") or 0) >= DENIED_BLOCK_AFTER:
+                    # Real traffic was refused repeatedly (401, 403, 404): blocked while that evidence is inside the window.
                     meta.update(status="blocked", reason="real traffic was refused (401, 403 or 404)", failing_probes=2, verified_by="traffic")
                     meta.pop("was_usable", None)
                 elif full in probe_ids:
@@ -2504,8 +2636,12 @@ def models_body(current, text, candidates=None):
     return body
 
 
-def publish_models(repo, token, text, http, env=None, candidates=None):
+def publish_models(repo, token, text, http, env=None, candidates=None, config_edit=None):
     """Put the generated deployments on the bot branch and open its pull request.
+
+    `config_edit`, when given, maps config/config.yaml's text on main to the text the new deployments need (the
+    family aliases and auto fallbacks of its router_settings): it lands on the same branch, so the pull request
+    keeps the file and the config consistent.
 
     Returns False when the repository's main branch already holds this text: nothing is written,
     and an open pull request from the bot branch is left as it is. Raises RuntimeError naming the
@@ -2515,7 +2651,13 @@ def publish_models(repo, token, text, http, env=None, candidates=None):
     path = env.get("MODELS_PATH", MODELS_PATH)
     branch = env.get("MODELS_BRANCH", MODELS_BRANCH)
     current, sha = github_get_text(repo, path, token, http, ref="main")
-    if current == text:
+    wanted = [(path, current, sha, text)]
+    if config_edit is not None:
+        config_path = env.get("CONFIG_FILE_PATH", CONFIG_FILE_PATH)
+        config_current, config_sha = github_get_text(repo, config_path, token, http, ref="main")
+        if config_current is not None:
+            wanted.append((config_path, config_current, config_sha, config_edit(config_current)))
+    if all(held == want for _, held, _, want in wanted):
         # Main already holds this text: an open pull request carrying another text is stale, and
         # merging it would move main away from what the catalogue justifies. Close it.
         stale = github_open_pr(repo, branch, token, http)
@@ -2525,13 +2667,15 @@ def publish_models(repo, token, text, http, env=None, candidates=None):
     if github_open_pr(repo, branch, token, http) is not None:
         # An open pull request that already carries this text is left alone: no hourly churn.
         try:
-            if github_get_text(repo, path, token, http, ref=branch)[0] == text:
+            if all(github_get_text(repo, file_path, token, http, ref=branch)[0] == want for file_path, _, _, want in wanted):
                 github_update_pr_body(repo, github_open_pr(repo, branch, token, http), models_body(current, text, candidates), token, http)
                 return False
         except RuntimeError:
             pass
     github_reset_branch(repo, branch, github_ref(repo, "main", token, http), token, http)
-    github_put_text(repo, path, token, text, sha, http, MODELS_MESSAGE, branch=branch)
+    for file_path, held, file_sha, want in wanted:
+        if held != want:
+            github_put_text(repo, file_path, token, want, file_sha, http, MODELS_MESSAGE, branch=branch)
     number = github_open_pr(repo, branch, token, http)
     if number is None:
         number = github_create_pr(repo, branch, token, http, MODELS_TITLE, models_body(current, text, candidates))
@@ -2638,7 +2782,9 @@ def main(argv=None, env=None, http=None, now=None):
     models_repo, models_token = env.get("MODELS_REPO"), env.get("MODELS_TOKEN")
     if models_repo and models_token:
         try:
-            if publish_models(models_repo, models_token, text, http, env, catalogue.get("free_candidates") or {}):
+            names = group_names(text)
+            if publish_models(models_repo, models_token, text, http, env, catalogue.get("free_candidates") or {},
+                              lambda current: splice_tier_block(current, rules, names)):
                 print(f"catalog: opened or updated the models pull request on {models_repo}")
             else:
                 print(f"catalog: {models_repo} already holds the generated deployments")

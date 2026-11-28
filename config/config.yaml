@@ -254,12 +254,49 @@ router_settings:
     "tier-go-cheap": "opencode-go-tier/deepseek-v4.1-flash"
     "tier-strong-open": "opencode-go-tier/qwen4-max"
     "tier-review": "free/nemotron-3-ultra-550b-a55b"
+    "free/deepseek-flash": "free/deepseek-v4.1-flash"
+    "free/deepseek-pro": "free/deepseek-v4-pro"
+    "free/glm": "free/glm-5.3"
+    "free/glm-flash": "free/glm-5.3-flash"
+    "free/mistral-large": "free/mistral-large-4"
+    "free/gemini-flash": "free/gemini-3.8-flash"
+    "free/gemini-pro": "free/gemini-3.1-pro"
+    "paid/deepseek-flash": "paid/deepseek-v4.1-flash"
+    "paid/glm": "paid/glm-5.3"
+    "paid/glm-flash": "paid/glm-5.3-flash"
+    "paid/mistral-large": "paid/mistral-large-4"
+    "auto/deepseek-flash": "auto/deepseek-v4.1-flash"
+    "auto/glm": "auto/glm-5.3"
+    "auto/glm-flash": "auto/glm-5.3-flash"
+    "auto/mistral-large": "auto/mistral-large-4"
   fallbacks:
     - {"tier-free": ["free/longcat-2.5", "free/beam-1.0-501b-a23b", "free/glm-4.7-flash", "free/qwen3.8-27b", "free-router/openrouter"]}
     - {"tier-vibe": ["vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-go-cheap": ["opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-strong-open": ["vibe-tier/zai-glm-5-3", "opencode-go-tier/kimi-k3.1-pro", "opencode-go-tier/gpt-6-luna", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "vibe-tier/mistral-small-2603", "opencode-go-tier/deepseek-v4.1-flash", "opencode-go-tier/glm-5.3-flash", "opencode-go-tier/mimo-v2.6-flash"]}
     - {"tier-review": ["free/gemma-4-31b-it", "free/glm-4.7-flash", "free/gpt-oss-120b", "vibe-tier/deepseek-v4-1-flash-1017", "vibe-tier/zai-glm-5-3-flash", "opencode-go-tier/qwen3.8-flash", "opencode-go-tier/minimax-m3.1-flash", "opencode-go-tier/mimo-v2.6-flash"]}
+    - {"auto/codestral": ["paid/codestral"]}
+    - {"auto/deepseek-v4.1-flash": ["paid/deepseek-v4.1-flash"]}
+    - {"auto/gemini-decision-1": ["paid/gemini-decision-1"]}
+    - {"auto/glm-5": ["paid/glm-5"]}
+    - {"auto/glm-5.3": ["paid/glm-5.3"]}
+    - {"auto/glm-5.3-flash": ["paid/glm-5.3-flash"]}
+    - {"auto/gpt-6-luna": ["paid/gpt-6-luna"]}
+    - {"auto/hy3": ["paid/hy3"]}
+    - {"auto/kimi-k2.7-code": ["paid/kimi-k2.7-code"]}
+    - {"auto/mimo-v2.6-flash": ["paid/mimo-v2.6-flash"]}
+    - {"auto/mimo-v2.6-pro": ["paid/mimo-v2.6-pro"]}
+    - {"auto/minimax-m3.1-flash": ["paid/minimax-m3.1-flash"]}
+    - {"auto/mistral-code": ["paid/mistral-code"]}
+    - {"auto/mistral-code-fim": ["paid/mistral-code-fim"]}
+    - {"auto/mistral-large-4": ["paid/mistral-large-4"]}
+    - {"auto/mistral-small": ["paid/mistral-small"]}
+    - {"auto/qwen3.8-flash": ["paid/qwen3.8-flash"]}
+    - {"auto/step-5-preview": ["paid/step-5-preview"]}
+    - {"auto/deepseek-flash": ["paid/deepseek-v4.1-flash"]}
+    - {"auto/glm": ["paid/glm-5.3"]}
+    - {"auto/glm-flash": ["paid/glm-5.3-flash"]}
+    - {"auto/mistral-large": ["paid/mistral-large-4"]}
   # END tiers
 
 general_settings:

@@ -330,6 +330,10 @@ class Generated(unittest.TestCase):
             free = params.get("input_cost_per_token") == 0 and params.get("output_cost_per_token") == 0 and "account" not in info
             if info.get("route") in sync.FREE_GROUP_ROUTES and free or "free" in info.get("access_groups", []):
                 # The one exception is a free router step (routing.json free_routers), see OpenRouterFree.
+                if name.startswith(sync.AUTO_GROUP + "/"):
+                    # An auto/ group copies the free deployments of a model for public-repository keys (litellm#941).
+                    self.assertEqual(info["access_groups"], [sync.AUTO_ACCESS_GROUP], name)
+                    continue
                 self.assertTrue(name.startswith(("free/", sync.FREE_ROUTER_PREFIX)), name)
                 self.assertEqual(info["access_groups"], ["free"], name)
             if name.startswith("free/"):
