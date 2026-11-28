@@ -2,11 +2,15 @@
 import asyncio
 import copy
 import datetime
+import http.server
 import json
 import re
 import sys
+import threading
+import time
 import types
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -621,6 +625,12 @@ class Hook(unittest.TestCase):
             self.pick_for(hook, [self.capped()], self.messages(20000))
 
     def test_the_input_size_falls_back_to_a_third_of_the_json_without_a_tokenizer(self):
+        if litellm is not None:
+            # LiteLLM 1.109.1 ships its tokenizer in the image, so litellm.token_counter never fails there (13 tokens
+            # for these messages, not the 16 of the estimate). Make it fail, as it does offline, to reach the fallback.
+            with mock.patch.object(litellm, "token_counter", side_effect=RuntimeError("no tokenizer")):
+                self.assertEqual(free_limits.input_tokens("free/m", self.messages(3)), len(json.dumps(self.messages(3))) // 3)
+            return
         self.assertEqual(free_limits.input_tokens("free/m", self.messages(3)), len(json.dumps(self.messages(3))) // 3)
 
     def test_a_size_402_blocks_nothing(self):
@@ -641,6 +651,32 @@ class Hook(unittest.TestCase):
         a, b = dep("electronhub", "a"), dep("electronhub", "b")
         self.refuse(a, Error(402, "Payment required", {"retry-after": "60"}))
         self.assertEqual(self.pick([a, b, dep("groq", "x")]), ["free/groq/x"])
+
+    def test_a_timeout_blocks_its_deployment_for_a_while_and_leaves_the_account(self):
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        self.refuse(a, Error(408, "litellm.Timeout: Request timed out"))
+        self.assertEqual(self.pick([a, b]), ["free/electronhub/b"])
+        self.now[0] += free_limits.TIMEOUT_BLOCK + 1
+        self.assertEqual(self.pick([a, b]), ["free/electronhub/a", "free/electronhub/b"])
+
+    def test_a_cloudflare_524_is_a_timeout_whether_or_not_litellm_keeps_the_status(self):
+        # LiteLLM 1.109.1 turns a 524 into litellm.Timeout with status_code 408; an older or other mapping may keep 524
+        # or drop the status and leave only the text.
+        for status, text in ((524, "error code: 524"), (408, "OpenAIException - error code: 524 A timeout occurred"),
+                             (None, "error code: 524 A timeout occurred"), (522, "Connection timed out")):
+            a, b = dep("electronhub", "a"), dep("electronhub", "b")
+            hook = free_limits.FreeLimits({"free_limits": {}})
+            hook.clock = lambda: self.now[0]
+            hook.learn_failure("electronhub", a["litellm_params"], Error(status, text))
+            self.assertGreater(hook.store.blocked_until("d:" + hook.deployment_key("electronhub", a["litellm_params"]), self.now[0]), 0, (status, text))
+
+    def test_a_timeout_blocks_one_deployment_even_on_an_account_scoped_route(self):
+        hook = free_limits.FreeLimits({"free_limits": {"electronhub": {"scope": "account", "status": "partial"}}})
+        hook.clock = lambda: self.now[0]
+        a, b = dep("electronhub", "a"), dep("electronhub", "b")
+        hook.learn_failure("electronhub", a["litellm_params"], Error(524, "A timeout occurred"))
+        self.assertEqual(hook.store.blocked_until("a:electronhub", self.now[0]), 0)
+        self.assertGreater(hook.store.blocked_until("d:" + hook.deployment_key("electronhub", a["litellm_params"]), self.now[0]), 0)
 
     def test_an_error_that_is_no_limit_is_left_to_the_router(self):
         a = dep("electronhub", "a")
@@ -946,9 +982,52 @@ class ResetValues(unittest.TestCase):
         self.assertEqual(key, "20261125")
 
 
+class stub_upstream:
+    """A local OpenAI-style upstream that hangs ("hang") or answers Cloudflare's 524 ("524"), and counts its hits."""
+
+    def __init__(self, mode):
+        self.mode, self.hits = mode, 0
+
+    def __enter__(self):
+        stub = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("content-length", 0)))
+                stub.hits += 1
+                if stub.mode == "hang":
+                    time.sleep(1.5)
+                    return
+                body = b"error code: 524 A timeout occurred"
+                self.send_response(524)
+                self.send_header("content-length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}/v1"
+        return self
+
+    def __exit__(self, *exc):
+        self.server.shutdown()
+        self.server.server_close()
+
+
 @unittest.skipIf(Router is None, "litellm is not importable here; it is in the image (run the suite there)")
 class RouterIntegration(unittest.TestCase):
     """The callback and LiteLLM's own per-deployment limits in LiteLLM's Router, the upstream mocked."""
+
+    def setUp(self):
+        # LiteLLM registers one callback per class and ignores a second instance of it, so without this reset only the
+        # first test's hook would ever hear of a failed attempt and later tests would wait for a block nobody records.
+        for name in ("callbacks", "success_callback", "failure_callback", "_async_success_callback", "_async_failure_callback",
+                     "input_callback", "service_callback"):
+            setattr(litellm, name, [])
 
     def router(self, hook, extra=None):
         model_list = []
@@ -962,10 +1041,15 @@ class RouterIntegration(unittest.TestCase):
         return Router(model_list=model_list, num_retries=2, routing_strategy="simple-shuffle",
                       optional_pre_call_checks=["enforce_model_rate_limits"])
 
-    def ask(self, router):
+    def ask(self, router, hook=None):
         async def main():
             reply = await router.acompletion(model="free/m", messages=[{"role": "user", "content": "hi"}])
             await asyncio.sleep(0.2)  # the callbacks run after the answer
+            # A failed attempt is logged by LiteLLM's logging worker, which can lag behind the retry: wait for the block.
+            for _ in range(200 if hook else 0):
+                if hook.store.blocks:
+                    break
+                await asyncio.sleep(0.05)
             return reply.choices[0].message.content
         return asyncio.run(main())
 
@@ -986,6 +1070,46 @@ class RouterIntegration(unittest.TestCase):
         self.assertTrue(hook.unavailable_until({"litellm_params": {"model": "openai/mock", "litellm_credential_name": "kilo",
                                                                     "input_cost_per_token": 0, "output_cost_per_token": 0},
                                                  "model_info": {"route": "kilo"}, "model_name": "free/m"}))
+
+    def test_a_timed_out_free_copy_is_put_on_cooldown_and_the_retry_reaches_another_copy(self):
+        # A real client timeout: the first copy accepts the request and never answers within its 0.3 s.
+        with stub_upstream("hang") as slow:
+            hook = free_limits.FreeLimits({"free_limits": {}})
+            router = self.router(hook, extra={"kilo": {"mock_response": None, "api_base": slow.url, "timeout": 0.3}})
+            self.assertEqual(self.ask(router, hook), "groq")
+            self.assertIn("d:kilo|openai/mock", hook.store.blocks)
+            hits = slow.hits
+            self.assertGreaterEqual(hits, 1)
+            # The copy is out for a while: the next request goes straight to the other copy and never waits on it.
+            self.assertEqual(self.ask(router), "groq")
+            self.assertEqual(slow.hits, hits)
+
+    def test_a_cloudflare_524_from_a_free_copy_cools_it_down_and_the_retry_moves_on(self):
+        # LiteLLM 1.109.1 maps this 524 to litellm.Timeout with status_code 408, and the callback must still block it.
+        with stub_upstream("524") as broken:
+            hook = free_limits.FreeLimits({"free_limits": {}})
+            router = self.router(hook, extra={"kilo": {"mock_response": None, "api_base": broken.url}})
+            self.assertEqual(self.ask(router, hook), "groq")
+            self.assertIn("d:kilo|openai/mock", hook.store.blocks)
+            hits = broken.hits
+            self.assertGreaterEqual(hits, 1)
+            self.assertEqual(self.ask(router), "groq")
+            self.assertEqual(broken.hits, hits)
+
+    def test_a_paid_copy_that_times_out_is_left_to_the_router(self):
+        with stub_upstream("524") as broken:
+            hook = free_limits.FreeLimits({"free_limits": {}})
+            litellm.callbacks = [hook]
+            router = Router(model_list=[{"model_name": "paid/m", "litellm_params": {
+                "model": "openai/mock", "api_key": "k", "api_base": broken.url}, "model_info": {"id": "paid/m"}}], num_retries=0)
+
+            async def main():
+                with self.assertRaises(litellm.Timeout):
+                    await router.acompletion(model="paid/m", messages=[{"role": "user", "content": "hi"}])
+                await asyncio.sleep(1.0)
+            asyncio.run(main())
+            self.assertGreaterEqual(broken.hits, 1)
+            self.assertEqual(hook.store.blocks, {})
 
 
 if __name__ == "__main__":

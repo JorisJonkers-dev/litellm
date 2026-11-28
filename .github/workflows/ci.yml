@@ -57,6 +57,18 @@ jobs:
           npm ci --ignore-scripts
           npx --no-install deploy-kit validate ../../deploy/litellm.project.yml ../../deploy/env ../../deploy/dashboards
 
-      - name: The image builds, routes wildcards, serves metrics and logs no message text
+      # The Router tests import litellm, which only the image has: on a workstation or a bare runner they skip, so a
+      # failure there goes unseen. Run the whole Python suite inside the image so a failure fails the pipeline.
+      - name: The image builds
         if: ${{ !cancelled() }}
+        run: docker build -t litellm-image-test:local .
+
+      - name: Router, tier and free-limit tests pass inside the image (LiteLLM itself, not a skip)
+        if: ${{ !cancelled() }}
+        run: npm run test:router
+
+      - name: The image routes wildcards, serves metrics and logs no message text
+        if: ${{ !cancelled() }}
+        env:
+          IMAGE: litellm-image-test:local
         run: npm run test:image

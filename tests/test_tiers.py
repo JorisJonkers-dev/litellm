@@ -310,9 +310,11 @@ class ConfigLoad(unittest.TestCase):
             models = [step["model"] for step in chain]
             with self.assertRaises(Exception, msg=tier):
                 self.ask(self.router(chain, set(models)), tier)
-        # Only the tier-free chain's own models exist in that router: nothing paid is there to be reached.
+        # Only the tier-free chain's own models exist in that router: nothing paid is there to be reached. The chain
+        # ends in free-router/openrouter, a free group of its own, so a step is free by its declared cost class and
+        # its group name, not only by the "free/" prefix (the prefix check failed inside the image on that last step).
         free_chain = sync.tier_chains(RULES)["tier-free"]
-        self.assertTrue(all(step["model"].startswith("free/") for step in free_chain))
+        self.assertTrue(all(step["cost"] == "free" and step["model"].split("/")[0] in ("free", "free-router") for step in free_chain))
 
     def test_a_missing_first_group_falls_through_to_the_next_step(self):
         chain = sync.tier_chains(RULES)["tier-free"]

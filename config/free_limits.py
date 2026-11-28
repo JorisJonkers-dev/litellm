@@ -76,6 +76,13 @@ DEAD_BLOCK = 6 * 3600.0
 # while only: it is often transient or tied to one model, and six hours on a guess starved whole groups.
 FORBIDDEN_BLOCK = 900.0
 DEAD_STATUS = (401, 404)
+# A free copy that accepts a request and never answers (the client times out, or Cloudflare in front of the provider
+# answers 524 after about 100 s) stays out this long, so the retry and the next requests take another copy at once.
+# LiteLLM 1.109.1 maps a 524 (and 522, 504) to litellm.Timeout with status_code 408, so the 524 itself is gone from the
+# exception's status and only its text keeps it.
+TIMEOUT_BLOCK = 120.0
+TIMEOUT_STATUS = (408, 504, 522, 524)
+TIMEOUT_ERROR = re.compile(r"\b52[24]\b|timeout occurred|timed out", re.I)
 DEAD_MODEL_ERROR = re.compile(r"deprecated|model_deprecated|model not found|does not exist|no longer available|decommissioned", re.I)
 SEED_TIMEOUT = 5.0  # seconds a request may wait for the spend log, once
 SEED_RETRY = 60.0  # seconds before a failed seed is tried again
@@ -560,6 +567,11 @@ class FreeLimits(CustomLogger):
                         and VERIFY_NEEDED.search(text) is not None)
         dead = status in DEAD_STATUS or subscription or verification or (status == 400 and DEAD_MODEL_ERROR.search(text) is not None)
         forbidden = status == 403 and QUOTA_ERROR.search(text) is None
+        timed_out = (status in TIMEOUT_STATUS or type(exception).__name__ in ("Timeout", "APITimeoutError")
+                     or (status is None and TIMEOUT_ERROR.search(text) is not None))
+        if timed_out:
+            self._block(route, params, self.clock() + TIMEOUT_BLOCK, account=False, status=status, text=text, note="timeout", deployment_only=True)
+            return
         if status not in (402, 429) and not QUOTA_ERROR.search(text) and not dead and not forbidden:
             return
         now = self.clock()
@@ -607,9 +619,9 @@ class FreeLimits(CustomLogger):
         return start + seconds if start + seconds > now else start + 86400 + seconds
 
     def _block(self, route: str, params: dict, until: float, account: bool, status: Any = None, text: str = "",
-               note: str = "") -> None:
+               note: str = "", deployment_only: bool = False) -> None:
         scope = self._entry(route).get("scope", "deployment")
-        key = f"a:{route}" if account or scope == "account" else f"d:{self.deployment_key(route, params)}"
+        key = f"a:{route}" if not deployment_only and (account or scope == "account") else f"d:{self.deployment_key(route, params)}"
         self.store.block(key, until)
         if status is None and not text:
             LOG.warning("free_limits: %s unavailable for %ss", key, int(until - self.clock()))
