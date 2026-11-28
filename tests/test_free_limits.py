@@ -3,6 +3,7 @@ import asyncio
 import copy
 import datetime
 import json
+import re
 import sys
 import types
 import unittest
@@ -200,8 +201,11 @@ class OpenRouterFree(unittest.TestCase):
         self.assertIsNotNone(sync.FREE_NON_CHAT.search("google/lyria-3-pro-preview"))
 
     def test_the_generated_file_holds_all_ten_free_chat_models(self):
-        ids = {e["litellm_params"]["model"].removeprefix("openrouter/") for e in GENERATED if e["model_info"].get("route") == "openrouter"}
+        ids = {e["litellm_params"]["model"].removeprefix("openrouter/") for e in GENERATED
+               if e["model_info"].get("route") == "openrouter" and e["model_name"].startswith("free/")}
         self.assertEqual(len(ids), 10)
+        # The free router is the eleventh OpenRouter deployment, and no model.
+        self.assertIn("free-router/openrouter", {e["model_name"] for e in GENERATED if e["model_info"].get("route") == "openrouter"})
         self.assertLessEqual({"particle-ai/particle-1:free", "nvidia/nemotron-3.5-super-vl:free"}, ids)
 
     def test_the_router_endpoint_is_no_model_group_but_one_free_router_step(self):
@@ -367,6 +371,7 @@ class Generated(unittest.TestCase):
         frozenset({"deepseek-v4-flash", "deepseek-v4-flash-0731"}): "models.dev lists the April and the 0731 release as two models",
         frozenset({"qwen3.8-max", "qwen3.8-max-0902"}): "models.dev lists Qwen3.8 Max (2026-08-03) and Qwen3.8 Max 0902 (2026-09-02) as two releases",
         frozenset({"gemma-4-26b-a4b", "gemma-4-26b-a4b-it"}): "a bare id may be the base model: models.dev lists only the -it chat tune (as qwen2.5-coder)",
+        frozenset({"llama-3.2-11b-vision", "llama-3.2-11b-vision-instruct"}): "Meta publishes Llama-3.2-11B-Vision (base) and -Instruct (chat tune) as two models (as qwen2.5-coder)",
     }
 
     def test_no_free_group_is_a_near_miss_of_another(self):
@@ -378,7 +383,9 @@ class Generated(unittest.TestCase):
             name = re.sub(r"[-_](it|instruct|chat|preview|latest|exp)$", "", name)
             return re.sub(r"[^a-z0-9]", "", name)
         by_key = {}
-        for name in {e["model_name"][len("free/"):] for e in self.free_entries()}:
+        # An alias added since the file was generated already merges its names: the next sync writes them as one.
+        aliases = {k: v for k, v in (REAL.get("free_aliases") or {}).items() if not k.startswith("_")}
+        for name in {aliases.get(n, n) for n in (e["model_name"][len("free/"):] for e in self.free_entries())}:
             by_key.setdefault(loose(name), set()).add(name)
         clashes = [frozenset(names) for names in by_key.values() if len(names) > 1]
         self.assertEqual([c for c in clashes if c not in self.KEPT_APART], [])
@@ -792,6 +799,16 @@ class Hook(unittest.TestCase):
         self.assertEqual(sync.free_stream_timeout("poe", dict(REAL, free_limits={"poe": {"stream_timeout": 45}})), 45)
         # A finished answer may take far longer than a stream may go silent.
         self.assertGreater(sync.FREE_TIMEOUT, sync.FREE_STREAM_TIMEOUT)
+
+    def test_every_attempt_at_a_free_stream_fits_before_cloudflare_cuts_the_request(self):
+        # The proxy sends no byte until the first token; Cloudflare answers 524 after about 100 s of silence.
+        # The first attempt and every retry wait up to stream_timeout each, so together they must fit.
+        router = (ROOT / "config" / "config.yaml").read_text()
+        retries = int(re.search(r"^\s*num_retries:\s*(\d+)", router, re.MULTILINE).group(1))
+        routes = {"": sync.FREE_STREAM_TIMEOUT}
+        routes.update({route: sync.free_stream_timeout(route, REAL) for route, rule in (REAL.get("free_limits") or {}).items() if isinstance(rule, dict)})
+        for route, seconds in routes.items():
+            self.assertLess((retries + 1) * seconds, sync.CLOUDFLARE_IDLE_LIMIT, route or "default")
 
     def test_when_every_copy_is_limited_the_call_fails_at_once(self):
         a = dep("electronhub", "a")

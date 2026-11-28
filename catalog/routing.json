@@ -17,11 +17,12 @@
     "mistral-medium-3-5": "mistral-medium-3.5"
   },
   "free_aliases": {
-    "_sources": "Spellings of one model that the free-group stripping (free_canonical in sync.py) does not unify, for the free/<model> groups only. Evidence: models.dev (https://models.dev/api.json, fetched 2026-11-26) names them one model: 'Nemotron 3.5 Lightning 30B A3B' (family nemotron-lightning) for nemotron-3.5-lightning and nemotron-3.5-lightning-30b-a3b; 'Beam 1.0 501B A23B' for beam, beam-1.0 and beam-1.0-501b-a23b; 'Gemma 4 31B IT' for gemma-4-31b and gemma-4-31b-it.",
+    "_sources": "Spellings of one model that the free-group stripping (free_canonical in sync.py) does not unify, for the free/<model> groups only. Evidence: models.dev (https://models.dev/api.json, fetched 2026-11-26) names them one model: 'Nemotron 3.5 Lightning 30B A3B' (family nemotron-lightning) for nemotron-3.5-lightning and nemotron-3.5-lightning-30b-a3b; 'Beam 1.0 501B A23B' for beam, beam-1.0 and beam-1.0-501b-a23b; 'Gemma 4 31B IT' for gemma-4-31b and gemma-4-31b-it. solar-mini4 is solar-mini-4 written without its hyphen (two routes list the same Upstage model; the version is glued to the name).",
     "nemotron-3.5-lightning-30b-a3b": "nemotron-3.5-lightning",
     "beam": "beam-1.0-501b-a23b",
     "beam-1.0": "beam-1.0-501b-a23b",
-    "gemma-4-31b": "gemma-4-31b-it"
+    "gemma-4-31b": "gemma-4-31b-it",
+    "solar-mini4": "solar-mini-4"
   },
   "api_only_routes": ["vibe-api", "vibe-study-api"],
   "public_routes": ["google"],
