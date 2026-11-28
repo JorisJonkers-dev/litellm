@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/JorisJonkers-dev/litellm/compare/v1.16.0...v1.16.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **catalog:** drop a silent paid stream in time for the next route, inside Cloudflare's 100 s ([#196](https://github.com/JorisJonkers-dev/litellm/issues/196)) ([3093fca](https://github.com/JorisJonkers-dev/litellm/commit/3093fcaebaea0930170c743431227a267552c2a2))
+
 ## [1.16.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.3...v1.16.0) (2026-11-28)
 
 
