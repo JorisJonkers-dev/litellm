@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.17.2...v1.18.0) (2026-11-28)
+
+
+### Features
+
+* **catalog:** require chat evidence on Electron Hub, Naga and Routeway free ids and document the auto key ([#212](https://github.com/JorisJonkers-dev/litellm/issues/212)) ([b2fdbf5](https://github.com/JorisJonkers-dev/litellm/commit/b2fdbf5bdc588bceccbb534b8a3986b69ff366be))
+
 ## [1.17.2](https://github.com/JorisJonkers-dev/litellm/compare/v1.17.1...v1.17.2) (2026-11-28)
 
 
