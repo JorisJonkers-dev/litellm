@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.3...v1.16.0) (2026-11-28)
+
+
+### Features
+
+* **catalog:** key UnoRouter and raise the OpenRouter free allowance to 1000 a day ([#194](https://github.com/JorisJonkers-dev/litellm/issues/194)) ([d0cf98c](https://github.com/JorisJonkers-dev/litellm/commit/d0cf98c8a1137d267e0585235ffae5a2f6dad018))
+
 ## [1.15.3](https://github.com/JorisJonkers-dev/litellm/compare/v1.15.2...v1.15.3) (2026-11-28)
 
 
