@@ -3339,10 +3339,32 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "free tier, limits not published (learned from the provider's answers)"
+      }
+    },
+    {
+      "model_name": "free/gemini-2.5-flash-lite",
+      "litellm_params": {
+        "model": "openai/gemini-2.5-flash-lite:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-2.5-flash-lite:free",
+        "route": "unorouter",
+        "canonical": "gemini-2.5-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
@@ -8690,31 +8712,6 @@
     {
       "model_name": "free/muse-glimmer-30b",
       "litellm_params": {
-        "model": "openai/muse-glimmer-30b:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/muse-glimmer-30b:free",
-        "route": "unorouter",
-        "canonical": "muse-glimmer-30b",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/muse-glimmer-30b",
-      "litellm_params": {
         "model": "openai/nvidia/muse-glimmer-30b",
         "litellm_credential_name": "requesty",
         "order": 6,
@@ -8733,7 +8730,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "200 requests a day per account; 20 requests a minute per account"
+        "free_limit": "200 requests a day per account; 20 requests a minute per account",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
