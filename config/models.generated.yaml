@@ -2961,33 +2961,6 @@
       }
     },
     {
-      "model_name": "free/dots-3-note-preview",
-      "litellm_params": {
-        "model": "openai/dots-3-note-preview:free",
-        "litellm_credential_name": "electronhub",
-        "order": 4,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/electronhub/dots-3-note-preview:free",
-        "route": "electronhub",
-        "canonical": "dots-3-note-preview",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/ernie-5.5-flash-preview",
       "litellm_params": {
         "model": "openai/baidu/ernie-5.5-flash-preview:free",
@@ -3339,32 +3312,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)"
-      }
-    },
-    {
-      "model_name": "free/gemini-2.5-flash-lite",
-      "litellm_params": {
-        "model": "openai/gemini-2.5-flash-lite:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-2.5-flash-lite:free",
-        "route": "unorouter",
-        "canonical": "gemini-2.5-flash-lite",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -3981,34 +3932,6 @@
       }
     },
     {
-      "model_name": "free/gemini-flash-lite",
-      "litellm_params": {
-        "model": "openai/gemini-flash-lite-latest:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-flash-lite-latest:free",
-        "route": "unorouter",
-        "canonical": "gemini-flash-lite",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gemini-robotics-er-2-preview",
       "litellm_params": {
         "model": "gemini/gemini-robotics-er-2-preview",
@@ -4029,32 +3952,10 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)"
-      }
-    },
-    {
-      "model_name": "free/gemini-robotics-er-2-preview",
-      "litellm_params": {
-        "model": "openai/gemini-robotics-er-2-preview:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-robotics-er-2-preview:free",
-        "route": "unorouter",
-        "canonical": "gemini-robotics-er-2-preview",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
+        "free_limit": "free tier, limits not published (learned from the provider's answers)",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
       }
     },
     {
@@ -6641,10 +6542,32 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "500 requests a minute per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "free/grok-4.7",
+      "litellm_params": {
+        "model": "openai/grok-4.7:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/grok-4.7:free",
+        "route": "unorouter",
+        "canonical": "grok-4.7",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
@@ -7447,34 +7370,6 @@
       }
     },
     {
-      "model_name": "free/manta-flash-1.0",
-      "litellm_params": {
-        "model": "openai/manta-flash-1.0:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/manta-flash-1.0:free",
-        "route": "unorouter",
-        "canonical": "manta-flash-1.0",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/manta-mini-1.0",
       "litellm_params": {
         "model": "openai/manta-mini-1.0:free",
@@ -7849,31 +7744,6 @@
     {
       "model_name": "free/minimax-m2.7",
       "litellm_params": {
-        "model": "openai/minimax-m2.7",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/minimax-m2.7",
-        "route": "unorouter",
-        "canonical": "minimax-m2.7",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/minimax-m2.7",
-      "litellm_params": {
         "model": "neosantara/minimax-m2.7-free",
         "litellm_credential_name": "neosantara",
         "order": 7,
@@ -8136,33 +8006,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "1 requests a minute per account; 1,000 requests a day per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/ministral-3-8b-instruct",
-      "litellm_params": {
-        "model": "openai/ministral-3-8b-instruct:free",
-        "litellm_credential_name": "electronhub",
-        "order": 4,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/electronhub/ministral-3-8b-instruct:free",
-        "route": "electronhub",
-        "canonical": "ministral-3-8b-instruct",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -8546,34 +8389,6 @@
       }
     },
     {
-      "model_name": "free/mistral-small-3.2",
-      "litellm_params": {
-        "model": "openai/mistral-small-3.2:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/mistral-small-3.2:free",
-        "route": "unorouter",
-        "canonical": "mistral-small-3.2",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/mistral-small-3.2-24b-instruct",
       "litellm_params": {
         "model": "openai/mistral-small-3.2-24b-instruct:free",
@@ -8712,25 +8527,26 @@
     {
       "model_name": "free/muse-glimmer-30b",
       "litellm_params": {
-        "model": "openai/nvidia/muse-glimmer-30b",
-        "litellm_credential_name": "requesty",
-        "order": 6,
+        "model": "openai/muse-glimmer-30b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
         "weight": 1,
         "input_cost_per_token": 0,
         "output_cost_per_token": 0,
+        "rpm": 1,
         "timeout": 300,
         "stream_timeout": 25
       },
       "model_info": {
-        "id": "free/requesty/nvidia/muse-glimmer-30b",
-        "route": "requesty",
+        "id": "free/unorouter/muse-glimmer-30b:free",
+        "route": "unorouter",
         "canonical": "muse-glimmer-30b",
         "access_groups": [
           "free"
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "200 requests a day per account; 20 requests a minute per account",
+        "free_limit": "1 requests a minute per model",
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
         }
@@ -10461,33 +10277,6 @@
           "free"
         ],
         "max_input_tokens": 8192,
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "free tier, limits not published (learned from the provider's answers)",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
-      "model_name": "free/qwen3-coder-30-a3b-instruct",
-      "litellm_params": {
-        "model": "openai/qwen3-coder-30-a3b-instruct:free",
-        "litellm_credential_name": "electronhub",
-        "order": 4,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/electronhub/qwen3-coder-30-a3b-instruct:free",
-        "route": "electronhub",
-        "canonical": "qwen3-coder-30-a3b-instruct",
-        "access_groups": [
-          "free"
-        ],
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)",
