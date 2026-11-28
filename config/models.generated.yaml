@@ -483,7 +483,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model",
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model",
         "router": true,
         "allowed_fails_policy": {
           "RateLimitErrorAllowedFails": 0
@@ -1334,6 +1334,31 @@
     {
       "model_name": "free/command-a-plus-05-2026",
       "litellm_params": {
+        "model": "openai/command-a-plus-05-2026:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/command-a-plus-05-2026:free",
+        "route": "unorouter",
+        "canonical": "command-a-plus-05-2026",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/command-a-plus-05-2026",
+      "litellm_params": {
         "model": "cohere_chat/command-a-plus-05-2026",
         "litellm_credential_name": "cohere",
         "order": 9,
@@ -1353,10 +1378,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "1,000 requests a month per account; 20 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "1,000 requests a month per account; 20 requests a minute per model"
       }
     },
     {
@@ -1785,31 +1807,6 @@
     {
       "model_name": "free/deepseek-v4-flash-0731",
       "litellm_params": {
-        "model": "openai/deepseek-v4-flash-0731:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/deepseek-v4-flash-0731:free",
-        "route": "unorouter",
-        "canonical": "deepseek-v4-flash-0731",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model"
-      }
-    },
-    {
-      "model_name": "free/deepseek-v4-flash-0731",
-      "litellm_params": {
         "model": "openai/deepseek/deepseek-v4-flash-0731free:free",
         "litellm_credential_name": "bazaarlink",
         "order": 6,
@@ -2007,7 +2004,7 @@
     {
       "model_name": "free/deepseek-v4.1-flash",
       "litellm_params": {
-        "model": "openai/deepseek-v4.1-flash-1017:free",
+        "model": "openai/deepseek-v4.1-flash:free",
         "litellm_credential_name": "unorouter",
         "order": 5,
         "weight": 1,
@@ -2018,7 +2015,7 @@
         "stream_timeout": 25
       },
       "model_info": {
-        "id": "free/unorouter/deepseek-v4.1-flash-1017:free",
+        "id": "free/unorouter/deepseek-v4.1-flash:free",
         "route": "unorouter",
         "canonical": "deepseek-v4.1-flash",
         "access_groups": [
@@ -2203,7 +2200,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -2358,7 +2355,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -2456,34 +2453,6 @@
         "free": true,
         "cost_class": "free",
         "free_limit": "free tier, limits not published (learned from the provider's answers)"
-      }
-    },
-    {
-      "model_name": "free/gemini-2.5-flash",
-      "litellm_params": {
-        "model": "openai/gemini-2.5-flash:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gemini-2.5-flash:free",
-        "route": "unorouter",
-        "canonical": "gemini-2.5-flash",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
       }
     },
     {
@@ -2632,10 +2601,32 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "500 requests a minute per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "500 requests a minute per account"
+      }
+    },
+    {
+      "model_name": "free/gemini-3.1-flash-lite",
+      "litellm_params": {
+        "model": "openai/gemini-3.1-flash-lite:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/gemini-3.1-flash-lite:free",
+        "route": "unorouter",
+        "canonical": "gemini-3.1-flash-lite",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
       }
     },
     {
@@ -3387,7 +3378,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -3738,7 +3729,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -5404,34 +5395,6 @@
       }
     },
     {
-      "model_name": "free/gpt-6.1-sol",
-      "litellm_params": {
-        "model": "openai/gpt-6.1-sol:free",
-        "litellm_credential_name": "unorouter",
-        "order": 5,
-        "weight": 1,
-        "input_cost_per_token": 0,
-        "output_cost_per_token": 0,
-        "rpm": 1,
-        "timeout": 300,
-        "stream_timeout": 25
-      },
-      "model_info": {
-        "id": "free/unorouter/gpt-6.1-sol:free",
-        "route": "unorouter",
-        "canonical": "gpt-6.1-sol",
-        "access_groups": [
-          "free"
-        ],
-        "free": true,
-        "cost_class": "free",
-        "free_limit": "1 requests a minute per model",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
-      }
-    },
-    {
       "model_name": "free/gpt-oss-120b",
       "litellm_params": {
         "model": "groq/openai/gpt-oss-120b",
@@ -6556,7 +6519,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -6654,6 +6617,34 @@
         "id": "free/unorouter/llama-3.1-8b:free",
         "route": "unorouter",
         "canonical": "llama-3.1-8b",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model",
+        "allowed_fails_policy": {
+          "RateLimitErrorAllowedFails": 0
+        }
+      }
+    },
+    {
+      "model_name": "free/llama-3.2-11b-vision",
+      "litellm_params": {
+        "model": "openai/llama-3.2-11b-vision:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/llama-3.2-11b-vision:free",
+        "route": "unorouter",
+        "canonical": "llama-3.2-11b-vision",
         "access_groups": [
           "free"
         ],
@@ -8207,6 +8198,31 @@
     {
       "model_name": "free/muse-glimmer-30b",
       "litellm_params": {
+        "model": "openai/muse-glimmer-30b:free",
+        "litellm_credential_name": "unorouter",
+        "order": 5,
+        "weight": 1,
+        "input_cost_per_token": 0,
+        "output_cost_per_token": 0,
+        "rpm": 1,
+        "timeout": 300,
+        "stream_timeout": 25
+      },
+      "model_info": {
+        "id": "free/unorouter/muse-glimmer-30b:free",
+        "route": "unorouter",
+        "canonical": "muse-glimmer-30b",
+        "access_groups": [
+          "free"
+        ],
+        "free": true,
+        "cost_class": "free",
+        "free_limit": "1 requests a minute per model"
+      }
+    },
+    {
+      "model_name": "free/muse-glimmer-30b",
+      "litellm_params": {
         "model": "openai/nvidia/muse-glimmer-30b",
         "litellm_credential_name": "requesty",
         "order": 6,
@@ -8225,10 +8241,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "200 requests a day per account; 20 requests a minute per account",
-        "allowed_fails_policy": {
-          "RateLimitErrorAllowedFails": 0
-        }
+        "free_limit": "200 requests a day per account; 20 requests a minute per account"
       }
     },
     {
@@ -8412,7 +8425,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -8588,7 +8601,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -8840,7 +8853,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -9040,7 +9053,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -9716,7 +9729,7 @@
         ],
         "free": true,
         "cost_class": "free",
-        "free_limit": "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model"
+        "free_limit": "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model"
       }
     },
     {
@@ -13180,7 +13193,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:gpt-6-luna",
@@ -13207,7 +13221,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:mimo-v2.6-flash",
@@ -13234,7 +13249,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:minimax-m3.1-flash",
@@ -13261,7 +13277,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:qwen3.8-flash",
@@ -13285,7 +13302,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:codestral-2508",
@@ -13306,7 +13324,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:codestral-2508",
@@ -13327,7 +13346,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:codestral-2508",
@@ -13348,7 +13368,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:codestral-2508",
@@ -13369,7 +13390,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:deepseek-v4-1-flash-1017",
@@ -13390,7 +13412,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:deepseek-v4-1-flash-1017",
@@ -13414,7 +13437,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:deepseek-v4.1-flash",
@@ -13435,7 +13459,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:deepseek-v4-1-flash-1017",
@@ -13456,7 +13481,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:deepseek-v4-1-flash-1017",
@@ -13480,7 +13506,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:gemini-decision-1",
@@ -13504,7 +13531,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:zai-glm-5",
@@ -13525,7 +13553,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-5",
@@ -13546,7 +13575,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:zai-glm-5",
@@ -13567,7 +13597,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:zai-glm-5",
@@ -13588,7 +13619,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:zai-glm-5-3",
@@ -13609,7 +13641,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-5-3",
@@ -13630,7 +13663,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:zai-glm-5-3",
@@ -13651,7 +13685,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:zai-glm-5-3",
@@ -13672,7 +13707,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:zai-glm-5-3-flash",
@@ -13693,7 +13729,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-5-3-flash",
@@ -13717,7 +13754,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:glm-5.3-flash",
@@ -13738,7 +13776,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:zai-glm-5-3-flash",
@@ -13759,7 +13798,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:zai-glm-5-3-flash",
@@ -13783,7 +13823,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:gpt-6-luna",
@@ -13810,7 +13851,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:hy3",
@@ -13837,7 +13879,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:hy4-preview",
@@ -13864,7 +13907,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:jev-1.14",
@@ -13891,7 +13935,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:kimi-k2.7-code",
@@ -13918,7 +13963,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:longcat-2.5",
@@ -13942,7 +13988,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:magistral-medium-latest",
@@ -13963,7 +14010,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:magistral-medium-latest",
@@ -13984,7 +14032,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:magistral-medium-latest",
@@ -14005,7 +14054,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:magistral-medium-latest",
@@ -14026,7 +14076,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:magistral-small-latest",
@@ -14047,7 +14098,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:magistral-small-latest",
@@ -14068,7 +14120,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:magistral-small-latest",
@@ -14089,7 +14142,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:magistral-small-latest",
@@ -14113,7 +14167,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:mimo-v2.6-flash",
@@ -14140,7 +14195,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:mimo-v2.6-pro",
@@ -14167,7 +14223,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:minimax-m3.1-flash",
@@ -14191,7 +14248,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:ministral-14b-2512",
@@ -14212,7 +14270,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:ministral-14b-2512",
@@ -14233,7 +14292,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:ministral-14b-2512",
@@ -14254,7 +14314,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:ministral-14b-2512",
@@ -14275,7 +14336,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:ministral-3b-2512",
@@ -14296,7 +14358,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:ministral-3b-2512",
@@ -14317,7 +14380,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:ministral-3b-2512",
@@ -14338,7 +14402,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:ministral-3b-2512",
@@ -14359,7 +14424,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:ministral-8b-2512",
@@ -14380,7 +14446,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:ministral-8b-2512",
@@ -14401,7 +14468,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:ministral-8b-2512",
@@ -14422,7 +14490,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:ministral-8b-2512",
@@ -14443,7 +14512,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-code-latest",
@@ -14464,7 +14534,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-code-latest",
@@ -14485,7 +14556,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-code-latest",
@@ -14506,7 +14578,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-code-latest",
@@ -14527,7 +14600,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-code-fim-latest",
@@ -14548,7 +14622,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-code-fim-latest",
@@ -14569,7 +14644,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-code-fim-latest",
@@ -14590,7 +14666,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-code-fim-latest",
@@ -14611,7 +14688,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-large-4",
@@ -14632,7 +14710,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-large-4",
@@ -14653,7 +14732,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-large-4",
@@ -14674,7 +14754,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-large-4",
@@ -14695,7 +14776,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-large-4-0",
@@ -14716,7 +14798,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-large-4-0",
@@ -14737,7 +14820,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-large-4-0",
@@ -14758,7 +14842,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-large-4-0",
@@ -14779,7 +14864,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-medium",
@@ -14800,7 +14886,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-medium",
@@ -14821,7 +14908,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-medium",
@@ -14842,7 +14930,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-medium",
@@ -14863,7 +14952,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-medium-3",
@@ -14884,7 +14974,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-medium-3",
@@ -14905,7 +14996,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-medium-3",
@@ -14926,7 +15018,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-medium-3",
@@ -14947,7 +15040,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-medium-3-5",
@@ -14968,7 +15062,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-medium-3-5",
@@ -14989,7 +15084,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-medium-3-5",
@@ -15010,7 +15106,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-medium-3-5",
@@ -15031,7 +15128,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-small-2603",
@@ -15052,7 +15150,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-small-2603",
@@ -15073,7 +15172,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-small-2603",
@@ -15094,7 +15194,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-small-2603",
@@ -15115,7 +15216,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-vibe-cli-fast",
@@ -15136,7 +15238,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-vibe-cli-fast",
@@ -15157,7 +15260,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-vibe-cli-fast",
@@ -15178,7 +15282,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-vibe-cli-fast",
@@ -15199,7 +15304,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:mistral-vibe-cli-with-tools",
@@ -15220,7 +15326,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-vibe-cli-with-tools",
@@ -15241,7 +15348,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:mistral-vibe-cli-with-tools",
@@ -15262,7 +15370,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:mistral-vibe-cli-with-tools",
@@ -15286,7 +15395,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:muse-spark-1.2-contributor",
@@ -15313,7 +15423,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:muse-spark-1.3-contributor",
@@ -15340,7 +15451,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:qwen3.8-flash",
@@ -15367,7 +15479,8 @@
         "weight": 1,
         "max_budget": 40,
         "budget_duration": "30d",
-        "cooldown_time": 900
+        "cooldown_time": 900,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "opencode-go:step-5-preview",
@@ -15391,7 +15504,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:voxtral-small-2507",
@@ -15412,7 +15526,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:voxtral-small-2507",
@@ -15433,7 +15548,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:voxtral-small-2507",
@@ -15454,7 +15570,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:voxtral-small-2507",
@@ -15475,7 +15592,8 @@
         "weight": 1,
         "max_budget": 127,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study:zai-glm-latest",
@@ -15496,7 +15614,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-latest",
@@ -15517,7 +15636,8 @@
         "weight": 1,
         "max_budget": 12.7,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-study-api:zai-glm-latest",
@@ -15538,7 +15658,8 @@
         "weight": 1,
         "max_budget": 25.5,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe-api:zai-glm-latest",
@@ -15630,7 +15751,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:deepseek-v4-1-flash-1017",
@@ -15654,7 +15776,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:mistral-small-2603",
@@ -15678,7 +15801,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-5-3",
@@ -15702,7 +15826,8 @@
         "weight": 1,
         "max_budget": 255,
         "budget_duration": "1mo",
-        "cooldown_time": 3600
+        "cooldown_time": 3600,
+        "stream_timeout": 30
       },
       "model_info": {
         "id": "vibe:zai-glm-5-3-flash",
