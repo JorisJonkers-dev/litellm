@@ -583,14 +583,14 @@ class FreeRoutesWave1(unittest.TestCase):
         models = [(route, "paid-model", "usable", {"free": False}) for route in self.ROUTES]
         self.assertEqual(self.plan(*models), [])
         # The free id beside it is deployed, and only that one.
-        models += [(route, "free-model", "usable", {"free": True}) for route in self.ROUTES]
+        models += [(route, "free-model", "usable", {"free": True, "chat_evidence": "listing"}) for route in self.ROUTES]
         specs = self.plan(*models)
         self.assertEqual({spec["upstream_id"] for spec in specs}, {"free-model"})
         self.assertEqual({spec["route"] for spec in specs}, set(self.ROUTES))
         self.assertEqual({spec["name"] for spec in specs}, {"free/free-model"})
 
     def test_no_deployment_lands_in_canonical_or_a_paid_group(self):
-        specs = self.plan(*[(route, "free-model", "usable", {"free": True}) for route in self.ROUTES],
+        specs = self.plan(*[(route, "free-model", "usable", {"free": True, "chat_evidence": "listing"}) for route in self.ROUTES],
                           ("vibe", "free-model", "usable", {}), ("vibe-api", "free-model", "usable", {}))
         for spec in specs:
             if spec["route"] in self.ROUTES:
@@ -603,7 +603,7 @@ class FreeRoutesWave1(unittest.TestCase):
 
     def test_free_deployments_cost_zero_per_token_inferbase_included(self):
         """Inferbase's account has no payment method (owner, 2026-11-26): free and rate limited like the rest."""
-        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True, "chat_evidence": "listing"}) for route in self.ROUTES])}
         self.assertEqual(set(specs), set(self.ROUTES))
         for route, spec in specs.items():
             params = spec["litellm_params"]
@@ -612,7 +612,7 @@ class FreeRoutesWave1(unittest.TestCase):
             self.assertNotIn("cooldown_time", params)
 
     def test_prefixes_and_credentials(self):
-        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True}) for route in self.ROUTES])}
+        specs = {s["route"]: s for s in self.plan(*[(route, "m", "usable", {"free": True, "chat_evidence": "listing"}) for route in self.ROUTES])}
         prefixes = {"groq": "groq", "cloudflare": "cloudflare", "nvidia": "nvidia_nim", "zai": "zai", "kilo": "openai",
                     "ovh": "ovhcloud", "requesty": "openai", "axforge": "openai", "naga": "openai", "routeway": "openai",
                     "inferbase": "openai"}

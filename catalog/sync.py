@@ -1113,8 +1113,9 @@ FREE_NON_CHAT = re.compile(
 
 
 # Routes that join the free groups on a `:free` suffix but whose listing carries no model type (UnoRouter lists image and
-# speech models with the suffix too): like a `free_all` route they need chat evidence (models.dev, other providers, free_ids).
-CHAT_EVIDENCE_ROUTES = frozenset({"unorouter"})
+# speech models with the suffix too; Electron Hub, Naga and Routeway admit models on the suffix alone): like a `free_all`
+# route they need chat evidence (models.dev, other providers, free_ids).
+CHAT_EVIDENCE_ROUTES = frozenset({"unorouter", "electronhub", "naga", "routeway"})
 
 
 def free_chat(route, chosen, rules):

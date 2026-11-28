@@ -172,6 +172,17 @@ class ChatOnly(unittest.TestCase):
         self.assertEqual(group(kept, "free/glm-4.7-flash"), ["unorouter"])
         self.assertEqual(group(kept, "free/mystery-model"), ["kilo"])
 
+    def test_electronhub_naga_and_routeway_need_chat_evidence_too(self):
+        for route in ("electronhub", "naga", "routeway"):
+            with self.subTest(route=route):
+                self.assertIn(route, sync.CHAT_EVIDENCE_ROUTES)
+                bare = plan((route, "mystery-model:free", "usable", {"free": True}))
+                self.assertEqual([s for s in bare if s["name"].startswith("free/")], [])
+                kept = plan((route, "glm-4.7-flash:free", "usable", {"free": True, "chat_evidence": "models.dev"}),
+                            (route, "mystery-model:free", "usable", {"free": True}))
+                self.assertEqual(group(kept, "free/glm-4.7-flash"), [route])
+                self.assertEqual(group(kept, "free/mystery-model"), [])
+
     def test_the_generated_free_groups_hold_no_non_chat_model(self):
         for entry in GENERATED:
             if entry["model_name"].startswith("free/"):
