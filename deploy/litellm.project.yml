@@ -115,6 +115,8 @@ applications:
                 optional: true
               - name: electronhub_api_key
                 optional: true
+              - name: unorouter_api_key
+                optional: true
               - name: cohere_api_key
                 optional: true
               - name: airforce_api_key
@@ -230,6 +232,8 @@ applications:
                 optional: true
               - name: electronhub_api_key
                 optional: true
+              - name: unorouter_api_key
+                optional: true
               - name: cohere_api_key
                 optional: true
               - name: airforce_api_key
@@ -330,6 +334,8 @@ applications:
               - name: bazaarlink_api_key
                 optional: true
               - name: electronhub_api_key
+                optional: true
+              - name: unorouter_api_key
                 optional: true
               - name: cohere_api_key
                 optional: true

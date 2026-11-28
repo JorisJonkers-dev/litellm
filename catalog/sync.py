@@ -126,9 +126,9 @@ ROUTES = [
     {"route": "longcat", "base_env": "LONGCAT_API_BASE", "key_env": "LONGCAT_API_KEY", "kind": "longcat"},
     {"route": "neosantara", "base_env": "NEOSANTARA_API_BASE", "key_env": "NEOSANTARA_API_KEY", "kind": "neosantara"},
     # Fail-closed free signals in the listing itself: a `:free` suffix (Electron Hub, UnoRouter), `tier == "free"`
-    # (Api.Airforce) or a zero price (Vercel, Novita). UnoRouter's free models need no key: anonymous.
+    # (Api.Airforce) or a zero price (Vercel, Novita). UnoRouter lists and answers only with a key.
     {"route": "electronhub", "base_env": "ELECTRONHUB_API_BASE", "key_env": "ELECTRONHUB_API_KEY", "kind": "electronhub"},
-    {"route": "unorouter", "base_env": "UNOROUTER_API_BASE", "key_env": "UNOROUTER_API_KEY", "kind": "unorouter", "anonymous": True},
+    {"route": "unorouter", "base_env": "UNOROUTER_API_BASE", "key_env": "UNOROUTER_API_KEY", "kind": "unorouter"},
     {"route": "airforce", "base_env": "AIRFORCE_API_BASE", "key_env": "AIRFORCE_API_KEY", "kind": "airforce"},
     {"route": "vercel", "base_env": "VERCEL_AI_GATEWAY_API_BASE", "key_env": "VERCEL_AI_GATEWAY_API_KEY", "kind": "vercel"},
     {"route": "novita", "base_env": "NOVITA_API_BASE", "key_env": "NOVITA_API_KEY", "kind": "novita"},
@@ -1151,7 +1151,7 @@ WINDOW_WORDS = {"minute": "a minute", "hour": "an hour", "day": "a day", "month"
 def free_limit_note(route, rules):
     """The free limits of a route as one sentence a listing can show, from free_limits.<route> in routing.json.
 
-    "50 requests a day per account (1000 once the account has bought 10 credits); 20 requests a minute per model", or
+    "1,000 requests a day per account (50 under 10 credits bought); 20 requests a minute per model", or
     "free tier, limits not published (learned from the provider's answers)" when the route records none.
     """
     entry = ((rules or {}).get("free_limits") or {}).get(route) or {}
