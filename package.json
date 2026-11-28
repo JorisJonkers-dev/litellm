@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 tests/*.test.mjs && npm run test:catalog",
     "test:catalog": "python3 -I -m unittest discover -s tests -p 'test_*.py'",
-    "test:image": "node --test --test-concurrency=1 tests/image.test.mjs"
+    "test:image": "node --test --test-concurrency=1 tests/image.test.mjs",
+    "test:router": "docker run --rm -e REQUIRE_LITELLM=1 --entrypoint python3 -v \"$PWD:/repo:ro\" -w /repo ${IMAGE:-litellm-image-test:local} -I -m unittest discover -s tests -p 'test_*.py'"
   },
   "engines": {
     "node": "v26.13.1"
